@@ -1,0 +1,17 @@
+django>=5.0
+djangorestframework>=3.15.0
+djangorestframework-simplejwt>=5.3.0
+django-cors-headers>=4.3.0
+channels>=4.0.0
+channels-redis>=4.2.0
+daphne
+
+django-storages[google,s3]>=1.14.0
+boto3>=1.34.0
+reportlab
+pillow
+requests>=2.31.0
+stripe>=8.5.0
+elasticsearch>=8.12.0
+django-filter>=24.1
+
