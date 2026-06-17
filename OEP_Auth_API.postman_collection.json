@@ -1,0 +1,381 @@
+{
+  "info": {
+    "name": "Online Education Platform - Auth API",
+    "_postman_id": "oed-phase2-auth-v1",
+    "description": "Phase 2: Authentication & User Management API collection.\n\nInstructions:\n1. Set the `base_url` collection variable (default: http://localhost:8000).\n2. Run **Register** or **Login** first — the access & refresh tokens are captured automatically via test scripts.\n3. All authenticated requests use the `{{access_token}}` variable automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:8000", "type": "string" },
+    { "key": "access_token",  "value": "",                      "type": "string" },
+    { "key": "refresh_token", "value": "",                      "type": "string" },
+    { "key": "reset_uid",     "value": "",                      "type": "string" },
+    { "key": "reset_token",   "value": "",                      "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "1. Register (Student)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const json = pm.response.json();",
+              "  pm.collectionVariables.set('access_token',  json.access);",
+              "  pm.collectionVariables.set('refresh_token', json.refresh);",
+              "  pm.test('Registration successful — tokens captured', () => {",
+              "    pm.expect(json.access).to.be.a('string');",
+              "    pm.expect(json.refresh).to.be.a('string');",
+              "    pm.expect(json.user.role).to.eql('STUDENT');",
+              "  });",
+              "} else {",
+              "  pm.test('Registration failed — check body for errors', () => pm.expect(pm.response.code).to.eql(201));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"john_student\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\",\n  \"password_confirm\": \"Password123!\",\n  \"role\": \"STUDENT\",\n  \"bio\": \"Computer Science undergrad.\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/register/", "host": ["{{base_url}}"], "path": ["api", "auth", "register", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Register (Mentor)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const json = pm.response.json();",
+              "  pm.collectionVariables.set('access_token',  json.access);",
+              "  pm.collectionVariables.set('refresh_token', json.refresh);",
+              "  pm.test('Mentor registered — tokens captured', () => {",
+              "    pm.expect(json.user.role).to.eql('MENTOR');",
+              "    pm.expect(json.user.profile.title).to.be.a('string');",
+              "    pm.expect(json.user.profile.is_approved).to.eql(false);",
+              "  });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"sarah_mentor\",\n  \"email\": \"sarah@example.com\",\n  \"password\": \"Password123!\",\n  \"password_confirm\": \"Password123!\",\n  \"role\": \"MENTOR\",\n  \"title\": \"Senior Software Architect\",\n  \"skills\": \"Python, Django, React, Docker\",\n  \"bio\": \"10 years in backend engineering.\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/register/", "host": ["{{base_url}}"], "path": ["api", "auth", "register", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Login (Email)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  pm.collectionVariables.set('access_token',  json.access);",
+              "  pm.collectionVariables.set('refresh_token', json.refresh);",
+              "  pm.test('Login successful — tokens captured', () => {",
+              "    pm.expect(json.access).to.be.a('string');",
+              "    pm.expect(json.refresh).to.be.a('string');",
+              "    pm.expect(json.user).to.have.property('email');",
+              "    pm.expect(json.user).to.have.property('role');",
+              "  });",
+              "} else {",
+              "  pm.test('Login failed — check credentials', () => pm.expect(pm.response.code).to.eql(200));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Login — wrong password (expect 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Incorrect password returns 401', () => {",
+              "  pm.expect(pm.response.code).to.eql(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"WrongPassword!\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/login/", "host": ["{{base_url}}"], "path": ["api", "auth", "login", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Refresh Access Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  pm.collectionVariables.set('access_token', json.access);",
+              "  if (json.refresh) pm.collectionVariables.set('refresh_token', json.refresh);",
+              "  pm.test('New access token received', () => pm.expect(json.access).to.be.a('string'));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/refresh/", "host": ["{{base_url}}"], "path": ["api", "auth", "refresh", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Get My Profile",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile retrieved successfully', () => {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('username');",
+              "  pm.expect(json).to.have.property('email');",
+              "  pm.expect(json).to.have.property('role');",
+              "  pm.expect(json).to.have.property('profile');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/auth/profile/", "host": ["{{base_url}}"], "path": ["api", "auth", "profile", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Update Profile (PATCH)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile updated successfully', () => {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.profile.bio).to.eql('Updated bio from Postman.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"profile\": {\n    \"bio\": \"Updated bio from Postman.\",\n    \"title\": \"Full Stack Developer\",\n    \"skills\": \"Python, React, Postgres\"\n  }\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/profile/", "host": ["{{base_url}}"], "path": ["api", "auth", "profile", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "8. Request Password Reset",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  // Parse uid and token from the returned reset_link for convenience",
+              "  try {",
+              "    const url = new URL(json.reset_link);",
+              "    pm.collectionVariables.set('reset_uid',   url.searchParams.get('uid'));",
+              "    pm.collectionVariables.set('reset_token', url.searchParams.get('token'));",
+              "    pm.test('Reset uid and token captured', () => {",
+              "      pm.expect(url.searchParams.get('uid')).to.be.a('string');",
+              "      pm.expect(url.searchParams.get('token')).to.be.a('string');",
+              "    });",
+              "  } catch(e) {",
+              "    console.log('Could not parse reset_link:', e);",
+              "  }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"john@example.com\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/password-reset/", "host": ["{{base_url}}"], "path": ["api", "auth", "password-reset", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "9. Confirm Password Reset",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Password reset confirmed', () => {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "  pm.expect(pm.response.json().detail).to.include('successfully');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uid\": \"{{reset_uid}}\",\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"NewPassword456!\",\n  \"new_password_confirm\": \"NewPassword456!\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/password-reset/confirm/", "host": ["{{base_url}}"], "path": ["api", "auth", "password-reset", "confirm", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "10. Logout (Blacklist Refresh Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Logout successful', () => {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "  pm.expect(pm.response.json().detail).to.include('logged out');",
+              "});",
+              "// Clear stored tokens from collection variables",
+              "pm.collectionVariables.set('access_token', '');",
+              "pm.collectionVariables.set('refresh_token', '');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/logout/", "host": ["{{base_url}}"], "path": ["api", "auth", "logout", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "11. Use Blacklisted Token (expect 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Blacklisted refresh token is rejected with 401', () => {",
+              "  pm.expect(pm.response.code).to.eql(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh\": \"paste-your-old-refresh-token-here\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/auth/refresh/", "host": ["{{base_url}}"], "path": ["api", "auth", "refresh", ""] }
+      },
+      "response": []
+    },
+    {
+      "name": "12. Access Protected Route (no token — expect 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Unauthenticated request returns 401', () => {",
+              "  pm.expect(pm.response.code).to.eql(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/auth/profile/", "host": ["{{base_url}}"], "path": ["api", "auth", "profile", ""] }
+      },
+      "response": []
+    }
+  ]
+}
