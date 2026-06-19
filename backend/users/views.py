@@ -132,3 +132,63 @@ class PasswordResetConfirmView(APIView):
             user.save()
             return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+from .permissions import IsAdmin
+
+class AdminProfileListView(generics.ListAPIView):
+    queryset = User.objects.all().order_by('-date_joined')
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        role = self.request.query_params.get('role')
+        is_approved = self.request.query_params.get('is_approved')
+        
+        if role:
+            queryset = queryset.filter(role=role)
+        if is_approved is not None:
+            is_approved_bool = is_approved.lower() == 'true'
+            queryset = queryset.filter(profile__is_approved=is_approved_bool)
+            
+        return queryset
+
+
+class AdminProfileApproveView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+            if user.role != User.Role.MENTOR:
+                return Response({"detail": "User is not a mentor."}, status=status.HTTP_400_BAD_REQUEST)
+            profile = user.profile
+            profile.is_approved = True
+            profile.save()
+            return Response({
+                "detail": f"Mentor {user.username} has been approved.",
+                "is_approved": True
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminProfileRejectView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+            if user.role != User.Role.MENTOR:
+                return Response({"detail": "User is not a mentor."}, status=status.HTTP_400_BAD_REQUEST)
+            profile = user.profile
+            profile.is_approved = False
+            profile.save()
+            return Response({
+                "detail": f"Mentor {user.username} approval has been revoked.",
+                "is_approved": False
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+

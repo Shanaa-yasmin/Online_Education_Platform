@@ -1,0 +1,91 @@
+# Implementation Plan: Phase 3 — Course & Curriculum Management
+
+This document details the architecture, design choices, file updates, and verification plan for implementing Phase 3 of the Online Education Platform.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Video Upload Storage**: In development mode, files will be saved locally under the `media/` directory. Presigned URLs will be mocked by serving normal local URLs. Production config can integrate `django-storages` with AWS S3.
+> - **Quiz Question Access**: To prevent students from cheating, correct option answers in QuizQuestions are hidden from regular GET requests unless the requesting user is the mentor who owns the course, or an admin.
+
+## Proposed Changes
+
+### Backend Component
+
+#### [NEW] [permissions.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/permissions.py)
+Create course-specific permission classes to verify ownership:
+- `IsCourseMentor`: Allows read/write only to the Mentor associated with the Course. Other authenticated users have read-only access (if course is approved & published).
+- `IsModuleMentor` / `IsLessonMentor`: Resolves ownership by traversing up to the parent `Course` object.
+
+#### [NEW] [serializers.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/serializers.py)
+Implement serializers for REST representation:
+- `QuizQuestionSerializer`: Serializes quiz questions. Hides `correct_option` if user is a student.
+- `LessonSerializer`: Handles individual lessons. Excludes sensitive links (`video_url` and `file_attachment`) for non-enrolled students.
+- `ModuleSerializer`: Groups lessons under their parent module.
+- `CourseSerializer`: Returns detailed course metrics including nested modules/lessons. Includes validations on prices and levels.
+- `CourseListSerializer`: Lightweight listing serializer for catalogs.
+
+#### [MODIFY] [views.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/views.py)
+Provide REST viewsets:
+- `CourseViewSet`: 
+  - Standard GET returns only approved & published courses for students.
+  - Mentors can view all draft/pending courses they own.
+  - Admins can query all courses.
+  - Custom actions: `approve` and `reject` (Admin only), `publish` (Mentor only).
+- `ModuleViewSet` & `LessonViewSet`: Handle CRUD, restricted to parent course mentor.
+- `QuizQuestionViewSet`: Restricted access for editing questions.
+
+#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/urls.py)
+Register viewsets to default router:
+- `/api/courses/`
+- `/api/modules/`
+- `/api/lessons/`
+- `/api/quiz-questions/`
+
+#### [MODIFY] [admin.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/admin.py)
+Register `Course`, `Module`, `Lesson`, `QuizQuestion`, and `Review` with Django admin console.
+
+---
+
+### Frontend Component
+
+#### [MODIFY] [App.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/App.jsx)
+Register new routes:
+- `/mentor/dashboard` -> Protected to role `MENTOR`
+- `/mentor/courses/:courseId/builder` -> Protected to role `MENTOR`
+- `/admin/portal` -> Protected to role `ADMIN`
+
+#### [NEW] [MentorDashboard.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/MentorDashboard.jsx) & [MentorDashboard.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/MentorDashboard.css)
+Mentor main control panel:
+- Lists all courses created by the mentor with status indicators (Draft, Pending Approval, Published).
+- Action buttons to create a new course via modal.
+- Links to enter the Course Builder for any course.
+
+#### [NEW] [CourseBuilder.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CourseBuilder.jsx) & [CourseBuilder.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CourseBuilder.css)
+Visual curriculum organizer:
+- Build modules and lessons.
+- Create lessons (videos, PDFs, text, quizzes).
+- Add MCQ quiz questions.
+- Publish buttons.
+
+#### [NEW] [AdminPanel.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/AdminPanel.jsx) & [AdminPanel.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/AdminPanel.css)
+Admin control board:
+- Tab 1: **Mentor Approvals Queue** (view and approve pending mentors).
+- Tab 2: **Course Moderation Queue** (view course drafts, approve or reject them).
+- Quick statistics dashboard.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+Write backend tests in `backend/courses/tests.py`:
+- Test that students cannot view unapproved courses.
+- Test that only mentors can edit their own courses.
+- Test that QuizQuestion answers are hidden from GET queries made by students.
+- Test course creation, update, and deletion validation.
+
+### Manual Verification
+- Log in as Mentor: Create a course, build a sample module and lesson. Request approval.
+- Log in as Admin: Open Admin Panel, view the course and approve it.
+- Log in as Student: Verify the approved course appears in the course list.

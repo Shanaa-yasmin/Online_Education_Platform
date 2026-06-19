@@ -18,11 +18,11 @@
 
 ## Phase 3: Course & Curriculum Management
 - [x] Build backend models for Course, Module, Lesson, Quiz, Question, Attachment
-- [ ] Create APIs for Mentor to create and manage courses and curriculum
-- [ ] Setup file upload storage handlers (mock S3 or local storage for dev)
-- [ ] Create Admin moderation APIs for approving mentors/courses
-- [ ] Build Mentor Dashboard UI in React
-- [ ] Build Admin Panel UI in React
+- [x] Create APIs for Mentor to create and manage courses and curriculum
+- [x] Setup file upload storage handlers (mock S3 or local storage for dev)
+- [x] Create Admin moderation APIs for approving mentors/courses
+- [x] Build Mentor Dashboard UI in React
+- [x] Build Admin Panel UI in React
 
 ## Phase 4: Enrollment & Learning Flow
 - [ ] Build Course Catalog UI (search, filters, course pages)

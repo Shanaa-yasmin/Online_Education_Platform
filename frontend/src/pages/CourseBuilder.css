@@ -1,0 +1,438 @@
+/* CourseBuilder.css */
+
+.course-builder-page {
+  min-height: 100svh;
+  background: var(--bg-base);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.builder-header {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .builder-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.course-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.status-badge-inline {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.status-badge-inline.live {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.status-badge-inline.draft {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--text-muted);
+}
+
+.moderation-notice {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.course-summary {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 800px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* =========================================================
+   BUILDER CONTENT & ACCORDION
+   ========================================================= */
+.builder-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.section-title-row h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.builder-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 24px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-xl);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  margin: 40px auto;
+}
+
+.builder-empty-state .icon {
+  font-size: 2.5rem;
+}
+
+.builder-empty-state h3 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.builder-empty-state p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 8px 0;
+}
+
+.modules-list-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.module-accordion-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  overflow: hidden;
+  transition: border-color var(--transition-normal);
+}
+
+.module-accordion-item.expanded {
+  border-color: var(--border-default);
+}
+
+.module-header-bar {
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(19, 22, 42, 0.4);
+  gap: 16px;
+}
+
+.module-header-bar:hover {
+  background: var(--bg-hover);
+}
+
+.module-title-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.accordion-arrow {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.module-title-side h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lesson-count-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+}
+
+.module-actions-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-icon-link {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon-link.delete:hover {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* =========================================================
+   LESSONS LIST
+   ========================================================= */
+.module-lessons-list {
+  padding: 8px 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.lessons-empty-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 16px 0;
+  text-align: center;
+}
+
+.lesson-row-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+
+.lesson-row-item:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lesson-info-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lesson-type-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.lesson-type-icon.video { background: rgba(59, 130, 246, 0.1); color: var(--info); }
+.lesson-type-icon.pdf { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+.lesson-type-icon.document { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
+.lesson-type-icon.quiz { background: rgba(124, 58, 237, 0.1); color: var(--brand-400); }
+
+.lesson-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+}
+
+.lesson-meta-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.meta-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: 8px;
+  font-family: var(--font-sans);
+}
+
+.lesson-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =========================================================
+   QUIZ QUESTIONS BLOCK
+   ========================================================= */
+.quiz-questions-block {
+  grid-column: 1 / -1;
+  margin-top: 16px;
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: 16px;
+}
+
+.quiz-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.quiz-block-header h5 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.questions-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.quiz-questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-question-item {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.question-text-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.q-number {
+  font-weight: 700;
+  color: var(--brand-400);
+  font-size: 0.85rem;
+}
+
+.q-text {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin: 0;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.q-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.options-grid-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  padding-left: 24px;
+}
+
+@media (max-width: 480px) {
+  .options-grid-display {
+    grid-template-columns: 1fr;
+  }
+}
+
+.options-grid-display .opt {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.options-grid-display .opt.correct {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.06);
+  color: var(--success);
+}
+
+/* =========================================================
+   LOADING & ERROR STATES
+   ========================================================= */
+.builder-loading-page,
+.builder-error-page {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 32px;
+}
+
+.builder-error-page h2 {
+  color: var(--error);
+  margin: 0;
+}

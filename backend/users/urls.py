@@ -6,7 +6,10 @@ from .views import (
     LogoutView,
     ProfileView,
     PasswordResetRequestView,
-    PasswordResetConfirmView
+    PasswordResetConfirmView,
+    AdminProfileListView,
+    AdminProfileApproveView,
+    AdminProfileRejectView
 )
 
 urlpatterns = [
@@ -17,4 +20,10 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='auth_profile'),
     path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    
+    # Admin Moderation Endpoints
+    path('profiles/', AdminProfileListView.as_view(), name='admin_profiles_list'),
+    path('profiles/<int:pk>/approve/', AdminProfileApproveView.as_view(), name='admin_profile_approve'),
+    path('profiles/<int:pk>/reject/', AdminProfileRejectView.as_view(), name='admin_profile_reject'),
 ]
+
