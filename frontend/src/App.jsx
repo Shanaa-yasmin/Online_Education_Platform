@@ -14,6 +14,9 @@ const ProfilePage   = lazy(() => import('./pages/ProfilePage.jsx'));
 const MentorDashboard = lazy(() => import('./pages/MentorDashboard.jsx'));
 const CourseBuilder   = lazy(() => import('./pages/CourseBuilder.jsx'));
 const AdminPanel      = lazy(() => import('./pages/AdminPanel.jsx'));
+const CoursesPage     = lazy(() => import('./pages/CoursesPage.jsx'));
+const CoursePage      = lazy(() => import('./pages/CoursePage.jsx'));
+const LearningPlayer  = lazy(() => import('./pages/LearningPlayer.jsx'));
 
 function App() {
   return (
@@ -34,6 +37,21 @@ function App() {
             <Route path="/profile" element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses" element={
+              <ProtectedRoute>
+                <CoursesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses/:courseId" element={
+              <ProtectedRoute>
+                <CoursePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/courses/:courseId/learn" element={
+              <ProtectedRoute>
+                <LearningPlayer />
               </ProtectedRoute>
             } />
 

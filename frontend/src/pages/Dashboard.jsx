@@ -197,7 +197,11 @@ export default function Dashboard() {
               </p>
               {isMentor && (
                 <div className="banner-actions">
-                  <button className="btn btn-primary btn-sm" id="create-course-btn">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    id="create-course-btn"
+                    onClick={() => navigate('/mentor/dashboard')}
+                  >
                     <PlusIcon /> Create Course
                   </button>
                 </div>
@@ -251,11 +255,16 @@ export default function Dashboard() {
                     ? 'Create your first course to start teaching students.'
                     : 'Browse our catalog and enroll in a course to get started.'}
                 </p>
-                <button className="btn btn-secondary btn-sm" id="explore-courses-btn">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  id="explore-courses-btn"
+                  onClick={() => navigate(isMentor ? '/mentor/dashboard' : '/courses')}
+                >
                   {isMentor ? 'Create a course' : 'Explore courses'}
                 </button>
               </div>
             </section>
+
 
             {/* Quick links */}
             <section className="section-card animate-fadeIn delay-4">

@@ -1,0 +1,78 @@
+# Implementation Plan: Enrollment & Learning Flow (Phase 4 Continuation)
+
+This plan details the design, files, and verification criteria for completing the remainder of Phase 4: **Enrollment Logic**, **Progress Tracking**, **Student Course Detail View**, and **Learning Player UI** (including video streaming, summary text, and interactive MCQ quizzes).
+
+## User Review Required
+
+> [!NOTE]
+> - **Paid Course Enrollment (Mock)**: Paid courses will offer a mock instant-checkout session dialog in Phase 4. Real Stripe/PayPal gateway flows will be integrated in Phase 5.
+> - **Curriculum Guardrails**: Non-enrolled students can view the syllabus (module/lesson titles) but cannot view secure assets like video URLs, text summaries, files, or quiz questions.
+
+## Proposed Changes
+
+### 1. Backend: Enrollment & Progress APIs
+
+#### [NEW] [serializers.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/serializers.py)
+Create serializers in the `payments` app:
+- `EnrollmentSerializer`: Serializes student course enrollment and overall progress.
+- `LessonProgressSerializer`: Handles completion status for individual lessons.
+
+#### [MODIFY] [views.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/views.py)
+Implement DRF ViewSets:
+- `EnrollmentViewSet`:
+  - `POST /api/enrollments/`: Enrolls the logged-in student in a course. If free, activates instantly. If paid, prompts mock payment.
+  - `GET /api/enrollments/`: Lists all courses the student is currently enrolled in.
+  - `GET /api/enrollments/check/?course_id=<id>`: Checks if the user is enrolled in a specific course.
+- `LessonProgressViewSet`:
+  - `POST /api/progress/lessons/<lesson_id>/complete/`: Marks a lesson as completed for the student, updates progress timestamp, and updates the course's overall `progress_percent` on the `Enrollment` model.
+
+#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/urls.py)
+Wire viewsets to routers and expose endpoints:
+- `/api/enrollments/`
+- `/api/progress/`
+
+#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/core/urls.py)
+Register `payments.urls` in the project's root URLs configuration.
+
+---
+
+### 2. Frontend: Course Details & Learning Player
+
+#### [NEW] [CoursePage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CoursePage.jsx) & [CoursePage.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CoursePage.css)
+Student Course Detail Page:
+- Displays course meta (title, desc, duration, level, price).
+- Lists syllabus structure (modules/lessons list).
+- Shows Enrollment button (or mock payment dialog for paid courses).
+- If enrolled, displays overall completion progress bar and a "Continue Learning" button leading to the player.
+
+#### [NEW] [LearningPlayer.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/LearningPlayer.jsx) & [LearningPlayer.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/LearningPlayer.css)
+Visual Lesson Player & Quiz Board:
+- Split layout:
+  - Sidebar: Syllabus navigation showing lessons with checkboxes (checked if completed).
+  - Main panel: Active content player.
+- Dynamic loaders based on lesson type:
+  - `VIDEO`: Custom player element using the secure stream link.
+  - `DOCUMENT`: Beautiful markdown summary formatting.
+  - `PDF`: Document viewer with file download/view access.
+  - `QUIZ`: Interactive questionnaire. Renders MCQs one by one. Validates user answers, displays instant feedback, and computes final grade.
+- Footer controls: "Mark as Complete" button, which calls the backend to check off progress and automatically selects the next lesson in the syllabus.
+
+#### [MODIFY] [App.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/App.jsx)
+Register routes:
+- `/courses/:courseId` -> `CoursePage`
+- `/courses/:courseId/learn` -> `LearningPlayer`
+
+---
+
+## Verification Plan
+
+### Automated Tests
+Add assertions in `backend/courses/tests.py` or `backend/payments/tests.py`:
+- Test that students can enroll in free courses instantly.
+- Test that progress percentage scales correctly as lessons are completed.
+- Test that video url / attachments are hidden from non-enrolled students.
+
+### Manual Verification
+- Log in as student, select a course, view detail page, click "Enroll".
+- Enter the Learning Player, check off lessons, watch progress update.
+- Submit a quiz, verify scoring, and advance to next lesson.

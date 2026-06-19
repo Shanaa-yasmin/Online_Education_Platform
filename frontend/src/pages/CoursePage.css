@@ -1,0 +1,332 @@
+/* CoursePage.css */
+
+.student-course-page {
+  min-height: 100svh;
+  background: var(--bg-base);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.back-link {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+.back-link:hover {
+  color: var(--brand-400);
+}
+
+.course-detail-layout {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .course-detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   LEFT SIDE: COURSE INFO & CURRICULUM
+   ========================================================= */
+.course-info-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.difficulty-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  align-self: flex-start;
+}
+
+.difficulty-tag.beginner { background: rgba(16, 185, 129, 0.12); color: var(--success); }
+.difficulty-tag.intermediate { background: rgba(59, 130, 246, 0.12); color: var(--info); }
+.difficulty-tag.advanced { background: rgba(239, 68, 68, 0.12); color: var(--error); }
+
+.course-detail-title {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.mentor-row {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.course-description-block,
+.course-curriculum-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.course-description-block h3,
+.course-curriculum-block h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+
+.course-description-block p {
+  font-size: 0.925rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.curriculum-empty {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px;
+}
+
+.curriculum-modules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.curriculum-module-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.01);
+  overflow: hidden;
+}
+
+.module-title-row {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.module-title-row h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lesson-count-pill {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+}
+
+.module-lessons-bullets {
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.curriculum-lesson-bullet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 8px 0;
+}
+
+.curriculum-lesson-bullet:not(:last-child) {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+}
+
+.bullet-icon {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.bullet-title {
+  flex: 1;
+}
+
+.bullet-type {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* =========================================================
+   RIGHT SIDE: ENROLLMENT CARD
+   ========================================================= */
+.course-enrollment-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: sticky;
+  top: 32px;
+  box-shadow: var(--shadow-card);
+}
+
+.price-tag-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 16px;
+}
+
+.price-lbl {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.price-amount {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.card-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.spec-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.spec-row svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cta-action-block {
+  margin-top: 8px;
+}
+
+/* =========================================================
+   PROGRESS TRACK BOX
+   ========================================================= */
+.enrolled-status-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.progress-bar-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.progress-track-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-track-fill {
+  height: 100%;
+  background: var(--gradient);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+/* =========================================================
+   CHECKOUT MODAL
+   ========================================================= */
+.order-summary-box {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.order-summary-box p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.price-tag-modal {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  color: var(--brand-400);
+  font-size: 1.15rem;
+}
+
+.checkout-modal {
+  max-width: 480px !important;
+}
+
+/* =========================================================
+   LOADING & ERROR STATES
+   ========================================================= */
+.course-detail-loading,
+.course-detail-error {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 32px;
+}
+
+.course-detail-error h2 {
+  color: var(--error);
+  margin: 0;
+}
