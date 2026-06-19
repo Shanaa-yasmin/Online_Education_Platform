@@ -12,9 +12,9 @@
 ## Phase 2: Authentication & User Management (JWT)
 - [x] Implement Custom User model with Roles (Student, Mentor, Admin)
 - [x] Configure `djangorestframework-simplejwt` for JWT access/refresh tokens
-- [/] Implement Auth endpoints (Register, Login, Refresh, Profile)
+- [x] Implement Auth endpoints (Register, Login, Refresh, Profile)
 - [x] Create custom permission classes (`IsStudent`, `IsMentor`, `IsAdmin`)
-- [ ] Implement Frontend Auth Context and routing
+- [x] Implement Frontend Auth Context and routing
 
 ## Phase 3: Course & Curriculum Management
 - [x] Build backend models for Course, Module, Lesson, Quiz, Question, Attachment
