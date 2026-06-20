@@ -1,78 +1,81 @@
-# Implementation Plan: Enrollment & Learning Flow (Phase 4 Continuation)
+# Implementation Plan - Phase 4 Continuation: Enrollment & Learning Flow
 
-This plan details the design, files, and verification criteria for completing the remainder of Phase 4: **Enrollment Logic**, **Progress Tracking**, **Student Course Detail View**, and **Learning Player UI** (including video streaming, summary text, and interactive MCQ quizzes).
+This plan outlines the design and files to complete the remaining tasks in Phase 4: **Curriculum Guardrails**, **Paid Course Enrollment Verification**, **Completed Lessons Recovery**, and **ReportLab-based PDF Certificate Generation**.
 
 ## User Review Required
 
 > [!NOTE]
-> - **Paid Course Enrollment (Mock)**: Paid courses will offer a mock instant-checkout session dialog in Phase 4. Real Stripe/PayPal gateway flows will be integrated in Phase 5.
-> - **Curriculum Guardrails**: Non-enrolled students can view the syllabus (module/lesson titles) but cannot view secure assets like video URLs, text summaries, files, or quiz questions.
+> - **Certificate Generation Timing**: Certificates will be generated synchronously upon marking the final lesson as complete (achieving 100% progress). This avoids complexity without Celery workers, as generating a PDF with ReportLab is fast (typically <100ms).
+> - **PDF Delivery**: Django's static media handlers will serve the certificate PDF directly to the student in the browser via dynamic secure links returned by the enrollment API.
 
 ## Proposed Changes
 
-### 1. Backend: Enrollment & Progress APIs
+---
 
-#### [NEW] [serializers.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/serializers.py)
-Create serializers in the `payments` app:
-- `EnrollmentSerializer`: Serializes student course enrollment and overall progress.
-- `LessonProgressSerializer`: Handles completion status for individual lessons.
+### 1. Backend: Secure Guardrails & Enrollment Check
+
+#### [MODIFY] [serializers.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/serializers.py)
+- Modify `LessonSerializer.to_representation` to intercept representations for students and anonymous users.
+- Hide `video_url`, `file_attachment`, `body_text`, and nested `quiz_questions` from users who are not enrolled in the parent course.
 
 #### [MODIFY] [views.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/views.py)
-Implement DRF ViewSets:
-- `EnrollmentViewSet`:
-  - `POST /api/enrollments/`: Enrolls the logged-in student in a course. If free, activates instantly. If paid, prompts mock payment.
-  - `GET /api/enrollments/`: Lists all courses the student is currently enrolled in.
-  - `GET /api/enrollments/check/?course_id=<id>`: Checks if the user is enrolled in a specific course.
-- `LessonProgressViewSet`:
-  - `POST /api/progress/lessons/<lesson_id>/complete/`: Marks a lesson as completed for the student, updates progress timestamp, and updates the course's overall `progress_percent` on the `Enrollment` model.
-
-#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/urls.py)
-Wire viewsets to routers and expose endpoints:
-- `/api/enrollments/`
-- `/api/progress/`
-
-#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/core/urls.py)
-Register `payments.urls` in the project's root URLs configuration.
+- Modify `EnrollmentViewSet.perform_create` to validate payments for paid courses:
+  - Check if `course.price > 0`.
+  - Verify if a `transaction_id` is supplied in the request body. If not, reject creation.
+  - If a transaction is supplied, construct a corresponding `Payment` record with status `COMPLETED`.
+- Update `EnrollmentViewSet.check` to fetch:
+  - `completed_lessons`: a list of lesson IDs the student has successfully marked complete.
+  - `certificate_url`: a reference to the certificate PDF if the student is 100% complete.
 
 ---
 
-### 2. Frontend: Course Details & Learning Player
+### 2. Backend: Certificate Generation
 
-#### [NEW] [CoursePage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CoursePage.jsx) & [CoursePage.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CoursePage.css)
-Student Course Detail Page:
-- Displays course meta (title, desc, duration, level, price).
-- Lists syllabus structure (modules/lessons list).
-- Shows Enrollment button (or mock payment dialog for paid courses).
-- If enrolled, displays overall completion progress bar and a "Continue Learning" button leading to the player.
+#### [NEW] [models.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/models.py) (Add Certificate)
+- Add a `Certificate` model in the `payments` app:
+  ```python
+  class Certificate(models.Model):
+      enrollment = models.OneToOneField(Enrollment, on_delete=models.CASCADE, related_name='certificate')
+      student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='certificates')
+      course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='certificates')
+      certificate_code = models.CharField(max_length=100, unique=True)
+      issued_at = models.DateTimeField(auto_now_add=True)
+      pdf_file = models.FileField(upload_to='certificates/', null=True, blank=True)
+  ```
 
-#### [NEW] [LearningPlayer.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/LearningPlayer.jsx) & [LearningPlayer.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/LearningPlayer.css)
-Visual Lesson Player & Quiz Board:
-- Split layout:
-  - Sidebar: Syllabus navigation showing lessons with checkboxes (checked if completed).
-  - Main panel: Active content player.
-- Dynamic loaders based on lesson type:
-  - `VIDEO`: Custom player element using the secure stream link.
-  - `DOCUMENT`: Beautiful markdown summary formatting.
-  - `PDF`: Document viewer with file download/view access.
-  - `QUIZ`: Interactive questionnaire. Renders MCQs one by one. Validates user answers, displays instant feedback, and computes final grade.
-- Footer controls: "Mark as Complete" button, which calls the backend to check off progress and automatically selects the next lesson in the syllabus.
+#### [NEW] [utils.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/utils.py)
+- Implement `generate_certificate_pdf(enrollment)` using ReportLab:
+  - Generate a professional-grade certificate in landscape mode (Letter or A4).
+  - Include borders, an elegant title ("Certificate of Completion"), the student's full username/name, the course title, date of issuance, and a unique `certificate_code` for verification.
+  - Save the output PDF directly to the `pdf_file` attribute on a newly created `Certificate` record.
 
-#### [MODIFY] [App.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/App.jsx)
-Register routes:
-- `/courses/:courseId` -> `CoursePage`
-- `/courses/:courseId/learn` -> `LearningPlayer`
+#### [MODIFY] [views.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/views.py) (Triggering)
+- Update `LessonProgressViewSet.complete` to:
+  - Check if `progress_percent` equals `100.00`.
+  - If it is, and a `Certificate` doesn't exist for the enrollment, invoke `generate_certificate_pdf(enrollment)`.
+
+---
+
+### 3. Frontend: Restoring State & Certificate Download
+
+#### [MODIFY] [LearningPlayer.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/LearningPlayer.jsx)
+- On load inside `loadLearningData`, map `enrollmentStatus.completed_lessons` to the local dictionary state `completedLessons` (`{ [id]: true }`), ensuring that check marks are restored correctly upon reloading the page.
+- Display a "Download Certificate" action button inside the sidebar or main panel if the enrollment indicates 100% progress and provides a valid `certificate_url`.
+
+#### [MODIFY] [CoursePage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CoursePage.jsx)
+- If enrolled and progress is at 100%, display a prominent "Download Certificate" action button linking directly to the generated PDF.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-Add assertions in `backend/courses/tests.py` or `backend/payments/tests.py`:
-- Test that students can enroll in free courses instantly.
-- Test that progress percentage scales correctly as lessons are completed.
-- Test that video url / attachments are hidden from non-enrolled students.
+- Write a new unit test class in `backend/payments/tests.py`:
+  - `test_unenrolled_student_cannot_view_secure_lesson_fields`: Verify that accessing lesson detail lists without enrollment filters out `video_url`, `body_text`, `file_attachment`, and `quiz_questions`.
+  - `test_enroll_in_paid_course`: Verify that a paid course enrollment fails without a transaction ID, and succeeds and creates a `Payment` object when provided.
+  - `test_progress_triggers_certificate_generation`: Verify that when progress hits 100%, a `Certificate` instance is generated with a valid `.pdf` file.
 
 ### Manual Verification
-- Log in as student, select a course, view detail page, click "Enroll".
-- Enter the Learning Player, check off lessons, watch progress update.
-- Submit a quiz, verify scoring, and advance to next lesson.
+- Log in as a student. Explore the catalog and view a course syllabus. Verify that video URLs / text are not visible or fetched in network tabs.
+- Enroll in a free course, complete all lessons, verify that the progress updates to 100%, and check that the certificate downloads as a professional PDF.
+- Enroll in a paid course, click "Buy & Enroll", enter mock details, check that it redirects successfully to the classroom.

@@ -12,8 +12,10 @@
   .learning-player-layout {
     grid-template-columns: 1fr;
   }
+
   .player-sidebar {
-    display: none; /* simple responsive fallback */
+    display: none;
+    /* simple responsive fallback */
   }
 }
 
@@ -564,4 +566,82 @@
   font-size: 0.9rem;
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* =========================================================
+   CERTIFICATE DISPLAY
+   ========================================================= */
+.certificate-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 48px;
+}
+
+.certificate-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  padding: 64px 48px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  box-shadow: var(--shadow-card);
+  max-width: 600px;
+  width: 100%;
+}
+
+.certificate-icon {
+  font-size: 5rem;
+  line-height: 1;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.certificate-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.certificate-message {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.certificate-course-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  padding: 16px 24px;
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.certificate-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.certificate-actions .btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

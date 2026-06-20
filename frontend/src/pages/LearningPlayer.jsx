@@ -7,37 +7,37 @@ import './LearningPlayer.css';
 // SVG Icons
 const ArrowLeftIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/>
+    <line x1="19" x2="5" y1="12" y2="12" /><polyline points="12 19 5 12 12 5" />
   </svg>
 );
 const CheckIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 const CircleIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="10" />
   </svg>
 );
 const PlayIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="6 3 20 12 6 21 6 3"/>
+    <polygon points="6 3 20 12 6 21 6 3" />
   </svg>
 );
 const FileTextIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
   </svg>
 );
 const QuizIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>
+    <circle cx="12" cy="12" r="10" /><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" x2="12.01" y1="17" y2="17" />
   </svg>
 );
 const DownloadIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
   </svg>
 );
 
@@ -85,6 +85,10 @@ export default function LearningPlayer() {
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState('');
 
+  // Certificate State
+  const [certificateUrl, setCertificateUrl] = useState(null);
+  const [showCertificate, setShowCertificate] = useState(false);
+
   // Quiz Interactive States
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -95,7 +99,7 @@ export default function LearningPlayer() {
   const loadLearningData = async () => {
     try {
       setLoading(true);
-      
+
       // 1. Fetch course details
       const courseResponse = await api.get(`/api/courses/${courseId}/`);
       const courseData = courseResponse.data;
@@ -109,6 +113,20 @@ export default function LearningPlayer() {
       }
       setEnrollment(enrollResponse.data);
 
+      // Check for existing certificate
+      if (enrollResponse.data.certificate_url) {
+        setCertificateUrl(enrollResponse.data.certificate_url);
+      }
+
+      // Load completed lessons
+      if (enrollResponse.data.completed_lessons && enrollResponse.data.completed_lessons.length > 0) {
+        const completedMap = {};
+        enrollResponse.data.completed_lessons.forEach(lessonId => {
+          completedMap[lessonId] = true;
+        });
+        setCompletedLessons(completedMap);
+      }
+
       // 3. Extract completed lessons from user profile or progress endpoints.
       // Wait, we can fetch all lesson progress or mock it based on enrollment percentage, 
       // or write a quick fetch to see what progresses are active.
@@ -119,13 +137,13 @@ export default function LearningPlayer() {
       // So instead, let's create a dictionary of completed lessons from lesson progresses.
       // Since lesson details in CourseSerializer don't include progress directly,
       // let's fetch course details.
-      
+
       // Let's set the active lesson to the first lesson of the first module
       if (courseData.modules?.length > 0 && courseData.modules[0].lessons?.length > 0) {
         const firstLesson = courseData.modules[0].lessons[0];
         setActiveLesson(firstLesson);
       }
-      
+
       setError('');
     } catch (err) {
       console.error(err);
@@ -157,7 +175,7 @@ export default function LearningPlayer() {
     setCompleting(true);
     try {
       const response = await api.post(`/api/payments/progress/lessons/${activeLesson.id}/complete/`);
-      
+
       // Update completion checklist state
       setCompletedLessons(prev => ({
         ...prev,
@@ -169,6 +187,11 @@ export default function LearningPlayer() {
         ...prev,
         progress_percent: response.data.progress_percent
       }));
+
+      // Capture certificate URL if provided
+      if (response.data.certificate_url) {
+        setCertificateUrl(response.data.certificate_url);
+      }
 
       // Auto-advance to the next lesson
       advanceNextLesson();
@@ -182,7 +205,7 @@ export default function LearningPlayer() {
 
   const advanceNextLesson = () => {
     if (!course || !activeLesson) return;
-    
+
     // Flatten lessons list to find next index
     const flatLessons = [];
     course.modules?.forEach(m => {
@@ -195,7 +218,12 @@ export default function LearningPlayer() {
     if (activeIdx !== -1 && activeIdx < flatLessons.length - 1) {
       handleLessonClick(flatLessons[activeIdx + 1]);
     } else {
-      alert('Congratulations! You have reached the end of the course syllabus!');
+      // Course completed - show certificate if available
+      if (certificateUrl) {
+        setShowCertificate(true);
+      } else {
+        alert('Congratulations! You have reached the end of the course syllabus!');
+      }
     }
   };
 
@@ -209,7 +237,7 @@ export default function LearningPlayer() {
 
   const handleQuizSubmitAnswer = () => {
     if (!selectedAnswer || isAnswerSubmitted) return;
-    
+
     const currentQuestion = activeLesson.quiz_questions[currentQuestionIdx];
     const isCorrect = selectedAnswer === currentQuestion.correct_option;
 
@@ -276,7 +304,7 @@ export default function LearningPlayer() {
             <ArrowLeftIcon /> Back to Syllabus
           </Link>
           <h2 className="sidebar-course-title">{course.title}</h2>
-          
+
           <div className="progress-indicator">
             <div className="progress-header">
               <span>Overall Progress</span>
@@ -297,7 +325,7 @@ export default function LearningPlayer() {
                 {module.lessons?.map((lesson) => {
                   const isActive = activeLesson?.id === lesson.id;
                   const isDone = !!completedLessons[lesson.id];
-                  
+
                   return (
                     <button
                       key={lesson.id}
@@ -320,7 +348,38 @@ export default function LearningPlayer() {
 
       {/* 2. Main Content Player Panel */}
       <main className="player-main-area">
-        {activeLesson ? (
+        {showCertificate ? (
+          <div className="certificate-container animate-scaleIn">
+            <div className="certificate-card">
+              <div className="certificate-icon">🎓</div>
+              <h2 className="certificate-title">Congratulations!</h2>
+              <p className="certificate-message">You have successfully completed the course</p>
+              <h3 className="certificate-course-name">{course.title}</h3>
+              {certificateUrl ? (
+                <div className="certificate-actions">
+                  <a
+                    href={certificateUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary btn-lg"
+                  >
+                    <DownloadIcon /> View/Download Certificate
+                  </a>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowCertificate(false)}
+                  >
+                    Back to Course
+                  </button>
+                </div>
+              ) : (
+                <div className="alert alert-warning">
+                  Certificate is being generated. Please check back later.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeLesson ? (
           <div className="active-lesson-container">
             {/* Active Content Header */}
             <div className="lesson-header">
@@ -430,7 +489,7 @@ export default function LearningPlayer() {
                           const optVal = activeLesson.quiz_questions[currentQuestionIdx][`option_${key.toLowerCase()}`];
                           const isSelected = selectedAnswer === key;
                           const isCorrect = key === activeLesson.quiz_questions[currentQuestionIdx].correct_option;
-                          
+
                           let optClass = '';
                           if (isSelected) optClass += ' selected';
                           if (isAnswerSubmitted) {

@@ -68,6 +68,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
+CERT_FONTS_DIR = BASE_DIR / "static" / "fonts"
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
