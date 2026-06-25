@@ -85,10 +85,6 @@ export default function LearningPlayer() {
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState('');
 
-  // Certificate State
-  const [certificateUrl, setCertificateUrl] = useState(null);
-  const [showCertificate, setShowCertificate] = useState(false);
-
   // Quiz Interactive States
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -112,20 +108,6 @@ export default function LearningPlayer() {
         return;
       }
       setEnrollment(enrollResponse.data);
-
-      // Check for existing certificate
-      if (enrollResponse.data.certificate_url) {
-        setCertificateUrl(enrollResponse.data.certificate_url);
-      }
-
-      // Load completed lessons
-      if (enrollResponse.data.completed_lessons && enrollResponse.data.completed_lessons.length > 0) {
-        const completedMap = {};
-        enrollResponse.data.completed_lessons.forEach(lessonId => {
-          completedMap[lessonId] = true;
-        });
-        setCompletedLessons(completedMap);
-      }
 
       // 3. Extract completed lessons from user profile or progress endpoints.
       // Wait, we can fetch all lesson progress or mock it based on enrollment percentage, 
@@ -188,11 +170,6 @@ export default function LearningPlayer() {
         progress_percent: response.data.progress_percent
       }));
 
-      // Capture certificate URL if provided
-      if (response.data.certificate_url) {
-        setCertificateUrl(response.data.certificate_url);
-      }
-
       // Auto-advance to the next lesson
       advanceNextLesson();
     } catch (err) {
@@ -218,12 +195,7 @@ export default function LearningPlayer() {
     if (activeIdx !== -1 && activeIdx < flatLessons.length - 1) {
       handleLessonClick(flatLessons[activeIdx + 1]);
     } else {
-      // Course completed - show certificate if available
-      if (certificateUrl) {
-        setShowCertificate(true);
-      } else {
-        alert('Congratulations! You have reached the end of the course syllabus!');
-      }
+      alert('Congratulations! You have reached the end of the course syllabus!');
     }
   };
 
@@ -348,38 +320,7 @@ export default function LearningPlayer() {
 
       {/* 2. Main Content Player Panel */}
       <main className="player-main-area">
-        {showCertificate ? (
-          <div className="certificate-container animate-scaleIn">
-            <div className="certificate-card">
-              <div className="certificate-icon">🎓</div>
-              <h2 className="certificate-title">Congratulations!</h2>
-              <p className="certificate-message">You have successfully completed the course</p>
-              <h3 className="certificate-course-name">{course.title}</h3>
-              {certificateUrl ? (
-                <div className="certificate-actions">
-                  <a
-                    href={certificateUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-primary btn-lg"
-                  >
-                    <DownloadIcon /> View/Download Certificate
-                  </a>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setShowCertificate(false)}
-                  >
-                    Back to Course
-                  </button>
-                </div>
-              ) : (
-                <div className="alert alert-warning">
-                  Certificate is being generated. Please check back later.
-                </div>
-              )}
-            </div>
-          </div>
-        ) : activeLesson ? (
+        {activeLesson ? (
           <div className="active-lesson-container">
             {/* Active Content Header */}
             <div className="lesson-header">

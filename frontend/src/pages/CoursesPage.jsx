@@ -1,182 +1,155 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import './CoursesPage.css';
 
-// SVG Icons
-const ArrowLeftIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/>
-  </svg>
-);
-const SearchIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/>
-  </svg>
-);
-const GlobeIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/>
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-  </svg>
-);
-const ClockIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-  </svg>
-);
-const UserIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-  </svg>
-);
+function Sidebar({ user, onLogout, loggingOut }) {
+  const isMentor = user?.role === 'MENTOR';
+  const isAdmin  = user?.role === 'ADMIN';
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-logo-area">
+        <Link to="/" className="nav-logo">
+          <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
+          <span className="nav-logo-text">Edu<span>Path</span></span>
+        </Link>
+      </div>
+      <nav className="sidebar-nav">
+        <Link to="/dashboard" className="sidebar-nav-item"><i className="ti ti-layout-dashboard" /> Dashboard</Link>
+        {(isMentor||isAdmin) && <Link to="/mentor/dashboard" className="sidebar-nav-item"><i className="ti ti-award" /> Mentor Portal</Link>}
+        {isAdmin && <Link to="/admin/portal" className="sidebar-nav-item"><i className="ti ti-settings" /> Admin Portal</Link>}
+        <Link to="/courses" className="sidebar-nav-item active"><i className="ti ti-book" /> Courses</Link>
+        <Link to="/profile" className="sidebar-nav-item"><i className="ti ti-user" /> Profile</Link>
+      </nav>
+      <div className="sidebar-footer">
+        <button className="sidebar-logout" onClick={onLogout} disabled={loggingOut}>
+          {loggingOut ? <><span className="loading-spinner loading-spinner-sm"/>Signing out…</> : <><i className="ti ti-logout"/>Sign out</>}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+const THUMB = { BEGINNER:'cc-thumb-beg', INTERMEDIATE:'cc-thumb-int', ADVANCED:'cc-thumb-adv' };
+const ICON  = { BEGINNER:'ti-leaf', INTERMEDIATE:'ti-flame', ADVANCED:'ti-bolt' };
 
 export default function CoursesPage() {
-  const { user } = useAuth();
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  // Search & Filter States
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLevel, setSelectedLevel] = useState('ALL');
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [courses, setCourses]         = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
+  const [searchTerm, setSearchTerm]   = useState('');
+  const [selectedLevel, setLevel]     = useState('ALL');
+  const [loggingOut, setLoggingOut]   = useState(false);
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/courses/');
-      // For students, API already returns only approved + published courses.
-      // But we can filter here as a safety measure.
+      const r = await api.get('/api/courses/');
       const isStudent = !user || user.role === 'STUDENT';
-      const visibleCourses = isStudent
-        ? response.data.filter(c => c.is_approved && c.is_published)
-        : response.data;
-      setCourses(visibleCourses);
+      setCourses(isStudent ? r.data.filter(c => c.is_approved && c.is_published) : r.data);
       setError('');
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch the course list. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError('Failed to load courses. Please try again.'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  useEffect(() => { fetchCourses(); }, []);
 
+  const filtered = useMemo(() => courses.filter(c => {
+    const q = searchTerm.toLowerCase();
+    const matchSearch = c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
+    const matchLevel  = selectedLevel === 'ALL' || c.level === selectedLevel;
+    return matchSearch && matchLevel;
+  }), [courses, searchTerm, selectedLevel]);
 
-
-  // Memoized client-side search and level filtering
-  const filteredCourses = useMemo(() => {
-    return courses.filter(course => {
-      const matchesSearch = 
-        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesLevel = selectedLevel === 'ALL' || course.level === selectedLevel;
-
-      return matchesSearch && matchesLevel;
-    });
-  }, [courses, searchTerm, selectedLevel]);
+  const handleLogout = async () => { setLoggingOut(true); await logout(); navigate('/login'); };
 
   return (
-    <div className="courses-catalog-page">
-      <header className="catalog-header">
-        <div className="header-left-nav">
-          <Link to="/dashboard" className="back-link">
-            <ArrowLeftIcon /> Back to Dashboard
-          </Link>
-          <h1 className="catalog-title">Explore Courses</h1>
-          <p className="catalog-subtitle">Acquire new skills from expert-led courses designed for your career progression.</p>
-        </div>
-      </header>
-
-      {/* Search & Filter Controls */}
-      <section className="catalog-controls">
-        <div className="search-input-wrapper">
-          <SearchIcon />
-          <input
-            type="text"
-            placeholder="Search courses by title or description..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="filter-select-wrapper">
-          <label htmlFor="level-filter">Level:</label>
-          <select
-            id="level-filter"
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
-          >
-            <option value="ALL">All Levels</option>
-            <option value="BEGINNER">Beginner</option>
-            <option value="INTERMEDIATE">Intermediate</option>
-            <option value="ADVANCED">Advanced</option>
-          </select>
-        </div>
-      </section>
-
-      {error && (
-        <div className="alert alert-error max-w-1200">
-          {error}
-          <button className="btn btn-secondary btn-sm" onClick={fetchCourses}>Retry</button>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading course catalog...</p>
-        </div>
-      ) : filteredCourses.length === 0 ? (
-        <div className="catalog-empty-state">
-          <div className="empty-icon">🔍</div>
-          <h3>No courses found</h3>
-          <p>Try adjusting your search criteria or selecting a different level filter.</p>
-        </div>
-      ) : (
-        <section className="courses-grid animate-fadeIn">
-          {filteredCourses.map((course) => (
-            <article key={course.id} className="catalog-course-card">
-              <div className="card-header-row">
-                <span className={`level-tag ${course.level.toLowerCase()}`}>{course.level}</span>
-                {user?.role === 'MENTOR' && (
-                  <span className={`status-badge ${course.is_published ? 'live' : 'draft'}`}>
-                    {course.is_published ? 'Live' : 'Draft'}
-                  </span>
-                )}
+    <div className="page-shell">
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} />
+      <div className="inner-page">
+        <header className="topbar">
+          <div className="topbar-left">
+            <h1>Course Catalog</h1>
+            <p>Discover expert-led courses for your career</p>
+          </div>
+          <div className="topbar-right">
+            <Link to="/profile" className="topbar-user">
+              <div className="avatar-initials" style={{width:30,height:30,fontSize:12}}>
+                {(user?.username||'U').slice(0,2).toUpperCase()}
               </div>
-              
-              <Link to={`/courses/${course.id}`} className="card-top-content card-top-link">
-                <h3 className="course-card-title">{course.title}</h3>
-                <p className="course-card-desc">{course.description}</p>
-              </Link>
+              <span className="topbar-user-name">{user?.username}</span>
+            </Link>
+          </div>
+        </header>
 
-              <div className="card-footer-info">
-                <div className="meta-row">
-                  <span className="meta-item"><UserIcon /> By {course.mentor?.username || 'Expert'}</span>
-                  <span className="meta-item"><ClockIcon /> {course.duration_hours}h estimated</span>
-                </div>
-                <div className="enroll-action-row">
-                  <span className="price-tag">
-                    {course.price > 0 ? `$${course.price}` : 'Free'}
-                  </span>
-                  <Link
-                    to={`/courses/${course.id}`}
-                    className="btn btn-primary btn-sm"
-                  >
-                    {course.price > 0 ? 'View & Enroll' : 'Enroll Free'}
-                  </Link>
-                </div>
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
+        <div className="courses-page-wrap">
+          <div className="page-header">
+            <Link to="/dashboard" className="back-link"><i className="ti ti-arrow-left" /> Back to Dashboard</Link>
+            <h1>Explore Courses</h1>
+            <p>Acquire new skills from expert-led courses designed for your career progression.</p>
+          </div>
+
+          <div className="catalog-controls">
+            <div className="search-wrap">
+              <i className="ti ti-search" />
+              <input placeholder="Search courses…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="filter-wrap">
+              <label>Level:</label>
+              <select value={selectedLevel} onChange={e => setLevel(e.target.value)}>
+                <option value="ALL">All Levels</option>
+                <option value="BEGINNER">Beginner</option>
+                <option value="INTERMEDIATE">Intermediate</option>
+                <option value="ADVANCED">Advanced</option>
+              </select>
+            </div>
+          </div>
+
+          {error && <div className="alert alert-error">{error} <button className="btn btn-sm btn-secondary" onClick={fetchCourses}>Retry</button></div>}
+
+          {loading ? (
+            <div className="loading-container"><div className="loading-spinner" /><p>Loading courses…</p></div>
+          ) : filtered.length === 0 ? (
+            <div className="catalog-empty">
+              <i className="ti ti-search-off" />
+              <h3>No courses found</h3>
+              <p>Try a different search term or level filter.</p>
+            </div>
+          ) : (
+            <div className="courses-grid animate-fadeIn">
+              {filtered.map(course => (
+                <article key={course.id} className="course-card-catalog">
+                  <div className={`cc-thumb ${THUMB[course.level] || 'cc-thumb-beg'}`}>
+                    <i className={`ti ${ICON[course.level]||'ti-book'}`} style={{fontSize:44,opacity:0.5}} />
+                    <span className={`badge badge-${course.level.toLowerCase()} cc-level-pill`} style={{position:'absolute',top:10,left:10}}>
+                      {course.level}
+                    </span>
+                  </div>
+                  <div className="cc-body">
+                    <p className="cc-cat">{course.language}</p>
+                    <h3 className="cc-title">{course.title}</h3>
+                    <div className="cc-meta">
+                      <span><i className="ti ti-clock" /> {course.duration_hours}h</span>
+                      <span><i className="ti ti-user" /> {course.mentor?.username || 'Expert'}</span>
+                    </div>
+                  </div>
+                  <div className="cc-footer">
+                    <span className={`cc-price${course.price <= 0 ? ' free' : ''}`}>
+                      {course.price > 0 ? `$${course.price}` : 'Free'}
+                    </span>
+                    <Link to={`/courses/${course.id}`} className="btn btn-primary btn-sm" style={{borderRadius:7}}>
+                      {course.price > 0 ? 'View & Enroll' : 'Enroll Free'}
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

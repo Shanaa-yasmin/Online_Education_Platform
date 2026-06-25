@@ -1,288 +1,156 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './ProfilePage.css';
 
-// Icons
-const UserIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="8" r="4"/>
-    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-  </svg>
-);
-const EmailIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="20" height="16" x="2" y="4" rx="2"/>
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-  </svg>
-);
-const BookOpenIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-  </svg>
-);
-const BackIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m15 18-6-6 6-6"/>
-  </svg>
-);
-const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 6 9 17l-5-5"/>
-  </svg>
-);
+function Sidebar({ user, onLogout, loggingOut }) {
+  const isMentor = user?.role === 'MENTOR', isAdmin = user?.role === 'ADMIN';
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-logo-area">
+        <Link to="/" className="nav-logo"><div className="nav-logo-mark"><i className="ti ti-trending-up" /></div><span className="nav-logo-text">Edu<span>Path</span></span></Link>
+      </div>
+      <nav className="sidebar-nav">
+        <Link to="/dashboard" className="sidebar-nav-item"><i className="ti ti-layout-dashboard" /> Dashboard</Link>
+        {(isMentor||isAdmin) && <Link to="/mentor/dashboard" className="sidebar-nav-item"><i className="ti ti-award" /> Mentor Portal</Link>}
+        {isAdmin && <Link to="/admin/portal" className="sidebar-nav-item"><i className="ti ti-settings" /> Admin Portal</Link>}
+        <Link to="/courses" className="sidebar-nav-item"><i className="ti ti-book" /> Courses</Link>
+        <Link to="/profile" className="sidebar-nav-item active"><i className="ti ti-user" /> Profile</Link>
+      </nav>
+      <div className="sidebar-footer">
+        <button className="sidebar-logout" onClick={onLogout} disabled={loggingOut}>
+          {loggingOut?<><span className="loading-spinner loading-spinner-sm"/>Signing out…</>:<><i className="ti ti-logout"/>Sign out</>}
+        </button>
+      </div>
+    </aside>
+  );
+}
 
 export default function ProfilePage() {
-  const { user, updateUser, refreshProfile } = useAuth();
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    profile: {
-      bio: '',
-      title: '',
-      skills: ''
-    }
-  });
+  const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ username:'', email:'', profile:{ bio:'', title:'', skills:'' } });
+  const [loading, setLoading]   = useState(false);
+  const [success, setSuccess]   = useState('');
+  const [error, setError]       = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+  const { logout } = useAuth();
 
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Sync state with user context when loaded
   useEffect(() => {
-    if (user) {
-      setFormData({
-        username: user.username || '',
-        email: user.email || '',
-        profile: {
-          bio: user.profile?.bio || '',
-          title: user.profile?.title || '',
-          skills: user.profile?.skills || ''
-        }
-      });
-    }
+    if (user) setFormData({ username: user.username||'', email: user.email||'', profile:{ bio: user.profile?.bio||'', title: user.profile?.title||'', skills: user.profile?.skills||'' } });
   }, [user]);
 
-  const handleUserChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      profile: {
-        ...prev.profile,
-        [name]: value
-      }
-    }));
-  };
+  const handleUser    = e => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
+  const handleProfile = e => setFormData(p => ({ ...p, profile: { ...p.profile, [e.target.name]: e.target.value } }));
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setSuccessMsg('');
-    setErrorMsg('');
-
+    e.preventDefault(); setLoading(true); setSuccess(''); setError('');
     try {
-      // Import api utility dynamically or rely on context
       const api = (await import('../utils/api.js')).default;
-      const response = await api.put('/api/auth/profile/', formData);
-      updateUser(response.data);
-      setSuccessMsg('Profile updated successfully!');
-      setTimeout(() => setSuccessMsg(''), 4000);
+      const r = await api.put('/api/auth/profile/', formData);
+      updateUser(r.data); setSuccess('Profile updated successfully!');
+      setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      if (err?.response?.data) {
-        const errors = err.response.data;
-        const messages = [];
-        Object.entries(errors).forEach(([key, val]) => {
-          messages.push(`${key}: ${Array.isArray(val) ? val.join(' ') : val}`);
-        });
-        setErrorMsg(messages.join(' | '));
-      } else {
-        setErrorMsg('Failed to update profile. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
+      const errs = err?.response?.data;
+      if (errs) setError(Object.entries(errs).map(([k,v])=>`${k}: ${Array.isArray(v)?v.join(' '):v}`).join(' | '));
+      else setError('Failed to update profile.');
+    } finally { setLoading(false); }
   };
 
-  const getInitials = () => {
-    if (!user) return '?';
-    return user.username ? user.username.slice(0, 2).toUpperCase() : 'U';
-  };
+  const handleLogout = async () => { setLoggingOut(true); await logout(); navigate('/login'); };
+  const initials = (user?.username||'U').slice(0,2).toUpperCase();
 
   return (
-    <div className="profile-page">
-      <div className="auth-glow auth-glow-1" aria-hidden="true" />
-      <div className="auth-glow auth-glow-2" aria-hidden="true" />
-
-      <header className="profile-topbar animate-fadeIn">
-        <Link to="/dashboard" className="back-btn" id="profile-back-dashboard">
-          <BackIcon /> Back to Dashboard
-        </Link>
-        <span className="profile-topbar-title">Account Settings</span>
-      </header>
-
-      <div className="profile-container animate-scaleIn">
-        {/* Profile Sidebar Info */}
-        <aside className="profile-card-left">
-          <div className="profile-avatar-wrapper">
-            <div className="profile-avatar-big">
-              {getInitials()}
-            </div>
-            <h2 className="profile-name">{user?.username}</h2>
-            <p className="profile-email">{user?.email}</p>
-            <span className={`badge badge-${user?.role?.toLowerCase()}`} style={{ marginTop: '8px' }}>
-              {user?.role}
-            </span>
+    <div className="page-shell">
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} />
+      <div className="inner-page">
+        <header className="topbar">
+          <div className="topbar-left"><h1>Account Settings</h1><p>Manage your profile and preferences</p></div>
+          <div className="topbar-right">
+            <div className="avatar-initials" style={{width:32,height:32,fontSize:13}}>{initials}</div>
           </div>
+        </header>
 
-          <div className="profile-meta-info">
-            <div className="meta-item">
-              <span className="meta-label">Status</span>
-              <span className="meta-value">
-                {user?.role === 'MENTOR' ? (
-                  user?.profile?.is_approved ? (
-                    <span className="badge badge-approved">Approved Mentor</span>
-                  ) : (
-                    <span className="badge badge-pending">Pending Approval</span>
-                  )
-                ) : (
-                  <span className="badge badge-student">Active Student</span>
-                )}
-              </span>
-            </div>
-          </div>
-        </aside>
+        <div className="profile-page-wrap">
+          <Link to="/dashboard" className="back-link"><i className="ti ti-arrow-left" /> Back to Dashboard</Link>
 
-        {/* Profile Editing Form */}
-        <main className="profile-card-right">
-          <h1 className="profile-heading">Edit Profile</h1>
-          <p className="profile-subheading">Update your personal information and public profile details.</p>
-
-          {successMsg && (
-            <div className="alert alert-success animate-fadeIn" role="alert" id="profile-success-alert">
-              <CheckIcon /> {successMsg}
-            </div>
-          )}
-
-          {errorMsg && (
-            <div className="alert alert-error animate-fadeIn" role="alert" id="profile-error-alert">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-              {errorMsg}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="profile-form" noValidate>
-            <div className="form-section">
-              <h3 className="form-section-title">Core Information</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="profile-username">Username</label>
-                  <div className="input-wrapper">
-                    <span className="input-icon"><UserIcon /></span>
-                    <input
-                      id="profile-username"
-                      name="username"
-                      type="text"
-                      className="form-input"
-                      value={formData.username}
-                      onChange={handleUserChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="profile-email">Email Address</label>
-                  <div className="input-wrapper">
-                    <span className="input-icon"><EmailIcon /></span>
-                    <input
-                      id="profile-email"
-                      name="email"
-                      type="email"
-                      className="form-input"
-                      value={formData.email}
-                      onChange={handleUserChange}
-                      required
-                    />
-                  </div>
+          <div className="profile-layout">
+            {/* Left card */}
+            <aside className="profile-card-left">
+              <div className="profile-avatar-big">{initials}</div>
+              <h2 className="profile-name">{user?.username}</h2>
+              <p className="profile-email">{user?.email}</p>
+              <span className={`badge badge-${(user?.role||'student').toLowerCase()}`}>{user?.role}</span>
+              <div className="profile-meta">
+                <div className="profile-meta-row">
+                  <span className="profile-meta-lbl">Status</span>
+                  <span className="profile-meta-val">
+                    {user?.role === 'MENTOR'
+                      ? user?.profile?.is_approved
+                        ? <span className="badge badge-approved">Approved</span>
+                        : <span className="badge badge-pending">Pending</span>
+                      : <span className="badge badge-approved">Active</span>}
+                  </span>
                 </div>
               </div>
-            </div>
+            </aside>
 
-            {/* Mentor-specific or extended profile details */}
-            <div className="form-section">
-              <h3 className="form-section-title">Public Bio &amp; Professional Details</h3>
-              
-              {user?.role === 'MENTOR' && (
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="profile-title">Professional Title</label>
-                    <input
-                      id="profile-title"
-                      name="title"
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. Senior Software Engineer / Physics Professor"
-                      value={formData.profile.title}
-                      onChange={handleProfileChange}
-                    />
-                  </div>
+            {/* Right form */}
+            <main className="profile-card-right">
+              <h1 className="profile-right-title">Edit Profile</h1>
+              <p className="profile-right-sub">Update your personal information and public profile details.</p>
 
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="profile-skills">Expertise / Skills (comma separated)</label>
-                    <input
-                      id="profile-skills"
-                      name="skills"
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. React, Node.js, Python"
-                      value={formData.profile.skills}
-                      onChange={handleProfileChange}
-                    />
+              {success && <div className="alert alert-success" style={{marginBottom:18}}><i className="ti ti-check" /> {success}</div>}
+              {error   && <div className="alert alert-error"   style={{marginBottom:18}}>{error}</div>}
+
+              <form onSubmit={handleSubmit} className="profile-form" noValidate>
+                <div className="profile-form-section">
+                  <p className="profile-section-label">Core Information</p>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Username</label>
+                      <div className="input-with-icon">
+                        <i className="ti ti-user" />
+                        <input name="username" type="text" value={formData.username} onChange={handleUser} required />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email Address</label>
+                      <div className="input-with-icon">
+                        <i className="ti ti-mail" />
+                        <input name="email" type="email" value={formData.email} onChange={handleUser} required />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="profile-bio">Bio / Description</label>
-                <textarea
-                  id="profile-bio"
-                  name="bio"
-                  className="form-input form-textarea"
-                  placeholder="Tell us about yourself..."
-                  value={formData.profile.bio}
-                  onChange={handleProfileChange}
-                  rows={4}
-                />
-              </div>
-            </div>
+                <div className="profile-form-section">
+                  <p className="profile-section-label">Public Bio & Professional Details</p>
+                  {user?.role === 'MENTOR' && (
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Professional Title</label>
+                        <input name="title" type="text" placeholder="e.g. Senior Software Engineer" value={formData.profile.title} onChange={handleProfile} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Skills (comma separated)</label>
+                        <input name="skills" type="text" placeholder="React, Node.js, Python" value={formData.profile.skills} onChange={handleProfile} />
+                      </div>
+                    </div>
+                  )}
+                  <div className="form-group">
+                    <label className="form-label">Bio</label>
+                    <textarea name="bio" placeholder="Tell us about yourself…" value={formData.profile.bio} onChange={handleProfile} rows={4} />
+                  </div>
+                </div>
 
-            <button
-              id="profile-save-btn"
-              type="submit"
-              className="btn btn-primary btn-lg"
-              disabled={loading}
-              style={{ alignSelf: 'flex-start' }}
-            >
-              {loading ? (
-                <>
-                  <span className="loading-spinner loading-spinner-sm" />
-                  Saving changes…
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
-          </form>
-        </main>
+                <button type="submit" className="btn btn-primary btn-lg" style={{alignSelf:'flex-start',borderRadius:'var(--r-md)'}} disabled={loading}>
+                  {loading ? <><span className="loading-spinner loading-spinner-sm" /> Saving…</> : 'Save Changes'}
+                </button>
+              </form>
+            </main>
+          </div>
+        </div>
       </div>
     </div>
   );

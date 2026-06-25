@@ -25,11 +25,14 @@
 - [x] Build Admin Panel UI in React
 
 ## Phase 4: Enrollment & Learning Flow
-- [ ] Build Course Catalog UI (search, filters, course pages)
-- [ ] Implement Enrollment logic (Free vs Paid)
-- [ ] Create Progress tracking backend APIs
-- [ ] Implement Certificate generation mechanism (PDF generation)
-- [ ] Build Video/PDF Learning Player UI in React
+- [x] Build Course Catalog UI (search, filters, course cards) — `CoursesPage.jsx`
+- [x] Build Course Detail Page (syllabus, enrollment card) — `CoursePage.jsx` + CSS fixed ✓
+- [x] Implement Enrollment logic (Free instant + Paid mock checkout) — `payments/views.py`
+- [x] Create Progress tracking backend APIs — `LessonProgressViewSet` in `payments/views.py`
+- [x] Implement Certificate generation mechanism (ReportLab PDF) — `payments/utils.py`
+- [x] Build Video/PDF Learning Player UI in React — `LearningPlayer.jsx`
+- [x] Implement curriculum guardrails (hide assets from unenrolled) — `courses/serializers.py`
+- [x] Build Mentor Course Builder UI — `CourseBuilder.jsx` + CSS fixed ✓
 
 ## Phase 5: Payment Integration
 - [ ] Integrate Stripe checkout sessions
