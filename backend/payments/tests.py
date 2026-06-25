@@ -151,3 +151,32 @@ class PaymentsTests(APITestCase):
         self.assertEqual(payment.status, Payment.StatusChoices.REFUNDED)
         self.assertIsNotNone(payment.refunded_at)
         self.assertFalse(enrollment.is_active)  # rolled back access!
+
+    def test_dashboard_stats_student(self):
+        # Enroll student in free course and set progress
+        enrollment = Enrollment.objects.create(student=self.student, course=self.free_course, is_active=True, progress_percent=50.0)
+        
+        self.client.force_authenticate(user=self.student)
+        url = reverse('dashboard-stats')
+        response = self.client.get(url, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['role'], 'STUDENT')
+        self.assertEqual(response.data['stats']['enrolled_count'], 1)
+        self.assertEqual(response.data['stats']['in_progress_count'], 1)
+        self.assertEqual(response.data['stats']['completed_count'], 0)
+        self.assertEqual(response.data['stats']['hours_learned'], 0)
+        self.assertEqual(len(response.data['enrollments']), 1)
+
+    def test_dashboard_stats_mentor(self):
+        self.client.force_authenticate(user=self.mentor)
+        url = reverse('dashboard-stats')
+        response = self.client.get(url, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['role'], 'MENTOR')
+        self.assertEqual(response.data['stats']['courses_count'], 2)  # self.paid_course, self.free_course
+        self.assertEqual(response.data['stats']['published_count'], 2)
+        self.assertEqual(response.data['stats']['total_students'], 0)
+        self.assertEqual(len(response.data['courses']), 2)
+

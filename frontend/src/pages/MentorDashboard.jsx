@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
+import { QAPanel } from './LearningPlayer.jsx';
 import './MentorDashboard.css';
 
 function Sidebar({ user, onLogout, loggingOut }) {
@@ -53,10 +54,12 @@ export default function MentorDashboard() {
   const [loadingPayments, setLP]     = useState(true);
   const [paymentsError, setPE]       = useState('');
   const [actioningId, setActioningId] = useState(null);
+  const [selectedQACourse, setSelectedQACourse] = useState(null);
 
   const fetchCourses = async () => {
-    try { setLoading(true); const r = await api.get('/api/courses/'); setCourses(r.data.filter(c => c.mentor.id === user.id)); setError(''); }
+    try { setLoading(true); const r = await api.get('/api/courses/'); setCourses(r.data.filter(c => String(c.mentor?.id || c.mentor) === String(user?.id))); setError(''); }
     catch { setError('Failed to load courses.'); }
+
     finally { setLoading(false); }
   };
 
@@ -124,6 +127,9 @@ export default function MentorDashboard() {
             <button className={`tab-btn${activeTab==='courses'?' active':''}`} onClick={()=>setTab('courses')}>
               My Courses ({courses.length})
             </button>
+            <button className={`tab-btn${activeTab==='qa'?' active':''}`} onClick={()=>setTab('qa')}>
+              Q&A Moderation
+            </button>
             <button className={`tab-btn${activeTab==='payments'?' active':''}`} onClick={()=>setTab('payments')}>
               Course Sales ({payments.length})
             </button>
@@ -167,6 +173,41 @@ export default function MentorDashboard() {
                       </article>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'qa' && (
+            <div className="qa-moderation-panel">
+              <div className="qa-course-picker-header">
+                <div>
+                  <h3 style={{fontFamily:'Fraunces,serif',fontWeight:800,fontSize:'1.1rem',margin:0}}>Q&amp;A Moderation</h3>
+                  <p style={{fontSize:13,color:'var(--txt-3)',marginTop:4}}>Monitor, reply to, flag, hide, or delete student questions in real time.</p>
+                </div>
+                <div className="qa-course-picker-wrap">
+                  <label style={{fontSize:12,fontWeight:600,color:'var(--txt-3)'}}>Select Course</label>
+                  <select
+                    className="qa-course-select"
+                    value={selectedQACourse ?? ''}
+                    onChange={e => setSelectedQACourse(e.target.value || null)}
+                  >
+                    <option value="">— Pick a course —</option>
+                    {courses.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedQACourse ? (
+                <div className="qa-embed-container">
+                  <QAPanel courseId={selectedQACourse} user={user} />
+                </div>
+              ) : (
+                <div className="qa-pick-prompt">
+                  <span>💬</span>
+                  <p>Select one of your courses above to open its live Q&amp;A chat.</p>
                 </div>
               )}
             </div>

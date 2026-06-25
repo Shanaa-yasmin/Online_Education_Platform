@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../utils/api.js';
 import './Dashboard.css';
 
 function getInitials(user) {
@@ -8,33 +9,78 @@ function getInitials(user) {
   return (user.username || user.email || '?').slice(0, 2).toUpperCase();
 }
 
-const STUDENT_STATS = [
-  { icon: 'ti-book', label: 'Enrolled',  value: '0', color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
-  { icon: 'ti-player-play', label: 'In Progress', value: '0', color: '#2563eb', bg: '#eff4fe' },
-  { icon: 'ti-award', label: 'Completed', value: '0', color: '#2a9d6e', bg: '#edfaf4' },
-  { icon: 'ti-clock', label: 'Hours Learned', value: '0', color: '#d97706', bg: '#fef9ec' },
-];
-const MENTOR_STATS = [
-  { icon: 'ti-book', label: 'My Courses',     value: '0', color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
-  { icon: 'ti-users', label: 'Total Students', value: '0', color: '#2563eb', bg: '#eff4fe' },
-  { icon: 'ti-circle-check', label: 'Published', value: '0', color: '#2a9d6e', bg: '#edfaf4' },
-  { icon: 'ti-star', label: 'Avg. Rating',     value: '—', color: '#d97706', bg: '#fef9ec' },
-];
+const STATUS_MAP = (course) => {
+  if (course.is_approved && course.is_published)  return { label:'Live',     cls:'badge-live' };
+  if (course.is_approved && !course.is_published) return { label:'Approved', cls:'badge-approved' };
+  if (!course.is_approved && course.is_published) return { label:'Pending',  cls:'badge-pending-mod' };
+  return { label:'Draft', cls:'badge-draft' };
+};
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const isMentor = user?.role === 'MENTOR';
   const isAdmin  = user?.role === 'ADMIN';
-  const stats    = isMentor ? MENTOR_STATS : STUDENT_STATS;
+
+  useEffect(() => {
+    let active = true;
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        const r = await api.get('/api/payments/dashboard-stats/');
+        if (active) {
+          setData(r.data);
+          setError('');
+        }
+      } catch (err) {
+        if (active) {
+          setError('Failed to load dashboard statistics.');
+          console.error(err);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    if (user) {
+      fetchDashboard();
+    }
+    return () => { active = false; };
+  }, [user]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
     await logout();
     navigate('/login');
   };
+
+  // Build dynamic stats
+  const stats = isAdmin
+    ? [
+        { icon: 'ti-book', label: 'Total Courses', value: data?.stats?.total_courses ?? 0, color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
+        { icon: 'ti-alert-circle', label: 'Pending Approvals', value: data?.stats?.pending_courses ?? 0, color: '#d97706', bg: '#fef9ec' },
+        { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: '#2563eb', bg: '#eff4fe' },
+        { icon: 'ti-award', label: 'Total Mentors', value: data?.stats?.total_mentors ?? 0, color: '#2a9d6e', bg: '#edfaf4' },
+      ]
+    : isMentor
+    ? [
+        { icon: 'ti-book', label: 'My Courses',     value: data?.stats?.courses_count ?? 0, color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
+        { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: '#2563eb', bg: '#eff4fe' },
+        { icon: 'ti-circle-check', label: 'Published', value: data?.stats?.published_count ?? 0, color: '#2a9d6e', bg: '#edfaf4' },
+        { icon: 'ti-star', label: 'Avg. Rating',     value: data?.stats?.avg_rating !== undefined && data.stats.avg_rating > 0 ? data.stats.avg_rating.toFixed(1) : '—', color: '#d97706', bg: '#fef9ec' },
+      ]
+    : [
+        { icon: 'ti-book', label: 'Enrolled',  value: data?.stats?.enrolled_count ?? 0, color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
+        { icon: 'ti-player-play', label: 'In Progress', value: data?.stats?.in_progress_count ?? 0, color: '#2563eb', bg: '#eff4fe' },
+        { icon: 'ti-award', label: 'Completed', value: data?.stats?.completed_count ?? 0, color: '#2a9d6e', bg: '#edfaf4' },
+        { icon: 'ti-clock', label: 'Hours Learned', value: data?.stats?.hours_learned ?? 0, color: '#d97706', bg: '#fef9ec' },
+      ];
+
+  const hasCourses = isMentor ? (data?.courses && data.courses.length > 0) : (data?.enrollments && data.enrollments.length > 0);
 
   return (
     <div className="dashboard-page">
@@ -109,11 +155,18 @@ export default function Dashboard() {
             <div className="welcome-text">
               <h2 className="welcome-h">Welcome back, {user?.username} 👋</h2>
               <p className="welcome-p">
-                {isMentor
+                {isAdmin
+                  ? 'Manage system content, review course moderation requests, and monitor registrations.'
+                  : isMentor
                   ? 'Manage your courses, track student engagement, and grow your audience.'
                   : 'Pick up where you left off, explore new courses, and keep growing.'}
               </p>
-              {isMentor ? (
+              {isAdmin ? (
+                <button className="btn btn-primary btn-sm" style={{background:'#fff',color:'var(--brand)',borderColor:'transparent'}}
+                  onClick={() => navigate('/admin/portal')}>
+                  <i className="ti ti-settings" /> Admin Panel
+                </button>
+              ) : isMentor ? (
                 <button className="btn btn-primary btn-sm" style={{background:'#fff',color:'var(--brand)',borderColor:'transparent'}}
                   onClick={() => navigate('/mentor/dashboard')}>
                   <i className="ti ti-plus" /> Create Course
@@ -125,7 +178,7 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <div className="welcome-emoji">{isMentor ? '🏆' : '🎓'}</div>
+            <div className="welcome-emoji">{isAdmin ? '🛠️' : isMentor ? '🏆' : '🎓'}</div>
           </section>
 
           {/* Mentor pending notice */}
@@ -136,61 +189,128 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Stats */}
-          <div className="stats-grid">
-            {stats.map((s, i) => (
-              <div key={s.label} className={`stat-card animate-fadeIn delay-${i+1}`}>
-                <div className="stat-card-icon" style={{background: s.bg, color: s.color}}>
-                  <i className={`ti ${s.icon}`} style={{fontSize:20}} />
-                </div>
-                <div className="stat-card-num">{s.value}</div>
-                <div className="stat-card-lbl">{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Sections */}
-          <div className="dash-sections">
-            <div className="dash-section-card animate-fadeIn delay-3">
-              <div className="dash-section-hd">
-                <h3>{isMentor ? 'My Courses' : 'Continue Learning'}</h3>
-                <Link to="/courses">View all →</Link>
-              </div>
-              <div className="empty-state">
-                <i className={`ti ${isMentor ? 'ti-books' : 'ti-target'}`} />
-                <h3>{isMentor ? 'No courses yet' : 'No courses in progress'}</h3>
-                <p>{isMentor ? 'Create your first course to start teaching.' : 'Browse the catalog and enroll in a course to get started.'}</p>
-                <button className="btn btn-secondary btn-sm"
-                  onClick={() => navigate(isMentor ? '/mentor/dashboard' : '/courses')}>
-                  {isMentor ? 'Create a course' : 'Explore courses'}
-                </button>
-              </div>
+          {loading ? (
+            <div className="loading-container" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'250px'}}>
+              <div className="loading-spinner" />
+              <p style={{marginTop: 12, color: 'var(--txt-3)', fontSize: '13.5px'}}>Loading dashboard statistics...</p>
             </div>
-
-            <div className="dash-section-card animate-fadeIn delay-4">
-              <div className="dash-section-hd"><h3>Quick Access</h3></div>
-              <div className="quick-links">
-                {[
-                  { to: '/profile', icon: 'ti-user', color: 'rgba(48,157,142,0.1)', iconColor: 'var(--brand)', name: 'My Profile', desc: 'Update your info & avatar' },
-                  { to: '/courses', icon: 'ti-book', color: '#eff4fe', iconColor: '#2563eb', name: 'Course Catalog', desc: 'Browse all available courses' },
-                  ...(isAdmin ? [{ to: '/admin/portal', icon: 'ti-settings', color: '#fef9ec', iconColor: '#d97706', name: 'Admin Portal', desc: 'Manage courses & mentors' }] : []),
-                ].map(l => (
-                  <Link key={l.to} to={l.to} className="quick-link-item">
-                    <div className="quick-link-icon" style={{background: l.color, color: l.iconColor}}>
-                      <i className={`ti ${l.icon}`} style={{fontSize:18}} />
+          ) : error ? (
+            <div className="alert alert-error animate-fadeIn" style={{marginTop: 20}}>
+              <i className="ti ti-alert-triangle" />
+              <div><strong>Error:</strong> {error}</div>
+            </div>
+          ) : (
+            <>
+              {/* Stats */}
+              <div className="stats-grid">
+                {stats.map((s, i) => (
+                  <div key={s.label} className={`stat-card animate-fadeIn delay-${i+1}`}>
+                    <div className="stat-card-icon" style={{background: s.bg, color: s.color}}>
+                      <i className={`ti ${s.icon}`} style={{fontSize:20}} />
                     </div>
-                    <div>
-                      <p className="quick-link-name">{l.name}</p>
-                      <p className="quick-link-desc">{l.desc}</p>
-                    </div>
-                  </Link>
+                    <div className="stat-card-num">{s.value}</div>
+                    <div className="stat-card-lbl">{s.label}</div>
+                  </div>
                 ))}
               </div>
-            </div>
-          </div>
+
+              {/* Sections */}
+              <div className="dash-sections">
+                <div className="dash-section-card animate-fadeIn delay-3">
+                  <div className="dash-section-hd">
+                    <h3>{isMentor ? 'My Courses' : 'Continue Learning'}</h3>
+                    <Link to={isMentor ? '/mentor/dashboard' : '/courses'}>View all →</Link>
+                  </div>
+
+                  {!hasCourses ? (
+                    <div className="empty-state">
+                      <i className={`ti ${isMentor ? 'ti-books' : 'ti-target'}`} />
+                      <h3>{isMentor ? 'No courses yet' : 'No courses in progress'}</h3>
+                      <p>{isMentor ? 'Create your first course to start teaching.' : 'Browse the catalog and enroll in a course to get started.'}</p>
+                      <button className="btn btn-secondary btn-sm"
+                        onClick={() => navigate(isMentor ? '/mentor/dashboard' : '/courses')}>
+                        {isMentor ? 'Create a course' : 'Explore courses'}
+                      </button>
+                    </div>
+                  ) : isMentor ? (
+                    <div className="dash-courses-list">
+                      {data.courses.slice(0, 3).map(course => {
+                        const st = STATUS_MAP(course);
+                        return (
+                          <div key={course.id} className="dash-course-item">
+                            <div className="dash-course-info">
+                              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                                <span className={`badge badge-${course.level.toLowerCase()}`}>{course.level}</span>
+                                <span className={`badge ${st.cls}`}>{st.label}</span>
+                              </div>
+                              <h4 className="dash-course-title">{course.title}</h4>
+                              <p className="dash-course-meta">
+                                <span><i className="ti ti-clock" /> {course.duration_hours}h</span>
+                                <span style={{marginLeft: 12}}><i className="ti ti-world" /> {course.language}</span>
+                              </p>
+                            </div>
+                            <button className="btn btn-secondary btn-sm" style={{flexShrink:0}} onClick={() => navigate(`/mentor/courses/${course.id}/builder`)}>
+                              Curriculum
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="dash-courses-list">
+                      {data.enrollments.slice(0, 3).map(enr => {
+                        const course = enr.course_details;
+                        if (!course) return null;
+                        return (
+                          <div key={enr.id} className="dash-course-item">
+                            <div className="dash-course-info">
+                              <span className={`badge badge-${course.level.toLowerCase()}`}>{course.level}</span>
+                              <h4 className="dash-course-title">{course.title}</h4>
+                              <div className="dash-progress-container">
+                                <div className="dash-progress-bar">
+                                  <div className="dash-progress-fill" style={{ width: `${enr.progress_percent}%` }}></div>
+                                </div>
+                                <span className="dash-progress-text">{Math.round(enr.progress_percent)}% Complete</span>
+                              </div>
+                            </div>
+                            <button className="btn btn-primary btn-sm" style={{flexShrink: 0}} onClick={() => navigate(`/courses/${course.id}/learn`)}>
+                              Resume
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="dash-section-card animate-fadeIn delay-4">
+                  <div className="dash-section-hd"><h3>Quick Access</h3></div>
+                  <div className="quick-links">
+                    {[
+                      { to: '/profile', icon: 'ti-user', color: 'rgba(48,157,142,0.1)', iconColor: 'var(--brand)', name: 'My Profile', desc: 'Update your info & avatar' },
+                      { to: '/courses', icon: 'ti-book', color: '#eff4fe', iconColor: '#2563eb', name: 'Course Catalog', desc: 'Browse all available courses' },
+                      ...(isAdmin ? [{ to: '/admin/portal', icon: 'ti-settings', color: '#fef9ec', iconColor: '#d97706', name: 'Admin Portal', desc: 'Manage courses & mentors' }] : []),
+                      ...(isMentor ? [{ to: '/mentor/dashboard', icon: 'ti-award', color: '#edfaf4', iconColor: '#2a9d6e', name: 'Mentor Portal', desc: 'Manage curriculum & view sales' }] : []),
+                    ].map(l => (
+                      <Link key={l.to} to={l.to} className="quick-link-item">
+                        <div className="quick-link-icon" style={{background: l.color, color: l.iconColor}}>
+                          <i className={`ti ${l.icon}`} style={{fontSize:18}} />
+                        </div>
+                        <div>
+                          <p className="quick-link-name">{l.name}</p>
+                          <p className="quick-link-desc">{l.desc}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
       </div>
     </div>
   );
 }
+

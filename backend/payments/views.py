@@ -99,6 +99,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         """
         GET /api/payments/enrollments/check/?course_id=<id>
         Returns enrollment status, progress, completed lesson IDs, and certificate URL.
+        Mentors who own the course and Admins always receive enrolled=True.
         """
         course_id = request.query_params.get('course_id')
         if not course_id:
@@ -107,12 +108,41 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        user = request.user
+
+        # ── Mentor / Admin bypass ───────────────────────────────────────
+        # Mentors and Admins don't enroll as students but should still be
+        # able to view the player and Q&A for their courses.
+        if user.is_staff or user.role == 'ADMIN':
+            return Response({
+                "enrolled": True,
+                "is_active": True,
+                "progress_percent": 100,
+                "completed_lessons": [],
+                "certificate_url": None,
+            })
+
+        if user.role == 'MENTOR':
+            from courses.models import Course as CourseModel
+            try:
+                CourseModel.objects.get(pk=course_id, mentor=user)
+                return Response({
+                    "enrolled": True,
+                    "is_active": True,
+                    "progress_percent": 100,
+                    "completed_lessons": [],
+                    "certificate_url": None,
+                })
+            except CourseModel.DoesNotExist:
+                pass  # not their course — fall through to normal enrollment check
+        # ── End bypass ─────────────────────────────────────────────────
+
         try:
-            enrollment = Enrollment.objects.get(student=request.user, course_id=course_id)
+            enrollment = Enrollment.objects.get(student=user, course_id=course_id)
 
             completed_lesson_ids = list(
                 LessonProgress.objects.filter(
-                    student=request.user,
+                    student=user,
                     lesson__module__course_id=course_id,
                     is_completed=True,
                 ).values_list('lesson_id', flat=True)
@@ -142,6 +172,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 "completed_lessons": [],
                 "certificate_url": None,
             })
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -832,3 +863,96 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             "detail": "Payment refunded and student enrollment revoked.",
             "status": "REFUNDED",
         }, status=status.HTTP_200_OK)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Dashboard Stats View
+# ══════════════════════════════════════════════════════════════════════════════
+
+from rest_framework.views import APIView
+from django.db.models import Sum, Avg
+from courses.models import Review
+from courses.serializers import CourseListSerializer
+
+class DashboardStatsView(APIView):
+    """
+    API view to retrieve stats and lists for the landing dashboard.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        if user.role == 'MENTOR':
+            my_courses = Course.objects.filter(mentor=user)
+            courses_count = my_courses.count()
+            published_count = my_courses.filter(is_published=True).count()
+            
+            # Total students enrolled in this mentor's active courses
+            total_students = Enrollment.objects.filter(course__mentor=user, is_active=True).count()
+            
+            # Average rating for mentor's courses
+            avg_rating_val = Review.objects.filter(course__mentor=user).aggregate(Avg('rating'))['rating__avg']
+            avg_rating = round(avg_rating_val, 1) if avg_rating_val is not None else 0.0
+            
+            # Courses created by this mentor
+            courses_data = CourseListSerializer(my_courses.order_by('-created_at'), many=True).data
+            
+            return Response({
+                "role": "MENTOR",
+                "stats": {
+                    "courses_count": courses_count,
+                    "total_students": total_students,
+                    "published_count": published_count,
+                    "avg_rating": avg_rating
+                },
+                "courses": courses_data
+            })
+            
+        elif user.role == 'ADMIN':
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            total_courses = Course.objects.count()
+            pending_courses = Course.objects.filter(is_approved=False, is_published=True).count()
+            total_students = User.objects.filter(role='STUDENT').count()
+            total_mentors = User.objects.filter(role='MENTOR').count()
+            
+            return Response({
+                "role": "ADMIN",
+                "stats": {
+                    "total_courses": total_courses,
+                    "pending_courses": pending_courses,
+                    "total_students": total_students,
+                    "total_mentors": total_mentors
+                },
+                "courses": []
+            })
+            
+        else:
+            # STUDENT role
+            active_enrollments = Enrollment.objects.filter(student=user, is_active=True)
+            enrolled_count = active_enrollments.count()
+            
+            # In progress: progress_percent > 0 and < 100
+            in_progress_count = active_enrollments.filter(progress_percent__gt=0, progress_percent__lt=100).count()
+            
+            # Completed: progress_percent = 100
+            completed_count = active_enrollments.filter(progress_percent=100).count()
+            
+            # Hours Learned: sum of duration_hours of completed courses
+            hours_learned_val = active_enrollments.filter(progress_percent=100).aggregate(total=Sum('course__duration_hours'))['total']
+            hours_learned = hours_learned_val if hours_learned_val is not None else 0
+            
+            enrollment_data = EnrollmentSerializer(active_enrollments.order_by('-enrolled_at'), many=True).data
+            
+            return Response({
+                "role": "STUDENT",
+                "stats": {
+                    "enrolled_count": enrolled_count,
+                    "in_progress_count": in_progress_count,
+                    "completed_count": completed_count,
+                    "hours_learned": hours_learned
+                },
+                "enrollments": enrollment_data
+            })
