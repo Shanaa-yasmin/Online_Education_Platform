@@ -35,10 +35,10 @@
 - [x] Build Mentor Course Builder UI — `CourseBuilder.jsx` + CSS fixed ✓
 
 ## Phase 5: Payment Integration
-- [ ] Integrate Stripe checkout sessions
-- [ ] Integrate PayPal sandbox checkout
-- [ ] Create payment webhook handlers
-- [ ] Implement refund logic & entitlement rollback
+- [x] Integrate Stripe checkout sessions
+- [x] Integrate PayPal sandbox checkout
+- [x] Create payment webhook handlers
+- [x] Implement refund logic & entitlement rollback
 
 ## Phase 6: Real-time Q&A Chat
 - [ ] Setup Django Channels Routing & Consumer

@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from courses.models import Course, Lesson
 
+
 class Enrollment(models.Model):
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -11,7 +12,8 @@ class Enrollment(models.Model):
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     enrolled_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)  # True = Active, False = Revoked (e.g., refunded or disputed)
+    # True = Active, False = Revoked (refunded, disputed, or payment pending)
+    is_active = models.BooleanField(default=True)
     progress_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
     class Meta:
@@ -28,23 +30,28 @@ class Payment(models.Model):
         PAYPAL = 'PAYPAL', 'PayPal'
 
     class StatusChoices(models.TextChoices):
-        PENDING = 'PENDING', 'Pending'
+        PENDING   = 'PENDING',   'Pending'
         COMPLETED = 'COMPLETED', 'Completed'
-        FAILED = 'FAILED', 'Failed'
-        REFUNDED = 'REFUNDED', 'Refunded'
+        FAILED    = 'FAILED',    'Failed'
+        REFUNDED  = 'REFUNDED',  'Refunded'
+        DISPUTED  = 'DISPUTED',  'Disputed'   # NEW — chargeback / dispute opened
 
-    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='payments')
-    student = models.ForeignKey(
+    enrollment    = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='payments')
+    student       = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='payments'
     )
-    gateway = models.CharField(max_length=10, choices=GatewayChoices.choices)
+    gateway       = models.CharField(max_length=10, choices=GatewayChoices.choices)
     transaction_id = models.CharField(max_length=255, unique=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=15, choices=StatusChoices.choices, default=StatusChoices.PENDING)
-    created_at = models.DateTimeField(auto_now_add=True)
-    refunded_at = models.DateTimeField(null=True, blank=True)
+    amount        = models.DecimalField(max_digits=10, decimal_places=2)
+    status        = models.CharField(
+        max_length=15, choices=StatusChoices.choices, default=StatusChoices.PENDING
+    )
+    created_at    = models.DateTimeField(auto_now_add=True)
+    refunded_at   = models.DateTimeField(null=True, blank=True)
+    disputed_at   = models.DateTimeField(null=True, blank=True)
+    dispute_detail = models.TextField(blank=True, default='')   # JSON / text log from gateway
 
     def __str__(self):
         return f"Payment {self.transaction_id} - {self.status} (${self.amount})"
@@ -83,11 +90,10 @@ class Certificate(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='certificates')
     certificate_code = models.CharField(max_length=100, unique=True)
     issued_at = models.DateTimeField(auto_now_add=True)
-    pdf_file = models.FileField(upload_to='certificates/', null=True, blank=True)
+    pdf_file  = models.FileField(upload_to='certificates/', null=True, blank=True)
 
     class Meta:
         unique_together = ('student', 'course')
 
     def __str__(self):
         return f"Certificate {self.certificate_code} — {self.student.username} / {self.course.title}"
-

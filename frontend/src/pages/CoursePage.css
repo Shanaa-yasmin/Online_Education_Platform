@@ -595,3 +595,122 @@
         padding: 20px 16px 48px;
     }
 }
+
+/* Checkout Gateway Selector styling */
+.payment-gateway-selector {
+    margin-bottom: 24px;
+}
+
+.gateway-option-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3748;
+    margin-bottom: 12px;
+}
+
+.gateway-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.gateway-option {
+    border: 2px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all 0.2s ease;
+    background: #FFFFFF;
+}
+
+.gateway-option:hover {
+    border-color: #4FD1C5;
+    background: rgba(79, 209, 197, 0.02);
+}
+
+.gateway-option.selected {
+    border-color: #319795;
+    background: rgba(49, 151, 149, 0.05);
+}
+
+.gateway-radio {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #CBD5E0;
+    border-radius: 50%;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.gateway-option.selected .gateway-radio {
+    border-color: #319795;
+}
+
+.radio-circle {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.gateway-option.selected .radio-circle {
+    background: #319795;
+}
+
+.gateway-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1A202C;
+    margin-bottom: 4px;
+}
+
+.gateway-desc {
+    font-size: 12px;
+    color: #718096;
+    line-height: 1.4;
+}
+
+/* Fullscreen verification overlay */
+.verifying-overlay {
+    z-index: 2000 !important;
+    background: rgba(26, 32, 44, 0.85) !important;
+}
+
+.verification-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 40px 32px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.verification-card h3 {
+    margin: 20px 0 8px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1A202C;
+}
+
+.verification-card p {
+    color: #718096;
+    font-size: 14px;
+    margin: 0;
+}
+
+.loading-spinner.large {
+    width: 48px;
+    height: 48px;
+    border-width: 4px;
+}

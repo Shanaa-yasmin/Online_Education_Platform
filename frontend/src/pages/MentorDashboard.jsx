@@ -48,13 +48,39 @@ export default function MentorDashboard() {
   const [submitError, setSubmitError] = useState('');
   const [loggingOut, setLoggingOut]   = useState(false);
 
+  const [activeTab, setTab]         = useState('courses');
+  const [payments, setPayments]     = useState([]);
+  const [loadingPayments, setLP]     = useState(true);
+  const [paymentsError, setPE]       = useState('');
+  const [actioningId, setActioningId] = useState(null);
+
   const fetchCourses = async () => {
     try { setLoading(true); const r = await api.get('/api/courses/'); setCourses(r.data.filter(c => c.mentor.id === user.id)); setError(''); }
     catch { setError('Failed to load courses.'); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { if (user) fetchCourses(); }, [user]);
+  const fetchPayments = async () => {
+    try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data); setPE(''); }
+    catch { setPE('Failed to load payments logs.'); }
+    finally { setLP(false); }
+  };
+
+  const actRefund = async (id) => {
+    if (!window.confirm('Are you sure you want to refund this payment? The student will immediately lose access to the course.')) return;
+    setActioningId(id);
+    try {
+      await api.post(`/api/payments/payments/${id}/refund/`);
+      setPayments(p => p.map(pay => pay.id === id ? { ...pay, status: 'REFUNDED', refunded_at: new Date().toISOString() } : pay));
+      alert('Payment refunded successfully. Student access revoked.');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to refund payment.');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  useEffect(() => { if (user) { fetchCourses(); fetchPayments(); } }, [user]);
 
   const handleInput = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -93,42 +119,122 @@ export default function MentorDashboard() {
             <button className="btn btn-primary" onClick={() => setShowModal(true)}><i className="ti ti-plus" /> Create New Course</button>
           </div>
 
-          {error && <div className="alert alert-error">{error} <button className="btn btn-sm btn-secondary" onClick={fetchCourses}>Retry</button></div>}
+          {/* Tabs */}
+          <div className="tab-row">
+            <button className={`tab-btn${activeTab==='courses'?' active':''}`} onClick={()=>setTab('courses')}>
+              My Courses ({courses.length})
+            </button>
+            <button className={`tab-btn${activeTab==='payments'?' active':''}`} onClick={()=>setTab('payments')}>
+              Course Sales ({payments.length})
+            </button>
+          </div>
 
-          {loading ? (
-            <div className="loading-container"><div className="loading-spinner" /><p>Loading courses…</p></div>
-          ) : courses.length === 0 ? (
-            <div className="mentor-empty">
-              <i className="ti ti-books" />
-              <h3>Create your first course</h3>
-              <p>Share your knowledge and start building modules, lessons, and interactive quizzes.</p>
-              <button className="btn btn-primary" onClick={() => setShowModal(true)}>Create Course</button>
+          {activeTab === 'courses' && (
+            <div>
+              {error && <div className="alert alert-error">{error} <button className="btn btn-sm btn-secondary" onClick={fetchCourses}>Retry</button></div>}
+
+              {loading ? (
+                <div className="loading-container"><div className="loading-spinner" /><p>Loading courses…</p></div>
+              ) : courses.length === 0 ? (
+                <div className="mentor-empty">
+                  <i className="ti ti-books" />
+                  <h3>Create your first course</h3>
+                  <p>Share your knowledge and start building modules, lessons, and interactive quizzes.</p>
+                  <button className="btn btn-primary" onClick={() => setShowModal(true)}>Create Course</button>
+                </div>
+              ) : (
+                <div className="mentor-grid animate-fadeIn">
+                  {courses.map(course => {
+                    const st = STATUS_MAP(course);
+                    return (
+                      <article key={course.id} className="mentor-course-card">
+                        <div>
+                          <div className="mc-header">
+                            <span className={`badge badge-${course.level.toLowerCase()}`}>{course.level}</span>
+                            <span className={`badge ${st.cls}`}>{st.label}</span>
+                          </div>
+                          <h3 className="mc-title">{course.title}</h3>
+                          <p className="mc-desc">{course.description}</p>
+                          <div className="mc-meta">
+                            <span className="mc-meta-item"><i className="ti ti-world" /> {course.language}</span>
+                            <span className="mc-meta-item"><i className="ti ti-clock" /> {course.duration_hours}h</span>
+                          </div>
+                        </div>
+                        <div className="mc-footer">
+                          <span className={`mc-price${course.price<=0?' free':''}`}>{course.price>0?`$${course.price}`:'Free'}</span>
+                          <Link to={`/mentor/courses/${course.id}/builder`} className="btn btn-secondary btn-sm">Manage Curriculum</Link>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="mentor-grid animate-fadeIn">
-              {courses.map(course => {
-                const st = STATUS_MAP(course);
-                return (
-                  <article key={course.id} className="mentor-course-card">
-                    <div>
-                      <div className="mc-header">
-                        <span className={`badge badge-${course.level.toLowerCase()}`}>{course.level}</span>
-                        <span className={`badge ${st.cls}`}>{st.label}</span>
-                      </div>
-                      <h3 className="mc-title">{course.title}</h3>
-                      <p className="mc-desc">{course.description}</p>
-                      <div className="mc-meta">
-                        <span className="mc-meta-item"><i className="ti ti-world" /> {course.language}</span>
-                        <span className="mc-meta-item"><i className="ti ti-clock" /> {course.duration_hours}h</span>
-                      </div>
-                    </div>
-                    <div className="mc-footer">
-                      <span className={`mc-price${course.price<=0?' free':''}`}>{course.price>0?`$${course.price}`:'Free'}</span>
-                      <Link to={`/mentor/courses/${course.id}/builder`} className="btn btn-secondary btn-sm">Manage Curriculum</Link>
-                    </div>
-                  </article>
-                );
-              })}
+          )}
+
+          {activeTab === 'payments' && (
+            <div>
+              {paymentsError && <div className="alert alert-error">{paymentsError}</div>}
+              {loadingPayments ? (
+                <div className="loading-container"><div className="loading-spinner"/><p>Loading payments logs…</p></div>
+              ) : payments.length === 0 ? (
+                <div className="mentor-empty"><i className="ti ti-receipt"/><h3>No sales records found</h3><p>Payments for your courses will appear here.</p></div>
+              ) : (
+                <div className="payments-table-wrap">
+                  <table className="payments-table">
+                    <thead>
+                      <tr style={{borderBottom:'2px solid var(--border)',height:40,color:'var(--txt-3)'}}>
+                        <th style={{padding:8}}>Student</th>
+                        <th style={{padding:8}}>Course</th>
+                        <th style={{padding:8}}>Amount</th>
+                        <th style={{padding:8}}>Gateway</th>
+                        <th style={{padding:8}}>Transaction ID</th>
+                        <th style={{padding:8}}>Status</th>
+                        <th style={{padding:8}}>Date</th>
+                        <th style={{padding:8}}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map(pay => (
+                        <tr key={pay.id} style={{borderBottom:'1px solid var(--border)',height:48}}>
+                          <td style={{padding:8}}>
+                            <div style={{fontWeight:600,color:'var(--txt-1)'}}>@{pay.student?.username}</div>
+                            <div style={{fontSize:11.5,color:'var(--txt-3)'}}>{pay.student?.email}</div>
+                          </td>
+                          <td style={{padding:8,color:'var(--txt-1)'}}>{pay.course_title}</td>
+                          <td style={{padding:8,fontWeight:600,color:'var(--txt-1)'}}>${pay.amount}</td>
+                          <td style={{padding:8}}><span className="badge badge-beginner" style={{background:'#edf2f7',color:'#4a5568'}}>{pay.gateway}</span></td>
+                          <td style={{padding:8,fontFamily:'monospace',fontSize:12,color:'var(--txt-3)'}}>{pay.transaction_id}</td>
+                          <td style={{padding:8}}>
+                            <span className={`badge ${pay.status === 'COMPLETED' ? 'badge-live' : pay.status === 'PENDING' ? 'badge-pending-mod' : 'badge-draft'}`}>
+                              {pay.status}
+                            </span>
+                          </td>
+                          <td style={{padding:8,color:'var(--txt-3)'}}>{new Date(pay.created_at).toLocaleDateString()}</td>
+                          <td style={{padding:8}}>
+                            {pay.status === 'COMPLETED' ? (
+                              <button 
+                                className="btn btn-danger btn-xs"
+                                style={{padding:'4px 8px',fontSize:11}}
+                                onClick={() => actRefund(pay.id)}
+                                disabled={actioningId !== null}
+                              >
+                                Refund
+                              </button>
+                            ) : pay.status === 'REFUNDED' ? (
+                              <span style={{fontSize:12,color:'var(--txt-3)'}}>
+                                Refunded
+                              </span>
+                            ) : (
+                              <span style={{color:'var(--txt-3)'}}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

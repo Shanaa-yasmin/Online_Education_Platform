@@ -33,3 +33,64 @@
 .modal-form input:focus, .modal-form textarea:focus, .modal-form select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(48,157,142,0.10); }
 .modal-form .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 480px) { .modal-form .form-row-2 { grid-template-columns: 1fr; } }
+
+/* Tabs */
+.tab-row {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 12px 20px;
+    font-family: var(--font-ui);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--txt-3);
+    cursor: pointer;
+    transition: all var(--t);
+    margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+    color: var(--txt-1);
+}
+
+.tab-btn.active {
+    color: var(--brand);
+    border-bottom-color: var(--brand);
+}
+
+/* Payments Log & Tables */
+.payments-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 16px;
+}
+
+.payments-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    text-align: left;
+}
+
+.payments-table th {
+    padding: 8px;
+    border-bottom: 2px solid var(--border);
+    color: var(--txt-3);
+    font-weight: 600;
+}
+
+.payments-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--txt-1);
+}

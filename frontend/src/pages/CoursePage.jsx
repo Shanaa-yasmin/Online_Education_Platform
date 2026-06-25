@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import './CoursePage.css';
 
-// SVG Icons
+// ── Icons ──────────────────────────────────────────────────────────────────
 const ArrowLeftIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="19" x2="5" y1="12" y2="12" /><polyline points="12 19 5 12 12 5" />
@@ -48,99 +48,160 @@ const CloseIcon = () => (
     <line x1="6" x2="18" y1="6" y2="18" />
   </svg>
 );
+const LockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
 
+// ── Component ──────────────────────────────────────────────────────────────
 export default function CoursePage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Data States
+  // Data
   const [course, setCourse] = useState(null);
   const [enrollmentStatus, setEnrollmentStatus] = useState({
-    enrolled: false,
-    is_active: false,
-    progress_percent: 0.00
+    enrolled: false, is_active: false, progress_percent: 0,
   });
 
-  // Action States
+  // UI
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [selectedGateway, setSelectedGateway] = useState('STRIPE');
   const [checkoutError, setCheckoutError] = useState('');
-  const [error, setError] = useState('');
+  const [pageError, setPageError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState('');
 
+  // ── Load course + enrollment ────────────────────────────────────────────
   const loadData = async () => {
     try {
       setLoading(true);
-      // Fetch course details
-      const courseResponse = await api.get(`/api/courses/${courseId}/`);
-      setCourse(courseResponse.data);
+      const courseRes = await api.get(`/api/courses/${courseId}/`);
+      setCourse(courseRes.data);
 
-      // Fetch enrollment check
       if (user) {
-        const enrollResponse = await api.get(`/api/payments/enrollments/check/?course_id=${courseId}`);
-        setEnrollmentStatus(enrollResponse.data);
+        const enrollRes = await api.get(
+          `/api/payments/enrollments/check/?course_id=${courseId}`
+        );
+        setEnrollmentStatus(enrollRes.data);
       }
-      setError('');
+      setPageError('');
     } catch (err) {
       console.error(err);
-      setError('Failed to load course details.');
+      setPageError('Failed to load course details.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [courseId, user]);
+  useEffect(() => { loadData(); }, [courseId, user]);
 
-  const handleEnrollClick = () => {
-    if (!user) {
-      navigate('/login');
+  // ── Handle return from Stripe / PayPal ─────────────────────────────────
+  useEffect(() => {
+    const isSuccess = searchParams.get('payment_success') === 'true';
+    const isCancel = searchParams.get('payment_cancel') === 'true';
+
+    if (isCancel) {
+      alert('Checkout was cancelled. You have not been charged.');
+      setSearchParams({});
       return;
     }
 
-    if (course.price > 0) {
-      setShowCheckoutModal(true);
+    if (!isSuccess) return;
+
+    const gateway = searchParams.get('gateway');
+    const sessionId = searchParams.get('session_id');   // Stripe
+    const orderId = searchParams.get('order_id');     // PayPal (not used — captured server-side)
+
+    const verifyPayment = async () => {
+      setVerifying(true);
+      setVerifyMsg('Verifying your payment…');
+
+      const payload = { gateway, course_id: courseId };
+      if (gateway === 'stripe') payload.session_id = sessionId;
+      if (gateway === 'paypal') payload.order_id = orderId;
+
+      try {
+        const res = await api.post('/api/payments/checkout/verify/', payload);
+        if (res.data.verified) {
+          setVerifyMsg('Payment confirmed! Launching classroom…');
+          setTimeout(() => {
+            setSearchParams({});
+            navigate(`/courses/${courseId}/learn`);
+          }, 1500);
+        } else {
+          alert(res.data.detail || 'Payment verification failed. Please contact support.');
+          setSearchParams({});
+        }
+      } catch (err) {
+        console.error(err);
+        alert(
+          err.response?.data?.detail ||
+          'An error occurred during payment verification. Please contact support.'
+        );
+        setSearchParams({});
+      } finally {
+        setVerifying(false);
+      }
+    };
+
+    verifyPayment();
+  }, [searchParams, courseId]);
+
+  // ── Enroll (free courses) ───────────────────────────────────────────────
+  const handleEnrollClick = () => {
+    if (!user) { navigate('/login'); return; }
+    if (parseFloat(course.price) > 0) {
+      setShowCheckout(true);
     } else {
-      processEnrollment();
+      enrollFree();
     }
   };
 
-  const processEnrollment = async (mockTransactionId = null) => {
+  const enrollFree = async () => {
     setEnrolling(true);
-    setCheckoutError('');
     try {
-      const payload = { course: courseId };
-      if (mockTransactionId) {
-        payload.transaction_id = mockTransactionId;
-      }
-      await api.post('/api/payments/enrollments/', payload);
-      setEnrollmentStatus({
-        enrolled: true,
-        is_active: true,
-        progress_percent: 0.00
-      });
-      setShowCheckoutModal(false);
-      // Redirect directly to learning classroom
+      await api.post('/api/payments/enrollments/', { course: courseId });
+      setEnrollmentStatus({ enrolled: true, is_active: true, progress_percent: 0 });
       navigate(`/courses/${courseId}/learn`);
     } catch (err) {
-      console.error(err);
-      const detail = err.response?.data?.detail || 'Failed to complete enrollment.';
-      if (mockTransactionId) {
-        setCheckoutError(detail);
-      } else {
-        alert(detail);
-      }
+      alert(err.response?.data?.detail || 'Enrollment failed. Please try again.');
     } finally {
       setEnrolling(false);
     }
   };
 
-  const handleMockPaymentSubmit = (e) => {
+  // ── Checkout submit — redirect to Stripe or PayPal ─────────────────────
+  const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
-    const mockTxId = 'ch_' + Math.random().toString(36).substring(2, 12).toUpperCase();
-    processEnrollment(mockTxId);
+    setEnrolling(true);
+    setCheckoutError('');
+
+    try {
+      const res = await api.post('/api/payments/checkout/create-session/', {
+        course_id: courseId,
+        gateway: selectedGateway,
+      });
+
+      const { checkout_url } = res.data;
+      if (!checkout_url) throw new Error('Server did not return a checkout URL.');
+
+      // Full-page redirect to Stripe Checkout or PayPal approval page
+      window.location.href = checkout_url;
+
+    } catch (err) {
+      console.error(err);
+      setCheckoutError(
+        err.response?.data?.detail || 'Failed to initialise checkout. Please try again.'
+      );
+      setEnrolling(false);
+    }
+    // Note: do NOT call setEnrolling(false) on success — the page is navigating away.
   };
 
   const getLessonIcon = (type) => {
@@ -152,60 +213,67 @@ export default function CoursePage() {
     }
   };
 
+  // ── Render guards ───────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="course-detail-loading">
         <div className="loading-spinner"></div>
-        <p>Loading course content...</p>
+        <p>Loading course…</p>
       </div>
     );
   }
 
-  if (error || !course) {
+  if (pageError || !course) {
     return (
       <div className="course-detail-error">
-        <h2>Error loading Course</h2>
-        <p className="alert alert-error">{error || 'Course not found'}</p>
+        <h2>Error loading course</h2>
+        <p className="alert alert-error">{pageError || 'Course not found.'}</p>
         <Link to="/courses" className="btn btn-primary">Back to Catalog</Link>
       </div>
     );
   }
 
+  const isPaid = parseFloat(course.price) > 0;
+  const isEnrolled = enrollmentStatus.enrolled && enrollmentStatus.is_active;
+
   return (
     <div className="student-course-page">
-      {/* Back button */}
       <Link to="/courses" className="back-link">
         <ArrowLeftIcon /> Back to Explore
       </Link>
 
       <div className="course-detail-layout">
-        {/* Left Side: Course Info & Curriculum */}
+        {/* ── Left: Course Info ─────────────────────────────────────────── */}
         <div className="course-info-side">
-          <span className={`difficulty-tag ${course.level.toLowerCase()}`}>{course.level} Level</span>
+          <span className={`difficulty-tag ${course.level?.toLowerCase()}`}>
+            {course.level} Level
+          </span>
           <h1 className="course-detail-title">{course.title}</h1>
           <p className="mentor-row">
             Created by <strong>{course.mentor?.username || 'Expert'}</strong>
           </p>
+
           <div className="course-description-block">
             <h3>Course Overview</h3>
             <p>{course.description}</p>
           </div>
 
-          {/* Curriculum Section */}
           <div className="course-curriculum-block">
             <h3>Course Curriculum</h3>
-            {course.modules?.length === 0 ? (
-              <p className="curriculum-empty">No curriculum sections have been published for this course yet.</p>
+            {!course.modules?.length ? (
+              <p className="curriculum-empty">No curriculum has been published yet.</p>
             ) : (
               <div className="curriculum-modules-list">
-                {course.modules.map(module => (
-                  <div key={module.id} className="curriculum-module-item">
+                {course.modules.map(mod => (
+                  <div key={mod.id} className="curriculum-module-item">
                     <div className="module-title-row">
-                      <h4>{module.title}</h4>
-                      <span className="lesson-count-pill">{module.lessons?.length || 0} items</span>
+                      <h4>{mod.title}</h4>
+                      <span className="lesson-count-pill">
+                        {mod.lessons?.length || 0} items
+                      </span>
                     </div>
                     <div className="module-lessons-bullets">
-                      {module.lessons?.map(lesson => (
+                      {mod.lessons?.map(lesson => (
                         <div key={lesson.id} className="curriculum-lesson-bullet">
                           <span className="bullet-icon">{getLessonIcon(lesson.content_type)}</span>
                           <span className="bullet-title">{lesson.title}</span>
@@ -220,11 +288,13 @@ export default function CoursePage() {
           </div>
         </div>
 
-        {/* Right Side: Card Box with Price, Duration & CTA Action */}
+        {/* ── Right: Enrollment Card ───────────────────────────────────── */}
         <aside className="course-enrollment-card">
           <div className="price-tag-row">
             <span className="price-lbl">Course Tuition</span>
-            <span className="price-amount">{course.price > 0 ? `$${course.price}` : 'Free'}</span>
+            <span className={`price-amount${isPaid ? '' : ' free'}`}>
+              {isPaid ? `$${parseFloat(course.price).toFixed(2)}` : 'Free'}
+            </span>
           </div>
 
           <div className="card-specs">
@@ -242,18 +312,23 @@ export default function CoursePage() {
             </div>
           </div>
 
-          {/* Enrollment CTA Block */}
           <div className="cta-action-block">
-            {enrollmentStatus.enrolled && enrollmentStatus.is_active ? (
+            {isEnrolled ? (
               <div className="enrolled-status-box">
                 <div className="progress-bar-row">
                   <span>Course Progress</span>
                   <span>{enrollmentStatus.progress_percent}%</span>
                 </div>
                 <div className="progress-track-bg">
-                  <div className="progress-track-fill" style={{ width: `${enrollmentStatus.progress_percent}%` }}></div>
+                  <div
+                    className="progress-track-fill"
+                    style={{ width: `${enrollmentStatus.progress_percent}%` }}
+                  />
                 </div>
-                <Link to={`/courses/${courseId}/learn`} className="btn btn-primary w-full text-center">
+                <Link
+                  to={`/courses/${courseId}/learn`}
+                  className="btn btn-primary w-full text-center"
+                >
                   Go to Classroom
                 </Link>
               </div>
@@ -263,64 +338,114 @@ export default function CoursePage() {
                 onClick={handleEnrollClick}
                 disabled={enrolling}
               >
-                {enrolling ? 'Processing...' : course.price > 0 ? 'Buy & Enroll' : 'Enroll Now'}
+                {enrolling
+                  ? 'Processing…'
+                  : isPaid
+                    ? 'Buy & Enroll'
+                    : 'Enroll Now — Free'}
               </button>
             )}
           </div>
         </aside>
       </div>
 
-      {/* Mock Checkout Modal for Paid Courses */}
-      {showCheckoutModal && (
-        <div className="modal-overlay" onClick={() => setShowCheckoutModal(false)}>
-          <div className="modal-content checkout-modal animate-scaleIn" onClick={e => e.stopPropagation()}>
+      {/* ── Checkout Modal ─────────────────────────────────────────────── */}
+      {showCheckout && (
+        <div className="modal-overlay" onClick={() => setShowCheckout(false)}>
+          <div
+            className="modal-content checkout-modal animate-scaleIn"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="modal-header">
-              <h2>Secure Checkout (Mock Sandbox)</h2>
-              <button className="modal-close-btn" onClick={() => setShowCheckoutModal(false)}>
+              <h2>Secure Checkout</h2>
+              <button className="modal-close-btn" onClick={() => setShowCheckout(false)}>
                 <CloseIcon />
               </button>
             </div>
 
-            <form onSubmit={handleMockPaymentSubmit} className="modal-form">
-              {checkoutError && <div className="alert alert-error">{checkoutError}</div>}
+            <form onSubmit={handleCheckoutSubmit} className="modal-form">
+              {checkoutError && (
+                <div className="alert alert-error">{checkoutError}</div>
+              )}
 
               <div className="order-summary-box">
-                <p><strong>Item:</strong> {course.title} (Online Access)</p>
-                <p><strong>Total Amount:</strong> <span className="price-tag-modal">${course.price}</span></p>
+                <p><strong>Course:</strong> {course.title}</p>
+                <p>
+                  <strong>Total:</strong>{' '}
+                  <span className="price-tag-modal">
+                    ${parseFloat(course.price).toFixed(2)}
+                  </span>
+                </p>
               </div>
 
-              <div className="alert alert-warning">
-                This is a mock sandbox checkout session. No real money will be charged. Click "Pay & Enroll" to complete.
+              {/* Gateway selector */}
+              <div className="payment-gateway-selector">
+                <label className="gateway-option-label">Select Payment Method</label>
+                <div className="gateway-options-grid">
+                  {/* Stripe */}
+                  <div
+                    className={`gateway-option${selectedGateway === 'STRIPE' ? ' selected' : ''}`}
+                    onClick={() => setSelectedGateway('STRIPE')}
+                  >
+                    <div className="gateway-radio">
+                      <div className="radio-circle" />
+                    </div>
+                    <span className="gateway-name">💳 Stripe</span>
+                    <span className="gateway-desc">Credit / Debit card via Stripe Checkout</span>
+                  </div>
+
+                  {/* PayPal */}
+                  <div
+                    className={`gateway-option${selectedGateway === 'PAYPAL' ? ' selected' : ''}`}
+                    onClick={() => setSelectedGateway('PAYPAL')}
+                  >
+                    <div className="gateway-radio">
+                      <div className="radio-circle" />
+                    </div>
+                    <span className="gateway-name">🅿 PayPal</span>
+                    <span className="gateway-desc">Pay via PayPal Sandbox account</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>Cardholder Name</label>
-                <input type="text" placeholder="e.g. Shanaa Yasmin" required defaultValue={user?.username || ''} />
-              </div>
-
-              <div className="form-group">
-                <label>Mock Card Number</label>
-                <input type="text" placeholder="XXXX-XXXX-XXXX-4242" required defaultValue="4242-4242-4242-4242" disabled />
+              {/* Test-mode reminder (remove before going live) */}
+              <div className="alert alert-warning" style={{ fontSize: 12 }}>
+                <strong>Test mode.</strong> Use Stripe card <code>4242 4242 4242 4242</code> or
+                your PayPal Sandbox buyer account.
               </div>
 
               <div className="modal-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowCheckoutModal(false)}
+                  onClick={() => setShowCheckout(false)}
                   disabled={enrolling}
                 >
-                  Cancel Order
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn btn-primary"
                   disabled={enrolling}
                 >
-                  {enrolling ? 'Processing...' : 'Pay & Enroll'}
+                  {enrolling
+                    ? 'Redirecting…'
+                    : `Pay with ${selectedGateway === 'STRIPE' ? 'Stripe' : 'PayPal'}`}
+                  {!enrolling && <LockIcon />}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Payment Verification Overlay ───────────────────────────────── */}
+      {verifying && (
+        <div className="modal-overlay verifying-overlay">
+          <div className="verification-card text-center animate-scaleIn">
+            <div className="loading-spinner large" />
+            <h3>Confirming Payment</h3>
+            <p>{verifyMsg}</p>
           </div>
         </div>
       )}

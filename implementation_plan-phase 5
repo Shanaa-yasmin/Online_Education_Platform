@@ -1,0 +1,132 @@
+# Implementation Plan - Phase 5: Payment Gateway Integration
+
+This plan outlines the design and changes to integrate Stripe and PayPal payment checkouts, webhook endpoints, and a refund management system with entitlement rollbacks.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Mock/Sandbox Fallback**: To ensure the codebase is functional out-of-the-box, the APIs will automatically fallback to a beautiful, local simulated checkout flow if valid Stripe/PayPal environment keys are missing.
+> - **Stripe Checkout Sessions**: We use Stripe hosted checkout page to avoid handling PCI compliance elements locally.
+> - **PayPal REST API**: We will directly use PayPal's v2 Checkout API via `requests` instead of any outdated SDK packages.
+> - **Entitlement Rollback**: Refunding a payment will mark the `Payment` as `REFUNDED` and set the student's corresponding `Enrollment` `is_active` to `False`.
+
+## Open Questions
+None at this stage. The requirements are fully aligned with industry best practices for DRF + React e-commerce checkouts.
+
+---
+
+## Proposed Changes
+
+### 1. Django Backend Configuration
+
+#### [MODIFY] [settings.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/core/settings.py)
+- Append payment configuration settings:
+  ```python
+  # Stripe Configurations
+  STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY', 'pk_test_mock')
+  STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_mock')
+  STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', 'whsec_mock')
+
+  # PayPal Configurations
+  PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', 'paypal_mock')
+  PAYPAL_SECRET = os.environ.get('PAYPAL_SECRET', 'paypal_mock')
+  PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')  # sandbox or live
+
+  # Frontend URL for Redirects
+  FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+  ```
+
+---
+
+### 2. Backend: Payment & Checkout APIs
+
+#### [MODIFY] [views.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/views.py)
+- Implement a `CheckoutViewSet` with endpoints:
+  - **`create_session` (`POST /api/payments/checkout/create-session/`)**:
+    - Receives `{ "course_id": <id>, "gateway": "STRIPE" | "PAYPAL" }`.
+    - Validates course state (approved and published) and checks if the student is already enrolled.
+    - Creates or updates `Enrollment` with `is_active=False`.
+    - Generates a Stripe Session or PayPal Order:
+      - If Stripe: calls `stripe.checkout.Session.create`.
+      - If PayPal: calls PayPal OAuth token API, then PayPal Orders API.
+      - If mock credentials: logs a warning and returns a local mock checkout URL.
+    - Creates a `Payment` in `PENDING` state with the Stripe Session ID or PayPal Order ID as the `transaction_id`.
+    - Returns `{ "checkout_url": <url>, "transaction_id": <id> }`.
+  
+  - **`verify_payment` (`POST /api/payments/checkout/verify/`)**:
+    - Receives `{ "gateway": "stripe" | "paypal", "session_id": <id>, "course_id": <id> }` (Stripe) or `{ "gateway": "paypal", "order_id": <id>, "course_id": <id> }` (PayPal).
+    - Checks Stripe session status (`payment_status == 'paid'`) or calls PayPal's capture order endpoint.
+    - On success:
+      - Activates enrollment (`is_active=True`).
+      - Updates `Payment` status to `COMPLETED`.
+    - Returns verification result.
+
+  - **`stripe_webhook` (`POST /api/payments/checkout/stripe-webhook/`)**:
+    - Secure webhook verifying Stripe signature.
+    - Processes `checkout.session.completed` event to activate corresponding student enrollment and mark payment as `COMPLETED`.
+
+  - **`paypal_webhook` (`POST /api/payments/checkout/paypal-webhook/`)**:
+    - Optional backup listener for PayPal `CHECKOUT.ORDER.APPROVED` webhook events.
+
+- Implement a custom action on `Payment` endpoints for Refunds:
+  - **`refund` (`POST /api/payments/payments/<payment_id>/refund/`)**:
+    - Permissions: `IsAdmin` or Mentor of the course.
+    - Calls Stripe Refund API or PayPal Capture Refund API.
+    - Marks `Payment` as `REFUNDED` and sets `refunded_at`.
+    - Deactivates the `Enrollment` (`is_active=False`) to revoke the student's access.
+
+#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/payments/urls.py)
+- Map the new `CheckoutViewSet` routes to the Django router:
+  - `/api/payments/checkout/create-session/`
+  - `/api/payments/checkout/verify/`
+  - `/api/payments/checkout/stripe-webhook/`
+  - `/api/payments/checkout/paypal-webhook/`
+- Register payment endpoints for managing refunds.
+
+---
+
+### 3. React Frontend Integrations
+
+#### [MODIFY] [CoursePage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/CoursePage.jsx)
+- **Checkout Modal Upgrade**:
+  - Replace the single mock card payment form with a payment selector:
+    - **Stripe Option**: Shows details and a "Pay with Stripe" button.
+    - **PayPal Option**: Shows details and a "Pay with PayPal" button.
+  - Clicking "Pay with..." calls `/api/payments/checkout/create-session/`, receives the checkout redirect link, and redirects the user.
+- **Payment Verification handling**:
+  - On mount, check search query parameters for `payment_success=true` or `payment_cancel=true` or `payment_mock_checkout=true`.
+  - If `payment_success` or mock checkout parameters are present:
+    - Display a premium "Verifying your payment..." fullscreen backdrop loader.
+    - Send a verification request to `/api/payments/checkout/verify/`.
+    - On success: Show a success toast/modal and redirect to the Learning Classroom.
+    - On failure: Show a descriptive error modal.
+
+#### [NEW] [MockCheckoutPage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/MockCheckoutPage.jsx) (Optional but recommended)
+- If the backend detects mock credentials, it redirects the student to a beautiful, local mock sandbox payment page where they can review the transaction and choose:
+  - **Simulate Success**: Redirects back to Course Page with success parameters.
+  - **Simulate Failure**: Redirects back with cancel parameters.
+- Add a route in [App.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/App.jsx) for `/mock-checkout`.
+
+#### [MODIFY] [AdminPanel.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/AdminPanel.jsx) & [MentorDashboard.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/MentorDashboard.jsx)
+- Add a "Payments Log" tab to view transaction history (student, course, gateway, amount, status, date).
+- Provide a "Refund" button next to completed payments for administrators and the course's mentor. Triggering a refund calls `/api/payments/payments/<id>/refund/` and refreshes the list.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Create test cases in `backend/payments/tests.py`:
+  - `test_create_checkout_session`: Verifies session creation endpoint rejects invalid roles and creates pending records.
+  - `test_verify_mock_payment`: Verifies that sending verification for mock payments correctly updates enrollment and payment tables.
+  - `test_refund_and_entitlement_rollback`: Verifies that a successful refund call marks the payment as refunded and rolls back enrollment `is_active` to `False`.
+
+### Manual Verification
+1. Run local environment.
+2. As a Student, visit a paid course page.
+3. Click "Buy & Enroll". Choose Stripe or PayPal.
+4. Verify the mock redirection portal opens, review the order, click "Simulate Success".
+5. Confirm that the Course Page displays the verification screen and redirects to the Learning Player once complete.
+6. Verify that access to the curriculum is unlocked.
+7. As an Admin/Mentor, visit the dashboard, locate the payment in the log, and click "Refund".
+8. Verify that the payment state becomes `Refunded`, and check that the student's access is revoked.

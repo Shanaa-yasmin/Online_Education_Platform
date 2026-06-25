@@ -30,17 +30,21 @@ export default function AdminPanel() {
   const [activeTab, setTab]         = useState('courses');
   const [pendingCourses, setPendingCourses] = useState([]);
   const [pendingMentors, setPendingMentors] = useState([]);
+  const [payments, setPayments]             = useState([]);
   const [loadingCourses, setLC]     = useState(true);
   const [loadingMentors, setLM]     = useState(true);
+  const [loadingPayments, setLP]     = useState(true);
   const [coursesError, setCE]       = useState('');
   const [mentorsError, setME]       = useState('');
+  const [paymentsError, setPE]       = useState('');
   const [actioningId, setActioningId] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const fetchCourses = async () => { try { setLC(true); const r = await api.get('/api/courses/'); setPendingCourses(r.data.filter(c=>!c.is_approved)); setCE(''); } catch { setCE('Failed to fetch pending courses.'); } finally { setLC(false); } };
   const fetchMentors = async () => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); setPendingMentors(r.data); setME(''); } catch { setME('Failed to fetch pending mentors.'); } finally { setLM(false); } };
+  const fetchPayments = async () => { try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data); setPE(''); } catch { setPE('Failed to fetch payments logs.'); } finally { setLP(false); } };
 
-  useEffect(() => { fetchCourses(); fetchMentors(); }, []);
+  useEffect(() => { fetchCourses(); fetchMentors(); fetchPayments(); }, []);
 
   const actCourse = async (id, action) => {
     setActioningId(id);
@@ -54,6 +58,19 @@ export default function AdminPanel() {
     try { await api.post(`/api/auth/profiles/${id}/${action}/`); setPendingMentors(p=>p.filter(m=>m.id!==id)); }
     catch { alert(`Failed to ${action} mentor.`); }
     finally { setActioningId(null); }
+  };
+  const actRefund = async (id) => {
+    if (!window.confirm('Are you sure you want to refund this payment? The student will immediately lose access to the course.')) return;
+    setActioningId(id);
+    try {
+      await api.post(`/api/payments/payments/${id}/refund/`);
+      setPayments(p => p.map(pay => pay.id === id ? { ...pay, status: 'REFUNDED', refunded_at: new Date().toISOString() } : pay));
+      alert('Payment refunded successfully. Student access revoked.');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to refund payment.');
+    } finally {
+      setActioningId(null);
+    }
   };
 
   const handleLogout = async () => { setLoggingOut(true); const { useAuth } = await import('../context/AuthContext.jsx'); navigate('/login'); };
@@ -99,9 +116,12 @@ export default function AdminPanel() {
             <button className={`tab-btn${activeTab==='mentors'?' active':''}`} onClick={()=>setTab('mentors')}>
               Mentor Queue ({pendingMentors.length})
             </button>
+            <button className={`tab-btn${activeTab==='payments'?' active':''}`} onClick={()=>setTab('payments')}>
+              Payments Log ({payments.length})
+            </button>
           </div>
 
-          {activeTab === 'courses' ? (
+          {activeTab === 'courses' && (
             <div>
               {coursesError && <div className="alert alert-error">{coursesError}</div>}
               {loadingCourses ? <div className="loading-container"><div className="loading-spinner"/><p>Loading…</p></div>
@@ -129,7 +149,9 @@ export default function AdminPanel() {
                 </div>
               )}
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'mentors' && (
             <div>
               {mentorsError && <div className="alert alert-error">{mentorsError}</div>}
               {loadingMentors ? <div className="loading-container"><div className="loading-spinner"/><p>Loading…</p></div>
@@ -159,6 +181,74 @@ export default function AdminPanel() {
                       </div>
                     </article>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+            <div>
+              {paymentsError && <div className="alert alert-error">{paymentsError}</div>}
+              {loadingPayments ? (
+                <div className="loading-container"><div className="loading-spinner"/><p>Loading payments logs…</p></div>
+              ) : payments.length === 0 ? (
+                <div className="admin-empty"><i className="ti ti-receipt"/><h3>No payments found</h3><p>Transaction records will appear here.</p></div>
+              ) : (
+                <div className="mod-list">
+                  <div className="payments-table-wrap" style={{width:'100%',overflowX:'auto',background:'var(--bg-card)',borderRadius:'var(--r-md)',border:'1px solid var(--border-subtle)',padding:'16px'}}>
+                    <table className="payments-table" style={{width:'100%',borderCollapse:'collapse',fontSize:13.5,textAlign:'left'}}>
+                      <thead>
+                        <tr style={{borderBottom:'2px solid var(--border-subtle)',height:40,color:'var(--txt-3)'}}>
+                          <th style={{padding:8}}>Student</th>
+                          <th style={{padding:8}}>Course</th>
+                          <th style={{padding:8}}>Amount</th>
+                          <th style={{padding:8}}>Gateway</th>
+                          <th style={{padding:8}}>Transaction ID</th>
+                          <th style={{padding:8}}>Status</th>
+                          <th style={{padding:8}}>Date</th>
+                          <th style={{padding:8}}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payments.map(pay => (
+                          <tr key={pay.id} style={{borderBottom:'1px solid var(--border-subtle)',height:48}}>
+                            <td style={{padding:8}}>
+                              <div style={{fontWeight:600,color:'var(--txt-1)'}}>@{pay.student?.username}</div>
+                              <div style={{fontSize:11.5,color:'var(--txt-3)'}}>{pay.student?.email}</div>
+                            </td>
+                            <td style={{padding:8,color:'var(--txt-1)'}}>{pay.course_title}</td>
+                            <td style={{padding:8,fontWeight:600,color:'var(--txt-1)'}}>${pay.amount}</td>
+                            <td style={{padding:8}}><span className="badge badge-beginner" style={{background:'#edf2f7',color:'#4a5568'}}>{pay.gateway}</span></td>
+                            <td style={{padding:8,fontFamily:'monospace',fontSize:12,color:'var(--txt-3)'}}>{pay.transaction_id}</td>
+                            <td style={{padding:8}}>
+                              <span className={`badge ${pay.status === 'COMPLETED' ? 'badge-live' : pay.status === 'PENDING' ? 'badge-pending-mod' : 'badge-draft'}`}>
+                                {pay.status}
+                              </span>
+                            </td>
+                            <td style={{padding:8,color:'var(--txt-3)'}}>{new Date(pay.created_at).toLocaleDateString()}</td>
+                            <td style={{padding:8}}>
+                              {pay.status === 'COMPLETED' ? (
+                                <button 
+                                  className="btn btn-danger btn-xs"
+                                  style={{padding:'4px 8px',fontSize:11}}
+                                  onClick={() => actRefund(pay.id)}
+                                  disabled={actioningId !== null}
+                                >
+                                  Refund
+                                </button>
+                              ) : pay.status === 'REFUNDED' ? (
+                                <span style={{fontSize:12,color:'var(--txt-3)'}}>
+                                  Refunded
+                                </span>
+                              ) : (
+                                <span style={{color:'var(--txt-3)'}}>-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

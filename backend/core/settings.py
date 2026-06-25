@@ -10,24 +10,27 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+
 from pathlib import Path
+from dotenv import load_dotenv
+import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+load_dotenv()  # reads .env file automatically
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Then use os.environ.get() for all secrets:
+SECRET_KEY = os.environ.get('SECRET_KEY')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
+STRIPE_SECRET_KEY      = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_WEBHOOK_SECRET  = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
+PAYPAL_SECRET    = os.environ.get('PAYPAL_SECRET', '')
+PAYPAL_MODE      = os.environ.get('PAYPAL_MODE', 'sandbox')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ii^_+qz$1e9xldya690c4w@pn=ob8y$oy=6r%)&anrsb$0pk6-'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 ALLOWED_HOSTS = []
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -190,4 +193,18 @@ AUTHENTICATION_BACKENDS = [
     'users.backends.EmailAuthBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Stripe Configurations
+STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY', 'pk_test_mock')
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_mock')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', 'whsec_mock')
+
+# PayPal Configurations
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', 'paypal_mock')
+PAYPAL_SECRET = os.environ.get('PAYPAL_SECRET', 'paypal_mock')
+PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')  # sandbox or live
+
+# Frontend URL for redirects
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
 
