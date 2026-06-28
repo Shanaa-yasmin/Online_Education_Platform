@@ -18,10 +18,11 @@ const LearningPlayer  = lazy(() => import('./pages/LearningPlayer.jsx'));
 const MockCheckoutPage = lazy(() => import('./pages/MockCheckoutPage.jsx'));
 
 const Fallback = () => (
-  <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100svh',background:'#F5F5F5'}}>
-    <div style={{width:32,height:32,border:'2.5px solid #e4e4e4',borderTopColor:'#309D8E',borderRadius:'50%',animation:'spin 0.75s linear infinite'}} />
+  <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100svh',background:'#FDF9F9'}}>
+    <div style={{width:32,height:32,border:'2.5px solid #e8d5d5',borderTopColor:'#6B1A1A',borderRadius:'50%',animation:'spin 0.75s linear infinite'}} />
   </div>
 );
+
 
 function App() {
   return (

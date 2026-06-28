@@ -105,3 +105,18 @@ class CourseSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Price cannot be a negative value.")
         return value
+
+
+class CourseSearchSerializer(serializers.ModelSerializer):
+    mentor = UserMiniSerializer(read_only=True)
+    avg_rating = serializers.FloatField(read_only=True)
+    enrollment_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Course
+        fields = [
+            'id', 'title', 'description', 'mentor', 'price', 
+            'level', 'language', 'duration_hours', 'thumbnail', 
+            'is_approved', 'is_published', 'created_at', 'updated_at',
+            'avg_rating', 'enrollment_count'
+        ]

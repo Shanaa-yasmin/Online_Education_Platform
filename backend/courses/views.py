@@ -1,7 +1,10 @@
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q
+from rest_framework.filters import OrderingFilter
+from django.db.models import Q, Avg, Count, Min, Max
+from django.db.models.functions import Coalesce
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Course, Module, Lesson, QuizQuestion
 from .serializers import (
@@ -9,9 +12,11 @@ from .serializers import (
     CourseListSerializer,
     ModuleSerializer,
     LessonSerializer,
-    QuizQuestionSerializer
+    QuizQuestionSerializer,
+    CourseSearchSerializer
 )
 from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
+from .filters import CourseFilter
 
 class CourseViewSet(viewsets.ModelViewSet):
     """
@@ -160,3 +165,58 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add quiz questions to this lesson.")
         serializer.save()
+
+
+class CourseSearchView(generics.ListAPIView):
+    """
+    API endpoint for public course search and faceted filtering.
+    """
+    serializer_class = CourseSearchSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = CourseFilter
+    ordering_fields = ['price', 'created_at', 'avg_rating']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        # We only want published and approved courses for the public catalog search.
+        # Annotate them with avg_rating and enrollment_count so the serializer and filter can use it.
+        return Course.objects.filter(is_approved=True, is_published=True).annotate(
+            avg_rating=Coalesce(Avg('reviews__rating'), 0.0),
+            enrollment_count=Count('enrollments', distinct=True)
+        ).order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Calculate facets based on all approved & published courses (the entire search space context)
+        base_queryset = Course.objects.filter(is_approved=True, is_published=True)
+        
+        levels = list(base_queryset.values_list('level', flat=True).distinct())
+        languages = list(base_queryset.values_list('language', flat=True).distinct())
+        languages = [lang for lang in languages if lang]  # Clean empty values
+        
+        prices = base_queryset.aggregate(min_p=Min('price'), max_p=Max('price'))
+        price_range = {
+            'min': float(prices['min_p']) if prices['min_p'] is not None else 0.0,
+            'max': float(prices['max_p']) if prices['max_p'] is not None else 1000.0
+        }
+        
+        facets = {
+            'levels': levels,
+            'languages': languages,
+            'price_range': price_range
+        }
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response = self.get_paginated_response(serializer.data)
+            response.data['facets'] = facets
+            return response
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'facets': facets
+        })

@@ -1,35 +1,35 @@
 /* ============================================================
    EduPath — Global Design System
-   Matches homepage: Fraunces + Inter, #309D8E, #F5F5F5/#fff
+   Matches homepage: Playfair Display + Inter, #6B1A1A, #FBF0F0/#fff
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Fraunces:ital,wght@0,700;0,800;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css');
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
   --font-ui     : 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Fraunces', Georgia, serif;
+  --font-display: 'Playfair Display', Georgia, serif;
 
-  --brand       : #309D8E;
-  --brand-dark  : #267d71;
-  --brand-deeper: #1d5e56;
-  --brand-light : rgba(48,157,142,0.08);
-  --brand-border: rgba(48,157,142,0.2);
-  --brand-subtle: #e8f5f3;
+  --brand       : #6B1A1A;          /* Maroon */
+  --brand-dark  : #4A1010;          /* Maroon Dark */
+  --brand-deeper: #3A0808;          /* Maroon Deeper */
+  --brand-light : rgba(107,26,26,0.06); /* Blush-like light */
+  --brand-border: rgba(107,26,26,0.18); /* Blush border */
+  --brand-subtle: #FBF0F0;          /* Blush */
 
-  --bg          : #F5F5F5;
+  --bg          : #FDF9F9;          /* Soft blush-tinted background */
   --surface     : #FFFFFF;
-  --surface-alt : #F5F5F5;
-  --surface-dark: #111111;
+  --surface-alt : #FBF0F0;          /* Blush */
+  --surface-dark: #2A1010;          /* Ink */
 
-  --txt-1       : #1a1a1a;
-  --txt-2       : #444444;
-  --txt-3       : #777777;
-  --txt-4       : #AAAAAA;
+  --txt-1       : #2A1010;          /* Ink */
+  --txt-2       : #4A3030;          /* Darker Muted */
+  --txt-3       : #7A5C5C;          /* Muted */
+  --txt-4       : #BAA5A5;          /* Lighter Muted */
 
-  --border      : #EBEBEB;
-  --border-2    : #E0E0E0;
+  --border      : #E8D5D5;          /* Blush-dark/border */
+  --border-2    : #DDC0C0;
 
   --success     : #2a9d6e;
   --success-bg  : #edfaf4;
@@ -150,7 +150,7 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-ui); font-weight: 600; line-height: 
   transition: border-color var(--t), box-shadow var(--t);
 }
 .form-input::placeholder { color: var(--txt-4); }
-.form-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(48,157,142,0.12); }
+.form-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(107,26,26,0.12); }
 .form-input.error { border-color: var(--error); box-shadow: 0 0 0 3px rgba(220,53,69,0.10); }
 .form-input.no-icon { padding-left: 13px; }
 .form-textarea { height: auto; min-height: 100px; padding-top: 11px; padding-left: 13px; resize: vertical; font-family: var(--font-ui); }
@@ -191,13 +191,13 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-ui); font-weight: 600; line-height: 
   padding: 3px 9px; border-radius: var(--r-full);
   letter-spacing: 0.03em; text-transform: uppercase;
 }
-.badge-brand       { background: var(--brand-light); color: var(--brand-deeper); }
-.badge-student     { background: var(--brand-light); color: var(--brand-deeper); }
+.badge-brand       { background: var(--brand-light); color: var(--brand); }
+.badge-student     { background: var(--brand-light); color: var(--brand); }
 .badge-mentor      { background: #eff4fe; color: #1d4ed8; }
 .badge-admin       { background: var(--warning-bg); color: #92400e; }
 .badge-approved    { background: var(--success-bg); color: #166534; }
 .badge-pending     { background: var(--warning-bg); color: #92400e; }
-.badge-beginner    { background: rgba(48,157,142,0.10); color: var(--brand-deeper); }
+.badge-beginner    { background: var(--brand-light); color: var(--brand); }
 .badge-intermediate{ background: rgba(37,99,235,0.10); color: #1e40af; }
 .badge-advanced    { background: rgba(220,53,69,0.10); color: #991b1b; }
 .badge-live        { background: var(--success-bg); color: var(--success); }
@@ -233,37 +233,47 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-ui); font-weight: 600; line-height: 
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
 
 /* ── Avatar ──────────────────────────────────────────────── */
-.avatar { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-ui); font-weight: 600; flex-shrink: 0; background: var(--brand-subtle); color: var(--brand-deeper); }
-.avatar-initials { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-ui); font-weight: 600; flex-shrink: 0; background: var(--brand-subtle); color: var(--brand-deeper); }
+.avatar { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-ui); font-weight: 600; flex-shrink: 0; background: var(--brand-subtle); color: var(--brand); }
+.avatar-initials { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-ui); font-weight: 600; flex-shrink: 0; background: var(--brand-subtle); color: var(--brand); }
 
-/* ── Sidebar (shared) ────────────────────────────────────── */
+/* ── Sidebar (sleek dark maroon) ─────────────────────────── */
 .sidebar {
-  width: 232px; flex-shrink: 0;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  width: 240px; flex-shrink: 0;
+  background: var(--brand-dark);
+  border-right: 1px solid rgba(255,255,255,0.06);
   display: flex; flex-direction: column;
   padding: 0; gap: 0;
   position: sticky; top: 0; height: 100svh; overflow-y: auto;
 }
 .sidebar-logo-area {
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.sidebar-nav { padding: 12px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sidebar-logo-area .nav-logo-text {
+  color: #fff !important;
+}
+.sidebar-logo-area .nav-logo-text span {
+  color: var(--blush-mid) !important;
+}
+.sidebar-nav { padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .sidebar-nav-item {
-  display: flex; align-items: center; gap: 9px;
-  padding: 9px 12px; border-radius: var(--r-md);
-  font-size: 13.5px; font-weight: 400; color: var(--txt-3);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: var(--r-md);
+  font-size: 13.5px; font-weight: 500; color: rgba(255,255,255,0.7);
   text-decoration: none; transition: all var(--t); border: 1px solid transparent;
   cursor: pointer; background: none; width: 100%; font-family: var(--font-ui);
 }
-.sidebar-nav-item i { font-size: 17px; flex-shrink: 0; }
-.sidebar-nav-item:hover { background: var(--bg); color: var(--txt-1); }
-.sidebar-nav-item.active { background: var(--brand-light); color: var(--brand); border-color: var(--brand-border); font-weight: 500; }
-.sidebar-footer { padding: 12px 10px; border-top: 1px solid var(--border); }
-.sidebar-logout { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 12px; border-radius: var(--r-md); border: none; background: none; color: var(--txt-3); font-size: 13.5px; font-weight: 400; cursor: pointer; transition: all var(--t); font-family: var(--font-ui); }
-.sidebar-logout:hover { background: var(--error-bg); color: var(--error); }
-.sidebar-logout i { font-size: 17px; }
+.sidebar-nav-item i { font-size: 18px; flex-shrink: 0; color: rgba(255,255,255,0.5); transition: color var(--t); }
+.sidebar-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.sidebar-nav-item:hover i { color: #fff; }
+.sidebar-nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.15); font-weight: 600; }
+.sidebar-nav-item.active i { color: #fff; }
+.sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+.sidebar-logout { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border-radius: var(--r-md); border: none; background: none; color: rgba(255,255,255,0.6); font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all var(--t); font-family: var(--font-ui); }
+.sidebar-logout:hover { background: rgba(220,53,69,0.2); color: #ff9fa6; }
+.sidebar-logout i { font-size: 18px; color: rgba(255,255,255,0.4); }
+.sidebar-logout:hover i { color: #ff9fa6; }
+
 
 /* ── Top bar (app pages) ─────────────────────────────────── */
 .topbar {

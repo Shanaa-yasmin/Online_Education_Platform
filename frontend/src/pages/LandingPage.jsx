@@ -1,9 +1,22 @@
 // LandingPage.jsx — matches the uploaded homepage design exactly
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [heroSearch, setHeroSearch] = useState('');
+
+  const handleHeroSearch = (e) => {
+    e.preventDefault();
+    const q = heroSearch.trim();
+    if (q) {
+      navigate(`/courses?q=${encodeURIComponent(q)}`);
+    } else {
+      navigate('/courses');
+    }
+  };
+
   return (
     <div className="landing">
 
@@ -31,6 +44,16 @@ export default function LandingPage() {
           <div className="hero-eyebrow"><i className="ti ti-sparkles" /> #1 Rated EdTech Platform 2025</div>
           <h1 className="hero-h1">Bridge the gap between <em>skills and success</em></h1>
           <p className="hero-sub">Humans where it matters, technology where it scales. We help learners grow and turn learning outcomes into measurable career impact.</p>
+          <form className="hero-search-form" onSubmit={handleHeroSearch}>
+            <i className="ti ti-search" />
+            <input
+              type="text"
+              placeholder="Search for courses, topics, or mentors..."
+              value={heroSearch}
+              onChange={e => setHeroSearch(e.target.value)}
+            />
+            <button type="submit" className="cta-primary">Search</button>
+          </form>
           <div className="hero-cta">
             <button className="cta-primary" onClick={() => navigate('/register')}><i className="ti ti-compass" /> Explore Programs</button>
             <button className="cta-secondary" onClick={() => navigate('/register')}>Become a Partner</button>

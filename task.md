@@ -41,17 +41,17 @@
 - [x] Implement refund logic & entitlement rollback
 
 ## Phase 6: Real-time Q&A Chat
-- [ ] Setup Django Channels Routing & Consumer
-- [ ] Configure Redis Channel Layer
-- [ ] Implement threaded messages database storage
-- [ ] Create message flagging & moderation controls
-- [ ] Build live Q&A Chat component in React
+- [x] Setup Django Channels Routing & Consumer
+- [x] Configure Redis Channel Layer
+- [x] Implement threaded messages database storage
+- [x] Create message flagging & moderation controls
+- [x] Build live Q&A Chat component in React
 
 ## Phase 7: Search & Filtering
-- [ ] Implement abstract Search Service class (supporting both Local DB search & Elasticsearch)
-- [ ] Implement database-backed fallback search and filtering logic (price, level, duration, rating)
-- [ ] Define Elasticsearch index schema for production deployment
-- [ ] Build search & advanced filtering APIs with autocomplete on the frontend
+- [x] Implement abstract Search Service class (supporting both Local DB search & Elasticsearch)
+- [x] Implement database-backed fallback search and filtering logic (price, level, duration, rating)
+- [x] Define Elasticsearch index schema for production deployment
+- [x] Build search & advanced filtering APIs with autocomplete on the frontend
 
 
 ## Phase 8: Ratings, Reviews & Notifications

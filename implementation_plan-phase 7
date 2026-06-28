@@ -1,100 +1,88 @@
-# Phase 7: Search & Rich Filtering
+# Implementation Plan - Phase 7: Search & Rich Filtering
 
-Adds a powerful, faceted course search and filtering system. Since this project runs locally without an Elasticsearch or Redis cluster, Phase 7 uses **Django ORM full-text search** (`SearchVector` / `SearchQuery` — built into PostgreSQL) with **SQLite fallback via `Q` objects**, combined with **`django-filter`** (already installed) for faceted filtering. This gives a production-grade API without requiring external services.
+This plan details the design and changes to build a rich search and filtering system for courses, enabling students to search by text and filter by difficulty level, price range, language, and average rating.
 
----
-
-## Approach
+## User Review Required
 
 > [!IMPORTANT]
-> **No Elasticsearch required**: The `elasticsearch` package is in `requirements.txt` but no ES host is configured in `.env`. We will use Django's built-in `SearchVector`/`SearchQuery` with a **`LIKE`-based fallback** that works on both SQLite (dev) and PostgreSQL (prod). This keeps local development fully self-contained.
-
-> [!NOTE]
-> A dedicated `GET /api/search/courses/` endpoint is created (separate from the existing `/api/courses/` CRUD list) so the search path is clean and doesn't interfere with role-based CRUD queries. This also makes it easy to point a search bar at it from anywhere in the UI.
-
----
+> - **No Elasticsearch Dependency**: We use SQLite database-backed searching with `Q` queries for local development (which fallbacks to Django ORM full-text capabilities for production). This avoids the need to run an external Elasticsearch server locally.
+> - **Search API Endpoint**: The search endpoint will be exposed at `/api/courses/search/` (accessible publicly without authentication) to support seamless searching from any part of the application.
 
 ## Proposed Changes
 
 ### Backend
 
-#### [NEW] `backend/courses/filters.py`
-- `CourseFilter` using `django-filter`:
-  - `search` — full-text keyword match on `title`, `description`, and `mentor__username`
-  - `level` — exact match (`BEGINNER` / `INTERMEDIATE` / `ADVANCED`)
-  - `language` — case-insensitive contains
-  - `min_price`, `max_price` — numeric range
-  - `min_rating` — aggregate filter (annotate avg rating ≥ value)
-  - `ordering` — sort by `price`, `-price`, `created_at`, `-created_at`, `rating`
-  - `is_free` — boolean shortcut (`price=0`)
+#### [NEW] [filters.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/filters.py)
+- Create `CourseFilter` class inheriting from `django_filters.FilterSet`:
+  - `search`: Custom text filter performing a case-insensitive search across course `title`, `description`, and the mentor's `username`.
+  - `level`: Exact match (`BEGINNER`, `INTERMEDIATE`, `ADVANCED`).
+  - `language`: Case-insensitive contains match.
+  - `min_price` and `max_price`: Numeric range filters on `price`.
+  - `is_free`: Boolean filter which returns courses with `price = 0`.
+  - `min_rating`: Custom filter that annotations average rating (`Avg('reviews__rating')`) and filters for courses with average rating greater than or equal to the query.
+  - `ordering`: Orders by `price`, `-price`, `created_at`, `-created_at`, and `rating`.
 
-#### [MODIFY] `backend/courses/views.py`
-- Add a new `CourseSearchView` (`ListAPIView`):
-  - `permission_classes = [AllowAny]` — public search, no login required
-  - Queryset: only `is_approved=True, is_published=True` courses
-  - Annotates with `avg_rating` (via `Avg('reviews__rating')`) and `enrollment_count` (via `Count('enrollments')`)
-  - Applies `CourseFilter` for faceted filtering
-  - Returns paginated results (`PageNumberPagination`, `page_size=12`)
-  - Returns a `facets` object alongside results containing unique `levels`, `languages`, and `price_range` for the frontend to build dynamic filter panels
+#### [MODIFY] [views.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/views.py)
+- Import `CourseFilter` from `.filters`.
+- Create `CourseSearchView` inheriting from `rest_framework.generics.ListAPIView`:
+  - Allow unauthenticated access using `permission_classes = [permissions.AllowAny]`.
+  - Filter the query set to only return approved and published courses: `Course.objects.filter(is_approved=True, is_published=True)`.
+  - Annotate results with `avg_rating` (`Avg('reviews__rating')`) and `enrollment_count` (`Count('enrollments')`).
+  - Use `CourseFilter` as the filterset class.
+  - Customize the list response to include `facets` alongside the results (min/max price, available levels, available languages) to help the frontend build dynamic filters.
 
-#### [MODIFY] `backend/courses/urls.py`
-- Add `path('search/', CourseSearchView.as_view(), name='course-search')`
+#### [MODIFY] [serializers.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/serializers.py)
+- Implement `CourseSearchSerializer` inheriting from `CourseListSerializer` to include `avg_rating` and `enrollment_count`.
 
-#### [NEW] `backend/courses/serializers.py` *(extend)*
-- Add `CourseSearchSerializer` with `avg_rating`, `enrollment_count`, `mentor_name` (read-only)
+#### [MODIFY] [urls.py](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/backend/courses/urls.py)
+- Route the `CourseSearchView` at `path('courses/search/', CourseSearchView.as_view(), name='course-search')` (preceding the ViewSet routes).
 
 ---
 
 ### Frontend
 
-#### [NEW] `frontend/src/pages/SearchPage.jsx`
-- Full-page search experience:
-  - Hero search bar with debounced input (300ms)
-  - Left filter sidebar:
-    - Level checkboxes (Beginner / Intermediate / Advanced)
-    - Price range slider (`min_price` / `max_price`)
-    - Language dropdown
-    - Free-only toggle
-    - Sort dropdown (Newest / Price ↑↓ / Rating)
-  - Right results grid:
-    - Course cards with thumbnail, title, mentor, avg rating stars, price, enrollment count
-    - Skeleton loaders while fetching
-    - Empty state with illustration
-    - Pagination controls
-  - Active filter chips bar (shows applied filters with ✕ to remove)
-  - URL query params are kept in sync with filter state (so the search is shareable/bookmarkable via React Router)
+#### [NEW] [SearchPage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/SearchPage.jsx)
+- Build a dedicated course search page:
+  - Hero search input field with debounce logic (300ms delay).
+  - Left Filter Sidebar:
+    - Difficulty checkboxes (Beginner, Intermediate, Advanced).
+    - Price range slider or inputs.
+    - Free-only toggle switch.
+    - Language select dropdown.
+    - Rating threshold selectors (e.g. 4.0+ Stars, 3.0+ Stars).
+  - Right Results Grid:
+    - Lists course cards with thumbnail, rating stars, price tag, mentor, and enrollment numbers.
+    - Displays elegant loading skeletons during fetch.
+    - Implements an empty state illustration with reset filter options.
+    - Pagination controls at the bottom.
+  - Synchronization: Sync filter state with URL query parameters so users can share or bookmark search queries.
 
-#### [NEW] `frontend/src/pages/SearchPage.css`
-- Styles for filter sidebar, result grid, course cards, skeleton loaders, pagination, active filter chips, and responsive mobile layout (sidebar collapses to a filter drawer)
+#### [NEW] [SearchPage.css](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/SearchPage.css)
+- Implement styling for the layout: sidebar, card grids, slider inputs, dynamic badges, responsive mobile layout (collapsible search drawer), and skeleton pulses.
 
-#### [MODIFY] `frontend/src/pages/App.jsx`
-- Add route `<Route path="/search" element={<SearchPage />} />`
+#### [MODIFY] [App.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/App.jsx)
+- Import `SearchPage` and add route: `<Route path="/search" element={<SearchPage />} />`.
 
-#### [MODIFY] `frontend/src/pages/LandingPage.jsx` *(minor)*
-- Wire the hero search bar's submit to navigate to `/search?q=<term>`
+#### [MODIFY] [LandingPage.jsx](file:///c:/Users/shans/CascadeProjects/Online_Education_Platform/frontend/src/pages/LandingPage.jsx)
+- Update the main hero search input to navigate users to `/search?q=<term>`.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-```powershell
-.venv\Scripts\python manage.py test courses.tests --verbosity=2
-```
-Tests will cover:
-- Keyword search returns matching courses (title, description, mentor)
-- Level filter returns only correct level
-- Price range filter (min/max)
-- `is_free` filter
-- `avg_rating` annotation is computed correctly
-- Unapproved/unpublished courses are excluded from search results
-- Pagination works correctly
-- Empty results return `[]` not 500
+- Create `backend/courses/test_search.py` (or add to `tests.py`) testing the search endpoints:
+  - Keyword search on title/description/mentor username.
+  - Levels, ratings, and price filtering.
+  - Verification that unpublished/unapproved courses are excluded.
+  - Run with:
+    ```powershell
+    .venv\Scripts\python manage.py test courses
+    ```
 
 ### Manual Verification
-1. Open `/search` — confirm skeleton loaders then results appear
-2. Type in the search bar — confirm debounced live results update
-3. Apply Level = Beginner filter — confirm only beginner courses shown
-4. Set max price to 0 — confirm only free courses shown
-5. Change sort to "Highest Rated" — confirm ordering is correct
-6. Share the URL — confirm reloading restores exact same filters
+1. Open `/search` and ensure that all available courses load after showing loading skeletons.
+2. Enter search text and verify that results dynamically update after 300ms debounce.
+3. Test filters (Level, Price, Free, and Rating) and ensure the resulting count and cards are correct.
+4. Verify pagination controls.
+5. Copy the search page URL, open it in a new tab, and confirm that all filters are restored.
