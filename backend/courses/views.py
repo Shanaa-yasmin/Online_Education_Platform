@@ -220,3 +220,33 @@ class CourseSearchView(generics.ListAPIView):
             'results': serializer.data,
             'facets': facets
         })
+
+
+class CourseAutocompleteView(generics.GenericAPIView):
+    """
+    Lightweight autocomplete endpoint for course title suggestions.
+    GET /api/courses/autocomplete/?q=<query>
+    - Minimum 2 characters required
+    - Returns up to 8 approved & published courses
+    - Uses .values() for minimal DB overhead
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        q = request.query_params.get('q', '').strip()
+
+        if len(q) < 2:
+            return Response([])
+
+        suggestions = (
+            Course.objects.filter(
+                is_approved=True,
+                is_published=True,
+                title__icontains=q
+            )
+            .only('id', 'title', 'slug')
+            .values('id', 'title', 'slug')
+            .order_by('title')[:8]
+        )
+
+        return Response(list(suggestions))

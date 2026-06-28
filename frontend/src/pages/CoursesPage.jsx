@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
+import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
 import './CoursesPage.css';
 
 // SVG Icons
@@ -214,17 +215,18 @@ export default function CoursesPage() {
           {/* Main Rich Filtering System */}
           <div className="rich-catalog-controls">
             <div className="controls-row-top">
-              <div className="search-wrap">
-                <i className="ti ti-search" />
-                <input
-                  placeholder="Search title, description, or mentor..."
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                />
-                {searchInput && (
-                  <button className="clear-search-btn" onClick={() => setSearchInput('')}>✕</button>
-                )}
-              </div>
+              <SearchAutocomplete
+                value={searchInput}
+                onChange={setSearchInput}
+                onSelect={(suggestion) => {
+                  // Fill input with the selected title — the debounce effect
+                  // will push it to the URL param automatically
+                  setSearchInput(suggestion.title);
+                }}
+                onSubmit={() => { /* search fires via debounce effect */ }}
+                placeholder="Search title, description, or mentor..."
+                className="courses-sac"
+              />
 
               <div className="filter-select-wrap">
                 <label>Sort by:</label>

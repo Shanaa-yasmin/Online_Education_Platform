@@ -1,0 +1,186 @@
+/* ─────────────────────────────────────────────────────────────
+   SearchAutocomplete.css
+   Modern, accessible autocomplete dropdown styles
+───────────────────────────────────────────────────────────── */
+
+/* Root wrapper — relative so dropdown can absolute-position below */
+.sac-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 520px;
+  background: var(--surface, #fff);
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 100px;
+  padding: 0;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sac-wrap:focus-within {
+  border-color: var(--brand, #309d8e);
+  box-shadow: 0 0 0 3px rgba(48, 157, 142, 0.12);
+}
+
+/* Icons */
+.sac-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 16px;
+  color: var(--txt-4, #9ca3af);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+/* Input field */
+.sac-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 80px 0 42px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 14px;
+  color: var(--txt-1, #111827);
+  border-radius: 100px;
+}
+
+.sac-input::placeholder {
+  color: var(--txt-4, #9ca3af);
+}
+
+/* Loading spinner */
+.sac-spinner {
+  position: absolute;
+  right: 44px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border, #e5e7eb);
+  border-top-color: var(--brand, #309d8e);
+  border-radius: 50%;
+  animation: sac-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes sac-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Clear button */
+.sac-clear-btn {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--txt-4, #9ca3af);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sac-clear-btn:hover {
+  color: var(--txt-1, #111827);
+  background: var(--border, #e5e7eb);
+}
+
+/* ── Dropdown ────────────────────────────────────────────────── */
+.sac-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 6px -1px rgba(0,0,0,0.07),
+    0 10px 30px -5px rgba(0,0,0,0.10);
+  overflow: hidden;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: 340px;
+  overflow-y: auto;
+
+  /* Smooth entrance */
+  animation: sac-appear 0.14s ease;
+  transform-origin: top center;
+}
+
+@keyframes sac-appear {
+  from { opacity: 0; transform: scaleY(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scaleY(1) translateY(0); }
+}
+
+/* Empty state */
+.sac-empty {
+  padding: 14px 18px;
+  font-size: 13.5px;
+  color: var(--txt-4, #9ca3af);
+  text-align: center;
+}
+
+/* Individual suggestion row */
+.sac-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.12s;
+  user-select: none;
+}
+
+.sac-item:hover,
+.sac-item--active {
+  background: rgba(48, 157, 142, 0.07);
+}
+
+.sac-item-icon {
+  font-size: 14px;
+  color: var(--txt-4, #9ca3af);
+  flex-shrink: 0;
+}
+
+.sac-item-text {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 450;
+  color: var(--txt-1, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Matching text highlight */
+.sac-highlight {
+  background: none;
+  color: var(--brand, #309d8e);
+  font-weight: 700;
+  padding: 0;
+}
+
+/* Arrow icon on the right — indicates navigable */
+.sac-item-arrow {
+  font-size: 12px;
+  color: var(--txt-4, #9ca3af);
+  opacity: 0;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.sac-item:hover .sac-item-arrow,
+.sac-item--active .sac-item-arrow {
+  opacity: 1;
+}
+
+/* Scrollbar inside dropdown */
+.sac-dropdown::-webkit-scrollbar { width: 4px; }
+.sac-dropdown::-webkit-scrollbar-thumb { background: var(--border, #e5e7eb); border-radius: 4px; }

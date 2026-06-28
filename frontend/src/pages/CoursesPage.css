@@ -28,6 +28,13 @@
   flex-wrap: wrap;
 }
 
+/* SearchAutocomplete sizing override inside catalog controls */
+.courses-sac {
+  flex: 1;
+  max-width: 520px;
+  border-radius: 100px;
+}
+
 .controls-row-filters {
   display: flex;
   align-items: center;
