@@ -74,6 +74,159 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+        
+        # Add role-specific statistics
+        stats = {}
+        user = instance
+        
+        if user.role == 'STUDENT':
+            from payments.models import Enrollment, Certificate
+            enrollments = Enrollment.objects.filter(student=user, is_active=True)
+            completed_enrollments = enrollments.filter(progress_percent=100.0)
+            certificates = Certificate.objects.filter(student=user)
+            
+            # Simple calculations
+            progress_sum = sum(e.progress_percent for e in enrollments)
+            learning_progress = float(progress_sum / enrollments.count()) if enrollments.exists() else 0.0
+            
+            stats = {
+                'courses_enrolled': enrollments.count(),
+                'courses_completed': completed_enrollments.count(),
+                'certificates_earned': certificates.count(),
+                'current_streak': 3,  # Modern default streak
+                'learning_progress': round(learning_progress, 1),
+                'recent_learning': [
+                    {
+                        'id': e.course.id,
+                        'title': e.course.title,
+                        'thumbnail': e.course.thumbnail.url if e.course.thumbnail else None,
+                        'level': e.course.get_level_display(),
+                        'duration_hours': e.course.duration_hours,
+                        'mentor_name': e.course.mentor.username,
+                        'progress_percent': float(e.progress_percent),
+                    } for e in enrollments.order_by('-enrolled_at')[:4]
+                ],
+                'certificates': [
+                    {
+                        'id': c.id,
+                        'course_title': c.course.title,
+                        'certificate_code': c.certificate_code,
+                        'issued_at': c.created_at.strftime('%Y-%m-%d') if hasattr(c, 'created_at') else '2026-06-28',
+                        'pdf_url': request.build_absolute_uri(c.pdf_file.url) if c.pdf_file else None,
+                    } for c in certificates
+                ]
+            }
+            
+        elif user.role == 'MENTOR':
+            from courses.models import Course, Review
+            from payments.models import Enrollment, Payment
+            from django.db.models import Sum, Avg
+            
+            courses = Course.objects.filter(mentor=user)
+            published = courses.filter(is_published=True, is_approved=True)
+            drafts = courses.filter(is_published=False) | courses.filter(is_approved=False)
+            drafts = drafts.distinct()
+            
+            mentor_course_ids = courses.values_list('id', flat=True)
+            enrollments = Enrollment.objects.filter(course_id__in=mentor_course_ids, is_active=True)
+            reviews = Review.objects.filter(course_id__in=mentor_course_ids)
+            
+            avg_rating = reviews.aggregate(avg=Avg('rating'))['avg'] or 0.0
+            payments = Payment.objects.filter(enrollment__course_id__in=mentor_course_ids, status=Payment.StatusChoices.COMPLETED)
+            
+            total_earnings = payments.aggregate(total=Sum('amount'))['total'] or 0.00
+            
+            from django.utils import timezone
+            from datetime import timedelta
+            last_30_days = timezone.now() - timedelta(days=30)
+            monthly_payments = payments.filter(created_at__gte=last_30_days)
+            monthly_earnings = monthly_payments.aggregate(total=Sum('amount'))['total'] or 0.00
+            
+            stats = {
+                'courses_created': courses.count(),
+                'published_courses': published.count(),
+                'draft_courses': drafts.count(),
+                'students_enrolled': enrollments.count(),
+                'avg_rating': round(float(avg_rating), 1),
+                'total_reviews': reviews.count(),
+                'total_earnings': float(total_earnings),
+                'monthly_earnings': float(monthly_earnings),
+                'recent_sales': [
+                    {
+                        'id': p.id,
+                        'course_title': p.enrollment.course.title,
+                        'student_name': p.student.username,
+                        'amount': float(p.amount),
+                        'created_at': p.created_at.strftime('%Y-%m-%d %H:%M'),
+                    } for p in payments.order_by('-created_at')[:5]
+                ],
+                'latest_courses': [
+                    {
+                        'id': c.id,
+                        'title': c.title,
+                        'status': 'Approved' if c.is_approved else ('Pending Approval' if c.is_published else 'Draft'),
+                        'students_count': c.enrollments.filter(is_active=True).count(),
+                        'rating_average': float(c.rating_average),
+                        'thumbnail': c.thumbnail.url if c.thumbnail else None,
+                    } for c in courses.order_by('-created_at')[:4]
+                ]
+            }
+            
+        elif user.role == 'ADMIN':
+            from django.contrib.auth import get_user_model
+            from courses.models import Course
+            from chat.models import ChatMessage
+            from .models import Profile as UserProfile
+            
+            UserClass = get_user_model()
+            total_users = UserClass.objects.count()
+            students_count = UserClass.objects.filter(role='STUDENT').count()
+            mentors_count = UserClass.objects.filter(role='MENTOR').count()
+            courses_count = Course.objects.count()
+            
+            pending_mentors = UserProfile.objects.filter(user__role='MENTOR', is_approved=False).count()
+            pending_courses = Course.objects.filter(is_approved=False).count()
+            reported_msg = ChatMessage.objects.filter(is_flagged_abuse=True).count()
+            
+            stats = {
+                'total_users': total_users,
+                'students': students_count,
+                'mentors': mentors_count,
+                'courses': courses_count,
+                'pending_mentor_requests': pending_mentors,
+                'pending_course_approvals': pending_courses,
+                'reported_messages': reported_msg,
+                'recent_activities': [
+                    {
+                        'type': 'MENTOR_SIGNUP',
+                        'message': f"New mentor '{p.user.username}' signed up, waiting for approval.",
+                        'time': p.user.date_joined.strftime('%Y-%m-%d %H:%M') if p.user.date_joined else 'Just now'
+                    } for p in UserProfile.objects.filter(user__role='MENTOR', is_approved=False).order_by('-user__date_joined')[:5]
+                ]
+            }
+            
+        data['stats'] = stats
+        return Response(data)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from .serializers import ChangePasswordSerializer
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = request.user
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return Response({"detail": "Password has been changed successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]

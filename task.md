@@ -55,12 +55,17 @@
 
 
 ## Phase 8: Ratings, Reviews & Notifications
-- [ ] Implement one-review-per-course validation
-- [ ] Add ratings calculations triggers (average rating aggregation)
-- [ ] Create notification model and WebSocket consumers for in-app alerts
-- [ ] Configure email notification sender (mock/SMTP)
+- [x] Implement one-review-per-course validation
+- [x] Add ratings calculations triggers (average rating aggregation)
+- [x] Create notification model and WebSocket consumers for in-app alerts
+- [x] Configure email notification sender (mock/SMTP)
+- [x] Build frontend notification integrations/alerts (NotificationBell + toast + websocket connection)
 
-## Phase 9: Frontend Integration & Polish
-- [ ] Integrate React Query / State management
-- [ ] Apply rich aesthetic design, responsive layouts, transitions, loading skeletons
-- [ ] Verify accessibility and SEO metadata
+## Phase 9: Frontend Integration & Polish / Role-Based Profile Page
+- [x] Rebuild premium Role-Based Profile Page (`ProfilePage.jsx` and `ProfilePage.css`)
+  - [x] Implement stats fetching and stats card views (Student/Mentor/Admin)
+  - [x] Implement contact field edit forms (Username, first/last names, phone, website, location, bio, titles, skills)
+  - [x] Implement secure Change Password panel with validation
+- [x] Integrate React Query / State management / general polish
+- [x] Apply rich aesthetic design, responsive layouts, transitions, loading skeletons
+- [x] Verify accessibility and SEO metadata

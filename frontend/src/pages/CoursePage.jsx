@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
+import ReviewsList from '../components/reviews/ReviewsList';
 import './CoursePage.css';
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -286,6 +287,13 @@ export default function CoursePage() {
               </div>
             )}
           </div>
+
+          {/* ── Reviews Section ──────────────────────────────────────── */}
+          <ReviewsList
+            courseId={courseId}
+            isEnrolled={isEnrolled}
+            user={user}
+          />
         </div>
 
         {/* ── Right: Enrollment Card ───────────────────────────────────── */}

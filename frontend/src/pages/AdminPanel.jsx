@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
+import NotificationBell from '../components/NotificationBell.jsx';
 import './AdminPanel.css';
 
 function Sidebar({ onLogout, loggingOut }) {
@@ -26,6 +28,7 @@ function Sidebar({ onLogout, loggingOut }) {
 }
 
 export default function AdminPanel() {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setTab]         = useState('courses');
   const [pendingCourses, setPendingCourses] = useState([]);
@@ -73,7 +76,7 @@ export default function AdminPanel() {
     }
   };
 
-  const handleLogout = async () => { setLoggingOut(true); const { useAuth } = await import('../context/AuthContext.jsx'); navigate('/login'); };
+  const handleLogout = async () => { setLoggingOut(true); await logout(); navigate('/login'); };
 
   return (
     <div className="page-shell">
@@ -81,6 +84,9 @@ export default function AdminPanel() {
       <div className="inner-page">
         <header className="topbar">
           <div className="topbar-left"><h1>Admin Portal</h1><p>Review and moderate content submissions</p></div>
+          <div className="topbar-right">
+            <NotificationBell user={user} />
+          </div>
         </header>
 
         <div className="admin-page-wrap">

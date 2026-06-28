@@ -6,14 +6,15 @@ from django.db.models import Q, Avg, Count, Min, Max
 from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Course, Module, Lesson, QuizQuestion
+from .models import Course, Module, Lesson, QuizQuestion, Review
 from .serializers import (
     CourseSerializer,
     CourseListSerializer,
     ModuleSerializer,
     LessonSerializer,
     QuizQuestionSerializer,
-    CourseSearchSerializer
+    CourseSearchSerializer,
+    ReviewSerializer
 )
 from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
 from .filters import CourseFilter
@@ -114,6 +115,101 @@ class CourseViewSet(viewsets.ModelViewSet):
             "detail": f"Course '{course.title}' has been unpublished.",
             "is_published": False
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get', 'post'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    def reviews(self, request, pk=None):
+        """
+        GET: Returns structured review data with distribution, average, user_review, and paginated results.
+        POST: Creates a new review or updates the existing one (create-or-update).
+        """
+        course = self.get_object()
+
+        if request.method == 'POST':
+            # Create-or-update logic
+            existing_review = Review.objects.filter(student=request.user, course=course).first()
+
+            if existing_review:
+                # Update existing review
+                serializer = ReviewSerializer(
+                    existing_review,
+                    data=request.data,
+                    partial=True,
+                    context={'request': request, 'view': self}
+                )
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Create new review
+                serializer = ReviewSerializer(data=request.data, context={'request': request, 'view': self})
+                if serializer.is_valid():
+                    serializer.save(student=request.user, course=course)
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # ── GET method ────────────────────────────────────────────────
+        reviews_qs = course.reviews.select_related('student').order_by('-created_at')
+
+        # Rating distribution (5 → 1)
+        distribution_raw = reviews_qs.values('rating').annotate(count=Count('id'))
+        distribution = {str(i): 0 for i in range(1, 6)}
+        for row in distribution_raw:
+            distribution[str(row['rating'])] = row['count']
+
+        # Current user's review (if authenticated)
+        user_review = None
+        if request.user and request.user.is_authenticated:
+            user_review_obj = reviews_qs.filter(student=request.user).first()
+            if user_review_obj:
+                user_review = ReviewSerializer(user_review_obj, context={'request': request, 'view': self}).data
+
+        # All reviews
+        serializer = ReviewSerializer(reviews_qs, many=True, context={'request': request, 'view': self})
+
+        return Response({
+            'average_rating': float(course.rating_average),
+            'total_reviews': course.total_reviews,
+            'distribution': distribution,
+            'user_review': user_review,
+            'results': serializer.data,
+        })
+
+
+class ReviewViewSet(viewsets.GenericViewSet):
+    """
+    Standalone ViewSet for PATCH and DELETE on individual reviews.
+    - PATCH: Only the review author can update.
+    - DELETE: The review author OR an admin can delete.
+    """
+    queryset = Review.objects.select_related('student', 'course')
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def partial_update(self, request, pk=None):
+        review = self.get_object()
+        if review.student != request.user:
+            return Response(
+                {"detail": "You can only edit your own review."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = self.get_serializer(review, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def destroy(self, request, pk=None):
+        review = self.get_object()
+        is_owner = review.student == request.user
+        is_admin = request.user.is_staff or request.user.role == 'ADMIN'
+        if not (is_owner or is_admin):
+            return Response(
+                {"detail": "You do not have permission to delete this review."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        review.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 class ModuleViewSet(viewsets.ModelViewSet):

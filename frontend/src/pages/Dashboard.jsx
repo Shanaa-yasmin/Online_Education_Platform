@@ -2,6 +2,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import api from '../utils/api.js';
+import NotificationBell from '../components/NotificationBell.jsx';
 import './Dashboard.css';
 
 function getInitials(user) {
@@ -133,10 +134,7 @@ export default function Dashboard() {
             <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
           </div>
           <div className="topbar-right">
-            <button className="topbar-icon-btn">
-              <i className="ti ti-bell" />
-              <span className="notif-dot" />
-            </button>
+            <NotificationBell user={user} />
             <Link to="/profile" className="topbar-user">
               <div className="avatar-initials" style={{width:30,height:30,fontSize:12}}>
                 {getInitials(user)}

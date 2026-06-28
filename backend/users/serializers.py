@@ -10,7 +10,7 @@ User = get_user_model()
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['bio', 'title', 'skills', 'is_approved', 'avatar']
+        fields = ['bio', 'title', 'skills', 'is_approved', 'avatar', 'phone_number', 'website', 'location']
         read_only_fields = ['is_approved']
 
 
@@ -19,15 +19,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'profile']
-        read_only_fields = ['id', 'role']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'profile']
+        read_only_fields = ['id', 'role', 'email']
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', None)
         
-        # Update User fields (first_name, last_name, email can be updated)
+        # Update User fields
         instance.username = validated_data.get('username', instance.username)
-        instance.email = validated_data.get('email', instance.email)
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
         instance.save()
 
         # Update Profile fields
@@ -36,6 +37,9 @@ class UserSerializer(serializers.ModelSerializer):
             profile.bio = profile_data.get('bio', profile.bio)
             profile.title = profile_data.get('title', profile.title)
             profile.skills = profile_data.get('skills', profile.skills)
+            profile.phone_number = profile_data.get('phone_number', profile.phone_number)
+            profile.website = profile_data.get('website', profile.website)
+            profile.location = profile_data.get('location', profile.location)
             if 'avatar' in profile_data:
                 profile.avatar = profile_data.get('avatar', profile.avatar)
             profile.save()
@@ -137,3 +141,24 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
         validate_password(attrs['new_password'])
         return attrs
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    new_password_confirm = serializers.CharField(required=True, write_only=True)
+
+    def validate_current_password(self, value):
+        user = self.context.get('request').user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({"new_password_confirm": "New passwords do not match."})
+        if attrs['new_password'] == attrs['current_password']:
+            raise serializers.ValidationError({"new_password": "New password cannot be the same as your current password."})
+        validate_password(attrs['new_password'])
+        return attrs
+

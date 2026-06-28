@@ -6,7 +6,8 @@ from .views import (
     LessonViewSet,
     QuizQuestionViewSet,
     CourseSearchView,
-    CourseAutocompleteView
+    CourseAutocompleteView,
+    ReviewViewSet
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register('courses', CourseViewSet, basename='course')
 router.register('modules', ModuleViewSet, basename='module')
 router.register('lessons', LessonViewSet, basename='lesson')
 router.register('quiz-questions', QuizQuestionViewSet, basename='quizquestion')
+router.register('reviews', ReviewViewSet, basename='review')
 
 urlpatterns = [
     path('courses/search/', CourseSearchView.as_view(), name='course-search'),

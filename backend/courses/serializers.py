@@ -63,27 +63,19 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 class CourseListSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
-    rating_average = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
             'id', 'title', 'description', 'mentor', 'price', 
             'level', 'language', 'duration_hours', 'thumbnail', 
-            'is_approved', 'is_published', 'rating_average'
+            'is_approved', 'is_published', 'rating_average', 'total_reviews'
         ]
-
-    def get_rating_average(self, obj):
-        reviews = obj.reviews.all()
-        if reviews.exists():
-            return round(sum(r.rating for r in reviews) / reviews.count(), 2)
-        return 0.0
 
 
 class CourseSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
     modules = ModuleSerializer(many=True, read_only=True)
-    rating_average = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -91,15 +83,9 @@ class CourseSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'mentor', 'price', 
             'level', 'language', 'duration_hours', 'thumbnail', 
             'is_approved', 'is_published', 'created_at', 'updated_at',
-            'modules', 'rating_average'
+            'modules', 'rating_average', 'total_reviews'
         ]
         read_only_fields = ['is_approved']
-
-    def get_rating_average(self, obj):
-        reviews = obj.reviews.all()
-        if reviews.exists():
-            return round(sum(r.rating for r in reviews) / reviews.count(), 2)
-        return 0.0
 
     def validate_price(self, value):
         if value < 0:
@@ -120,3 +106,55 @@ class CourseSearchSerializer(serializers.ModelSerializer):
             'is_approved', 'is_published', 'created_at', 'updated_at',
             'avg_rating', 'enrollment_count'
         ]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    student = UserMiniSerializer(read_only=True)
+    is_owner = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = ['id', 'course', 'student', 'rating', 'comment', 'created_at', 'updated_at', 'is_owner']
+        read_only_fields = ['id', 'course', 'student', 'created_at', 'updated_at']
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return obj.student_id == request.user.id
+        return False
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if not request or not request.user:
+            raise serializers.ValidationError("Authentication credentials were not provided.")
+        
+        user = request.user
+
+        # Skip enrollment/role checks on PATCH (partial update of existing review)
+        if self.instance is not None:
+            return attrs
+
+        # Fetch course from view context URL pk parameters
+        view = self.context.get('view')
+        if view and 'pk' in view.kwargs:
+            try:
+                course = Course.objects.get(pk=view.kwargs['pk'])
+            except Course.DoesNotExist:
+                raise serializers.ValidationError("Course not found.")
+        else:
+            course = attrs.get('course')
+
+        if not course:
+            raise serializers.ValidationError("Course is required.")
+
+        # 1. Enforce that only students can post reviews
+        if user.role != 'STUDENT':
+            raise serializers.ValidationError("Only students can write reviews.")
+
+        # 2. Enforce that only enrolled students can post reviews
+        from payments.models import Enrollment
+        if not Enrollment.objects.filter(student=user, course=course).exists():
+            raise serializers.ValidationError("You must be enrolled in the course to write a review.")
+
+        # 3. Skip duplicate check — the reviews action handles create-or-update logic
+        return attrs

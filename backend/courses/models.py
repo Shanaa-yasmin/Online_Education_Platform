@@ -28,6 +28,7 @@ class Course(models.Model):
     is_approved = models.BooleanField(default=False)  # Controlled by Admin
     is_published = models.BooleanField(default=False)  # Controlled by Mentor
     rating_average = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
+    total_reviews = models.PositiveIntegerField(default=0)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -122,6 +123,7 @@ class Review(models.Model):
     comment = models.TextField()
     is_flagged = models.BooleanField(default=False)  # Admin content moderation flag
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         # Constraint to ensure a student writes only one review per course
@@ -129,3 +131,18 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.student.username} for {self.course.title}"
+
+
+# Signals for rating aggregation
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.db.models import Avg, Count
+
+@receiver([post_save, post_delete], sender=Review)
+def update_course_rating_stats(sender, instance, **kwargs):
+    course = instance.course
+    stats = course.reviews.aggregate(avg=Avg('rating'), total=Count('id'))
+    course.rating_average = round(stats['avg'], 2) if stats['avg'] is not None else 0.00
+    course.total_reviews = stats['total']
+    course.save(update_fields=['rating_average', 'total_reviews'])
+

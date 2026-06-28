@@ -19,9 +19,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from users.views import ProfileView, ChangePasswordView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
+    path('api/profile/', ProfileView.as_view(), name='core_profile'),
+    path('api/profile/change-password/', ChangePasswordView.as_view(), name='core_change_password'),
     path('api/', include('courses.urls')),
     path('api/payments/', include('payments.urls')),
     path('api/chat/', include('chat.urls')),

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
 import './CoursesPage.css';
 
 // SVG Icons
@@ -196,6 +197,7 @@ export default function CoursesPage() {
             <p>Discover expert-led courses for your career</p>
           </div>
           <div className="topbar-right">
+            <NotificationBell user={user} />
             <Link to="/profile" className="topbar-user">
               <div className="avatar-initials" style={{ width: 30, height: 30, fontSize: 12 }}>
                 {(user?.username || 'U').slice(0, 2).toUpperCase()}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import { QAPanel } from './LearningPlayer.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
 import './MentorDashboard.css';
 
 function Sidebar({ user, onLogout, loggingOut }) {
@@ -108,6 +109,7 @@ export default function MentorDashboard() {
         <header className="topbar">
           <div className="topbar-left"><h1>Mentor Portal</h1><p>Manage your courses and curriculum</p></div>
           <div className="topbar-right">
+            <NotificationBell user={user} />
             <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}><i className="ti ti-plus" /> New Course</button>
           </div>
         </header>
