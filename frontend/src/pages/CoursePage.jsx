@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import ReviewsList from '../components/reviews/ReviewsList';
@@ -61,6 +61,7 @@ export default function CoursePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
 
   // Data
   const [course, setCourse] = useState(null);
@@ -77,6 +78,18 @@ export default function CoursePage() {
   const [pageError, setPageError] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState('');
+
+  // Scroll to reviews section if hash matches
+  useEffect(() => {
+    if (location.hash === '#reviews' && !loading) {
+      const element = document.getElementById('reviews-section');
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+      }
+    }
+  }, [location.hash, loading]);
 
   // ── Load course + enrollment ────────────────────────────────────────────
   const loadData = async () => {
@@ -289,11 +302,13 @@ export default function CoursePage() {
           </div>
 
           {/* ── Reviews Section ──────────────────────────────────────── */}
-          <ReviewsList
-            courseId={courseId}
-            isEnrolled={isEnrolled}
-            user={user}
-          />
+          <div id="reviews-section">
+            <ReviewsList
+              courseId={courseId}
+              isEnrolled={isEnrolled}
+              user={user}
+            />
+          </div>
         </div>
 
         {/* ── Right: Enrollment Card ───────────────────────────────────── */}

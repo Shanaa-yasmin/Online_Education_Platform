@@ -1,8 +1,16 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Notification
-from .serializers import NotificationSerializer
+from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
+from .models import Notification, NotificationPreference
+from .serializers import NotificationSerializer, NotificationPreferenceSerializer
+
+class NotificationPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -10,12 +18,50 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = NotificationPagination
 
     def get_queryset(self):
         # Return only the current authenticated user's notifications
-        return Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
+        queryset = Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
+        
+        is_read = self.request.query_params.get('is_read')
+        if is_read is not None:
+            if is_read.lower() == 'true':
+                queryset = queryset.filter(is_read=True)
+            elif is_read.lower() == 'false':
+                queryset = queryset.filter(is_read=False)
+                
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(message__icontains=search)
+            )
+            
+        return queryset
 
-    @action(detail=True, methods=['post'], url_path='read')
+    def destroy(self, request, *args, **kwargs):
+        notification = self.get_object()
+        notification.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        unread_count = queryset.filter(is_read=False).count()
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            response = self.get_paginated_response(serializer.data)
+            response.data['unread_count'] = unread_count
+            return response
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'unread_count': unread_count
+        })
+
+    @action(detail=True, methods=['post', 'patch'], url_path='read')
     def mark_as_read(self, request, pk=None):
         notification = self.get_object()
         notification.is_read = True
@@ -31,3 +77,28 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             "detail": f"Successfully marked {count} notifications as read.",
             "marked_count": count
         }, status=status.HTTP_200_OK)
+
+
+class NotificationPreferenceView(APIView):
+    """
+    GET/PATCH the current user's social-notification email preferences.
+    Auto-creates a row with all-defaults-off on first access, so the
+    frontend never has to handle a 404 for a user who hasn't set anything.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self, user):
+        prefs, _ = NotificationPreference.objects.get_or_create(user=user)
+        return prefs
+
+    def get(self, request):
+        prefs = self.get_object(request.user)
+        serializer = NotificationPreferenceSerializer(prefs)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        prefs = self.get_object(request.user)
+        serializer = NotificationPreferenceSerializer(prefs, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

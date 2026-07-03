@@ -137,3 +137,50 @@ class ProfileAndNotificationTests(APITestCase):
         response = self.client.post(read_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['is_read'], True)
+
+    def test_notifications_pagination_search_filter(self):
+        self.client.force_authenticate(user=self.student)
+        
+        # Create 12 notifications, some read, some unread, some with search terms
+        for i in range(12):
+            Notification.objects.create(
+                recipient=self.student,
+                title=f"Notification {i}" if i != 5 else "Special Subject",
+                message=f"Body details {i}",
+                is_read=(i % 2 == 0) # 0, 2, 4, 6, 8, 10 are read (6 total); 1, 3, 5, 7, 9, 11 are unread (6 total)
+            )
+            
+        list_url = reverse('notification-list')
+        
+        # Test pagination (should return 10 results by default page size)
+        response = self.client.get(list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 10)
+        self.assertEqual(response.data['count'], 12)
+        self.assertEqual(response.data['unread_count'], 6)
+        
+        # Test page 2 (should return 2 results)
+        response = self.client.get(list_url, {'page': 2})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 2)
+        
+        # Test filter is_read=true
+        response = self.client.get(list_url, {'is_read': 'true'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 6)
+        for item in response.data['results']:
+            self.assertTrue(item['is_read'])
+            
+        # Test filter is_read=false
+        response = self.client.get(list_url, {'is_read': 'false'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 6)
+        for item in response.data['results']:
+            self.assertFalse(item['is_read'])
+            
+        # Test search
+        response = self.client.get(list_url, {'search': 'Special'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['title'], "Special Subject")
+

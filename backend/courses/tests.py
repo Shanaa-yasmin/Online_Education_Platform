@@ -146,6 +146,29 @@ class CourseAPITests(APITestCase):
         self.assertIn('correct_option', response.data)
         self.assertEqual(response.data['correct_option'], 'B')
 
+    def test_quiz_question_check_answer_endpoint(self):
+        self.client.force_authenticate(user=self.student)
+        url = reverse('quizquestion-check-answer', kwargs={'pk': self.quiz_question.pk})
+
+        response = self.client.post(url, {"selected_option": "B"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['is_correct'])
+        self.assertEqual(response.data['correct_option'], 'B')
+        self.assertEqual(response.data['selected_option'], 'B')
+
+        response = self.client.post(url, {"selected_option": "A"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['is_correct'])
+        self.assertEqual(response.data['correct_option'], 'B')
+
+    def test_quiz_question_check_answer_rejects_invalid_option(self):
+        self.client.force_authenticate(user=self.student)
+        url = reverse('quizquestion-check-answer', kwargs={'pk': self.quiz_question.pk})
+
+        response = self.client.post(url, {"selected_option": "E"}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['detail'], 'selected_option must be one of A, B, C, D.')
+
     def test_admin_approve_course(self):
         self.client.force_authenticate(user=self.admin)
         url = reverse('course-approve', kwargs={'pk': self.course_draft.pk})

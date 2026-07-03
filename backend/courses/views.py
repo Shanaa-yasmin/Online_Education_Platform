@@ -55,6 +55,27 @@ class CourseViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only mentors or administrators can create courses.")
         serializer.save(mentor=user)
 
+    def perform_update(self, serializer):
+        old_title = serializer.instance.title
+        old_desc = serializer.instance.description
+        instance = serializer.save()
+
+        # If title or description changed, notify all enrolled students
+        if old_title != instance.title or old_desc != instance.description:
+            from payments.models import Enrollment
+            from notifications.models import Notification
+            enrollments = Enrollment.objects.filter(course=instance, is_active=True)
+            for enroll in enrollments:
+                Notification.objects.create(
+                    recipient=enroll.student,
+                    sender=instance.mentor,
+                    title="Course Updated",
+                    message=f"The course '{instance.title}' has been updated with new content.",
+                    notification_type=Notification.NotificationType.COURSE_UPDATED,
+                    related_object_id=instance.id,
+                    related_object_type="Course"
+                )
+
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminOrStaff])
     def approve(self, request, pk=None):
         """
@@ -63,6 +84,17 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = self.get_object()
         course.is_approved = True
         course.save()
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            recipient=course.mentor,
+            title="Course Approved",
+            message=f"Your course '{course.title}' has been successfully approved.",
+            notification_type=Notification.NotificationType.COURSE_APPROVED,
+            related_object_id=course.id,
+            related_object_type="Course"
+        )
+
         return Response({
             "detail": f"Course '{course.title}' has been successfully approved.",
             "is_approved": True
@@ -78,6 +110,17 @@ class CourseViewSet(viewsets.ModelViewSet):
         # If rejected, unpublish as well to keep integrity
         course.is_published = False
         course.save()
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            recipient=course.mentor,
+            title="Course Rejected",
+            message=f"Your course '{course.title}' has been rejected by moderation.",
+            notification_type=Notification.NotificationType.COURSE_REJECTED,
+            related_object_id=course.id,
+            related_object_type="Course"
+        )
+
         return Response({
             "detail": f"Course '{course.title}' has been rejected.",
             "is_approved": False,
@@ -261,6 +304,27 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add quiz questions to this lesson.")
         serializer.save()
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def check_answer(self, request, pk=None):
+        """
+        Students submit a selected option and get back whether it was correct,
+        plus the correct answer.
+        """
+        question = self.get_object()
+        selected = request.data.get('selected_option')
+
+        if selected not in ['A', 'B', 'C', 'D']:
+            return Response(
+                {"detail": "selected_option must be one of A, B, C, D."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({
+            "is_correct": selected == question.correct_option,
+            "correct_option": question.correct_option,
+            "selected_option": selected,
+        })
 
 
 class CourseSearchView(generics.ListAPIView):

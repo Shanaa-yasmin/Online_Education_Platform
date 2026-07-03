@@ -1,21 +1,23 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { lazy, Suspense } from 'react';
 import './App.css';
 
-const LandingPage     = lazy(() => import('./pages/LandingPage.jsx'));
-const LoginPage       = lazy(() => import('./pages/LoginPage.jsx'));
-const RegisterPage    = lazy(() => import('./pages/RegisterPage.jsx'));
-const DashboardPage   = lazy(() => import('./pages/Dashboard.jsx'));
-const ProfilePage     = lazy(() => import('./pages/ProfilePage.jsx'));
-const MentorDashboard = lazy(() => import('./pages/MentorDashboard.jsx'));
-const CourseBuilder   = lazy(() => import('./pages/CourseBuilder.jsx'));
-const AdminPanel      = lazy(() => import('./pages/AdminPanel.jsx'));
-const CoursesPage     = lazy(() => import('./pages/CoursesPage.jsx'));
-const CoursePage      = lazy(() => import('./pages/CoursePage.jsx'));
-const LearningPlayer  = lazy(() => import('./pages/LearningPlayer.jsx'));
-const MockCheckoutPage = lazy(() => import('./pages/MockCheckoutPage.jsx'));
+const LandingPage        = lazy(() => import('./pages/LandingPage.jsx'));
+const LoginPage          = lazy(() => import('./pages/LoginPage.jsx'));
+const RegisterPage       = lazy(() => import('./pages/RegisterPage.jsx'));
+const DashboardPage      = lazy(() => import('./pages/Dashboard.jsx'));
+const ProfilePage        = lazy(() => import('./pages/ProfilePage.jsx'));
+const NotificationCenter = lazy(() => import('./pages/NotificationCenter.jsx'));
+const MentorDashboard    = lazy(() => import('./pages/MentorDashboard.jsx'));
+const CourseBuilder      = lazy(() => import('./pages/CourseBuilder.jsx'));
+const AdminPanel         = lazy(() => import('./pages/AdminPanel.jsx'));
+const CoursesPage        = lazy(() => import('./pages/CoursesPage.jsx'));
+const CoursePage         = lazy(() => import('./pages/CoursePage.jsx'));
+const LearningPlayer     = lazy(() => import('./pages/LearningPlayer.jsx'));
+const MockCheckoutPage   = lazy(() => import('./pages/MockCheckoutPage.jsx'));
 
 const Fallback = () => (
   <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100svh',background:'#FDF9F9'}}>
@@ -23,10 +25,10 @@ const Fallback = () => (
   </div>
 );
 
-
-function App() {
+function AppContent() {
+  const { user } = useAuth();
   return (
-    <AuthProvider>
+    <NotificationProvider user={user}>
       <BrowserRouter>
         <Suspense fallback={<Fallback />}>
           <Routes>
@@ -38,6 +40,7 @@ function App() {
             {/* Protected */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/profile"   element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
             <Route path="/courses"   element={<ProtectedRoute><CoursesPage /></ProtectedRoute>} />
             <Route path="/courses/:courseId"       element={<ProtectedRoute><CoursePage /></ProtectedRoute>} />
             <Route path="/courses/:courseId/learn" element={<ProtectedRoute><LearningPlayer /></ProtectedRoute>} />
@@ -54,8 +57,17 @@ function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
+    </NotificationProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   );
 }
 
 export default App;
+

@@ -1,50 +1,277 @@
 /* Dashboard.css */
-.dashboard-page { display: flex; min-height: 100svh; background: var(--bg); }
-.dashboard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-
-/* Welcome banner */
-.welcome-banner {
-  background: linear-gradient(135deg, var(--brand-deeper) 0%, var(--brand) 60%, #4bb8a8 100%);
-  border-radius: var(--r-lg);
-  padding: 28px 32px;
-  display: flex; align-items: center; justify-content: space-between; gap: 24px;
-  position: relative; overflow: hidden;
+.dashboard-page {
+  display: flex;
+  min-height: 100svh;
+  background: var(--bg);
 }
-.welcome-banner::before { content: ''; position: absolute; width: 200px; height: 200px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.07); top: -60px; right: 60px; }
-.welcome-banner::after  { content: ''; position: absolute; width: 140px; height: 140px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.05); bottom: -40px; right: 240px; }
-.welcome-text { position: relative; z-index: 1; }
-.welcome-h { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 6px; }
-.welcome-p { font-size: 13.5px; color: rgba(255,255,255,0.72); line-height: 1.55; margin-bottom: 18px; max-width: 360px; }
-.welcome-emoji { font-size: 3rem; position: relative; z-index: 1; }
 
-/* Stats grid */
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width:  600px) { .stats-grid { grid-template-columns: 1fr; } }
+.dashboard-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-/* Section cards */
-.dash-sections { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; }
-@media (max-width: 900px) { .dash-sections { grid-template-columns: 1fr; } }
-.dash-section-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 22px; display: flex; flex-direction: column; gap: 18px; }
-.dash-section-hd { display: flex; align-items: center; justify-content: space-between; }
-.dash-section-hd h3 { font-size: 14px; font-weight: 600; color: var(--txt-1); margin: 0; }
-.dash-section-hd a { font-size: 13px; color: var(--brand); font-weight: 500; }
+/* ── Welcome banner ──────────────────────────────────────── */
+.welcome-banner {
+  background: linear-gradient(135deg, var(--brand-deeper) 0%, var(--brand-dark) 45%, var(--brand) 100%);
+  border-radius: var(--r-lg);
+  padding: 30px 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
 
-/* Quick links */
-.quick-links { display: flex; flex-direction: column; gap: 2px; }
-.quick-link-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--r-md); text-decoration: none; transition: background var(--t); }
-.quick-link-item:hover { background: var(--bg); }
-.quick-link-icon { width: 36px; height: 36px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
-.quick-link-name { font-size: 13.5px; font-weight: 500; color: var(--txt-1); margin: 0; }
-.quick-link-desc { font-size: 12px; color: var(--txt-3); margin: 1px 0 0; }
+.welcome-watermark {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-6deg);
+  font-size: 168px;
+  color: rgba(255, 255, 255, 0.055);
+  pointer-events: none;
+  z-index: 0;
+}
 
-/* Course lists inside dashboard cards */
+.welcome-text {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+}
+
+.welcome-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.welcome-h {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.welcome-p {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.welcome-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 20px;
+  height: 38px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: all var(--t);
+}
+
+.welcome-cta:hover {
+  background: #fff;
+  color: var(--brand-dark);
+  border-color: #fff;
+  transform: translateY(-1px);
+}
+
+.welcome-cta:active {
+  transform: scale(0.98);
+}
+
+.welcome-icon-medallion {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+
+.welcome-icon-medallion i {
+  font-size: 30px;
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .welcome-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 26px;
+  }
+
+  .welcome-icon-medallion {
+    display: none;
+  }
+}
+
+/* ── Stats grid ──────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--brand-border);
+}
+
+/* ── Section cards ───────────────────────────────────────── */
+.dash-sections {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .dash-sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* .card supplies background/border/radius/shadow-card — this just adds page-specific layout */
+.dash-section-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dash-section-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-section-hd h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt-1);
+  margin: 0;
+}
+
+.dash-section-hd a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.dash-section-hd a i {
+  font-size: 14px;
+  transition: transform var(--t);
+}
+
+.dash-section-hd a:hover i {
+  transform: translateX(2px);
+}
+
+/* Right column stack (activity calendar + quick access) */
+.dash-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Quick links ─────────────────────────────────────────── */
+.quick-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quick-link-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  text-decoration: none;
+  transition: background var(--t);
+}
+
+.quick-link-item:hover {
+  background: var(--bg);
+}
+
+.quick-link-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.quick-link-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--txt-1);
+  margin: 0;
+}
+
+.quick-link-desc {
+  font-size: 12px;
+  color: var(--txt-3);
+  margin: 1px 0 0;
+}
+
+/* ── Course lists inside dashboard cards ─────────────────── */
 .dash-courses-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 4px;
 }
+
 .dash-course-item {
   display: flex;
   align-items: center;
@@ -54,16 +281,20 @@
   border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
+
 .dash-course-item:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--brand-border);
 }
+
 .dash-course-info {
   flex: 1;
   min-width: 0;
 }
+
 .dash-course-title {
   font-size: 14.5px;
   font-weight: 700;
@@ -73,6 +304,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .dash-course-meta {
   font-size: 11.5px;
   color: var(--txt-3);
@@ -80,12 +312,14 @@
   display: flex;
   align-items: center;
 }
+
 .dash-progress-container {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 8px;
 }
+
 .dash-progress-bar {
   flex: 1;
   height: 6px;
@@ -93,12 +327,14 @@
   background: var(--border);
   overflow: hidden;
 }
+
 .dash-progress-fill {
   height: 100%;
   border-radius: 3px;
   background: var(--brand);
   transition: width 0.3s ease;
 }
+
 .dash-progress-text {
   font-size: 11.5px;
   font-weight: 600;
@@ -107,3 +343,63 @@
   text-align: right;
 }
 
+/* ── Skeleton loading states ──────────────────────────────── */
+@keyframes dashShimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.skeleton-block {
+  background: linear-gradient(90deg, var(--bg) 25%, var(--border) 37%, var(--bg) 63%);
+  background-size: 400% 100%;
+  animation: dashShimmer 1.4s ease infinite;
+  border-radius: var(--r-sm);
+}
+
+.stat-card-skeleton {
+  pointer-events: none;
+}
+
+.stat-card-skeleton .skeleton-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  margin-bottom: 14px;
+}
+
+.stat-card-skeleton .skeleton-num {
+  width: 48px;
+  height: 22px;
+  margin-bottom: 6px;
+}
+
+.stat-card-skeleton .skeleton-lbl {
+  width: 78px;
+  height: 12px;
+}
+
+.dash-course-item-skeleton {
+  pointer-events: none;
+}
+
+.dash-course-item-skeleton .skeleton-badge {
+  width: 60px;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.dash-course-item-skeleton .skeleton-title {
+  width: 70%;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.dash-course-item-skeleton .skeleton-meta {
+  width: 45%;
+  height: 12px;
+}

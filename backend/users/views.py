@@ -319,6 +319,17 @@ class AdminProfileApproveView(APIView):
             profile = user.profile
             profile.is_approved = True
             profile.save()
+
+            from notifications.models import Notification
+            Notification.objects.create(
+                recipient=user,
+                title="Mentor Registration Approved",
+                message="Your mentor registration application has been approved! You can now create and publish courses.",
+                notification_type=Notification.NotificationType.MENTOR_APPROVED,
+                related_object_id=user.id,
+                related_object_type="User"
+            )
+
             return Response({
                 "detail": f"Mentor {user.username} has been approved.",
                 "is_approved": True

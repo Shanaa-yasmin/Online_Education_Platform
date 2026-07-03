@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import './LearningPlayer.css';
@@ -160,7 +160,7 @@ export function QAPanel({ courseId, user }) {
     ws.onclose = () => setWsStatus('closed');
 
     return () => ws.close();
-  }, [courseId]);
+  }, [courseId, user]);
 
   const sendMessage = useCallback(() => {
     const text = inputText.trim();
@@ -318,16 +318,30 @@ export default function LearningPlayer() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const location = useLocation();
 
   const [course, setCourse]               = useState(null);
   const [enrollment, setEnrollment]       = useState(null);
   const [completedLessons, setCompletedLessons] = useState({});
   const [activeLesson, setActiveLesson]   = useState(null);
-  const [activeTab, setActiveTab]         = useState('lesson'); // 'lesson' | 'qa'
+
+  // Read initial tab parameter
+  const searchParams = new URLSearchParams(location.search);
+  const [activeTab, setActiveTab]         = useState(searchParams.get('tab') || 'lesson'); // 'lesson' | 'qa'
+
+  // Update active tab when URL changes (deep linking)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'qa' || tab === 'lesson') {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
 
   const [loading, setLoading]     = useState(true);
   const [completing, setCompleting] = useState(false);
   const [error, setError]         = useState('');
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   // Quiz states
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -335,8 +349,9 @@ export default function LearningPlayer() {
   const [isAnswerSubmitted, setIsAnswerSubmitted]   = useState(false);
   const [quizScore, setQuizScore]                   = useState(0);
   const [quizFinished, setQuizFinished]             = useState(false);
+  const [answerResult, setAnswerResult]             = useState(null);
 
-  const loadLearningData = async () => {
+  const loadLearningData = useCallback(async () => {
     try {
       setLoading(true);
       const courseResponse = await api.get(`/api/courses/${courseId}/`);
@@ -357,15 +372,15 @@ export default function LearningPlayer() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, navigate]);
 
-  useEffect(() => { if (user) loadLearningData(); }, [courseId, user]);
+  useEffect(() => { if (user) loadLearningData(); }, [user?.id, loadLearningData]);
 
   const handleLessonClick = (lesson) => {
     setActiveLesson(lesson);
     setActiveTab('lesson');
     setCurrentQuestionIdx(0); setSelectedAnswer(null);
-    setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false);
+    setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false); setAnswerResult(null);
   };
 
   const handleMarkComplete = async () => {
@@ -391,26 +406,35 @@ export default function LearningPlayer() {
     if (idx !== -1 && idx < flatLessons.length - 1) {
       handleLessonClick(flatLessons[idx + 1]);
     } else {
-      alert('🎉 Congratulations! You have completed the entire course!');
+      setShowCompletionModal(true);
     }
   };
 
   // Quiz handlers
   const handleQuizAnswerSelect  = (key) => { if (!isAnswerSubmitted) setSelectedAnswer(key); };
-  const handleQuizSubmitAnswer  = () => {
+  const handleQuizSubmitAnswer  = async () => {
     if (!selectedAnswer || isAnswerSubmitted) return;
     const q = activeLesson.quiz_questions[currentQuestionIdx];
-    if (selectedAnswer === q.correct_option) setQuizScore(p => p + 1);
-    setIsAnswerSubmitted(true);
+    try {
+      const res = await api.post(`/api/quiz-questions/${q.id}/check_answer/`, {
+        selected_option: selectedAnswer,
+      });
+      setAnswerResult(res.data);
+      if (res.data.is_correct) setQuizScore(p => p + 1);
+    } catch (err) {
+      console.error('Quiz check failed:', err);
+    } finally {
+      setIsAnswerSubmitted(true);
+    }
   };
   const handleQuizNextQuestion  = () => {
-    setSelectedAnswer(null); setIsAnswerSubmitted(false);
+    setSelectedAnswer(null); setIsAnswerSubmitted(false); setAnswerResult(null);
     if (currentQuestionIdx < activeLesson.quiz_questions.length - 1) setCurrentQuestionIdx(p => p + 1);
     else setQuizFinished(true);
   };
   const handleQuizRetry = () => {
     setCurrentQuestionIdx(0); setSelectedAnswer(null);
-    setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false);
+    setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false); setAnswerResult(null);
   };
 
   const getLessonTypeIcon = (type) => {
@@ -584,7 +608,7 @@ export default function LearningPlayer() {
                           {['A', 'B', 'C', 'D'].map(key => {
                             const optVal   = activeLesson.quiz_questions[currentQuestionIdx][`option_${key.toLowerCase()}`];
                             const isSelected = selectedAnswer === key;
-                            const isCorrect  = key === activeLesson.quiz_questions[currentQuestionIdx].correct_option;
+                            const isCorrect  = key === answerResult?.correct_option;
                             let optClass = '';
                             if (isSelected) optClass += ' selected';
                             if (isAnswerSubmitted) { if (isCorrect) optClass += ' correct'; else if (isSelected) optClass += ' incorrect'; }
@@ -597,12 +621,12 @@ export default function LearningPlayer() {
                             );
                           })}
                         </div>
-                        {isAnswerSubmitted && (
-                          <div className={`quiz-feedback-banner ${selectedAnswer === activeLesson.quiz_questions[currentQuestionIdx].correct_option ? 'correct' : 'incorrect'}`}>
-                            {selectedAnswer === activeLesson.quiz_questions[currentQuestionIdx].correct_option ? (
+                        {isAnswerSubmitted && answerResult && (
+                          <div className={`quiz-feedback-banner ${answerResult?.is_correct ? 'correct' : 'incorrect'}`}>
+                            {answerResult?.is_correct ? (
                               <span>✓ Correct! Well done.</span>
                             ) : (
-                              <span>✗ Incorrect. Correct answer was <strong>Option {activeLesson.quiz_questions[currentQuestionIdx].correct_option}</strong>.</span>
+                              <span>✗ Incorrect. Correct answer was <strong>Option {answerResult?.correct_option}</strong>.</span>
                             )}
                           </div>
                         )}
@@ -641,6 +665,20 @@ export default function LearningPlayer() {
         {/* ── Q&A Tab ─────────────────────────────────────── */}
         {activeTab === 'qa' && (
           <QAPanel courseId={courseId} user={user} />
+        )}
+
+        {showCompletionModal && (
+          <div className="completion-modal-overlay">
+            <div className="completion-modal animate-scaleIn">
+              <div className="completion-icon">🎓</div>
+              <h2>Course Complete!</h2>
+              <p>You've finished every lesson in <strong>{course.title}</strong>.</p>
+              <p className="completion-cert-note">Your certificate will be emailed to you shortly.</p>
+              <button className="btn btn-primary" onClick={() => setShowCompletionModal(false)}>
+                Continue
+              </button>
+            </div>
+          </div>
         )}
       </main>
     </div>

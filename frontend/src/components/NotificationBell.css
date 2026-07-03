@@ -362,3 +362,302 @@
   background: var(--bg);
   color: var(--txt-1);
 }
+
+/* ============================================================
+   Intelligent Notification Dropdown & Cards (nd, nc, ns)
+   ============================================================ */
+
+/* ── Dropdown Container ──────────────────────────────────── */
+.nd-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  max-height: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.nd-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt-1);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nd-unread-badge {
+  background: var(--brand);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--r-full);
+}
+
+.nd-mark-all-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--brand);
+  cursor: pointer;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  transition: all var(--t);
+}
+
+.nd-mark-all-btn:hover {
+  background: var(--brand-light);
+  color: var(--brand-dark);
+}
+
+.nd-body {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+/* ── Quick list empty state ────────────────────────────── */
+.nd-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.nd-empty-icon {
+  font-size: 32px;
+  color: var(--txt-4);
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+
+.nd-empty-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt-2);
+  margin: 0 0 4px 0;
+}
+
+.nd-empty-sub {
+  font-size: 12px;
+  color: var(--txt-4);
+  margin: 0;
+}
+
+.nd-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.nd-footer {
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  text-align: center;
+  background: var(--bg);
+}
+
+.nd-view-all-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand);
+  transition: color var(--t);
+  display: block;
+}
+
+.nd-view-all-link:hover {
+  color: var(--brand-dark);
+}
+
+/* ── Notification Card (nc) ──────────────────────────────── */
+.nc-card {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: background var(--t);
+  position: relative;
+  width: 100%;
+  text-align: left;
+  border-left: 3px solid transparent;
+}
+
+.nc-card:hover {
+  background: var(--bg);
+}
+
+.nc-card--unread {
+  background: var(--brand-light);
+  border-left-color: var(--brand);
+}
+
+.nc-card--unread:hover {
+  background: rgba(107, 26, 26, 0.09);
+}
+
+.nc-emoji-wrapper {
+  margin-right: 12px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.nc-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nc-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.nc-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt-1);
+  margin: 0;
+}
+
+.nc-time {
+  font-size: 11px;
+  color: var(--txt-4);
+  white-space: nowrap;
+}
+
+.nc-message {
+  font-size: 12px;
+  color: var(--txt-2);
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.nc-status-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  position: relative;
+  width: 24px;
+}
+
+.nc-unread-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--brand);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nc-delete-btn {
+  background: none;
+  border: none;
+  color: var(--txt-4);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+  opacity: 0; /* Hidden by default */
+}
+
+.nc-card:hover .nc-delete-btn {
+  opacity: 1; /* Visible on card hover */
+}
+
+.nc-delete-btn:hover {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* ── Skeleton Loaders ─────────────────────────────────────── */
+.ns-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ns-card {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.ns-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+
+.ns-content {
+  flex: 1;
+}
+
+.ns-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  gap: 12px;
+}
+
+.ns-title {
+  width: 100px;
+  height: 12px;
+  border-radius: var(--r-sm);
+}
+
+.ns-time {
+  width: 40px;
+  height: 10px;
+  border-radius: var(--r-sm);
+}
+
+.ns-msg {
+  width: 85%;
+  height: 10px;
+  border-radius: var(--r-sm);
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(110deg, var(--surface-alt) 30%, var(--border) 50%, var(--surface-alt) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+

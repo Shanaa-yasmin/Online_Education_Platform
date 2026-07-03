@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import api from '../utils/api.js';
 import NotificationBell from '../components/NotificationBell.jsx';
+import ActivityCalendar from '../components/ActivityCalendar.jsx';
 import './Dashboard.css';
 
 function getInitials(user) {
@@ -11,10 +12,10 @@ function getInitials(user) {
 }
 
 const STATUS_MAP = (course) => {
-  if (course.is_approved && course.is_published)  return { label:'Live',     cls:'badge-live' };
-  if (course.is_approved && !course.is_published) return { label:'Approved', cls:'badge-approved' };
-  if (!course.is_approved && course.is_published) return { label:'Pending',  cls:'badge-pending-mod' };
-  return { label:'Draft', cls:'badge-draft' };
+  if (course.is_approved && course.is_published) return { label: 'Live', cls: 'badge-live' };
+  if (course.is_approved && !course.is_published) return { label: 'Approved', cls: 'badge-approved' };
+  if (!course.is_approved && course.is_published) return { label: 'Pending', cls: 'badge-pending-mod' };
+  return { label: 'Draft', cls: 'badge-draft' };
 };
 
 export default function Dashboard() {
@@ -26,7 +27,8 @@ export default function Dashboard() {
   const [error, setError] = useState('');
 
   const isMentor = user?.role === 'MENTOR';
-  const isAdmin  = user?.role === 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
+  const isStudent = !isMentor && !isAdmin;
 
   useEffect(() => {
     let active = true;
@@ -59,43 +61,49 @@ export default function Dashboard() {
     navigate('/login');
   };
 
-  // Build dynamic stats
+  // Stat colors pull from the shared token set (brand / info / success / warning)
+  // so this card always matches the design system — no hardcoded hex.
   const stats = isAdmin
     ? [
-        { icon: 'ti-book', label: 'Total Courses', value: data?.stats?.total_courses ?? 0, color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
-        { icon: 'ti-alert-circle', label: 'Pending Approvals', value: data?.stats?.pending_courses ?? 0, color: '#d97706', bg: '#fef9ec' },
-        { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: '#2563eb', bg: '#eff4fe' },
-        { icon: 'ti-award', label: 'Total Mentors', value: data?.stats?.total_mentors ?? 0, color: '#2a9d6e', bg: '#edfaf4' },
-      ]
+      { icon: 'ti-book', label: 'Total Courses', value: data?.stats?.total_courses ?? 0, color: 'var(--brand)', bg: 'var(--brand-light)' },
+      { icon: 'ti-alert-circle', label: 'Pending Approvals', value: data?.stats?.pending_courses ?? 0, color: 'var(--warning)', bg: 'var(--warning-bg)' },
+      { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
+      { icon: 'ti-award', label: 'Total Mentors', value: data?.stats?.total_mentors ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
+    ]
     : isMentor
-    ? [
-        { icon: 'ti-book', label: 'My Courses',     value: data?.stats?.courses_count ?? 0, color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
-        { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: '#2563eb', bg: '#eff4fe' },
-        { icon: 'ti-circle-check', label: 'Published', value: data?.stats?.published_count ?? 0, color: '#2a9d6e', bg: '#edfaf4' },
-        { icon: 'ti-star', label: 'Avg. Rating',     value: data?.stats?.avg_rating !== undefined && data.stats.avg_rating > 0 ? data.stats.avg_rating.toFixed(1) : '—', color: '#d97706', bg: '#fef9ec' },
+      ? [
+        { icon: 'ti-book', label: 'My Courses', value: data?.stats?.courses_count ?? 0, color: 'var(--brand)', bg: 'var(--brand-light)' },
+        { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
+        { icon: 'ti-circle-check', label: 'Published', value: data?.stats?.published_count ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
+        { icon: 'ti-star', label: 'Avg. Rating', value: data?.stats?.avg_rating !== undefined && data.stats.avg_rating > 0 ? data.stats.avg_rating.toFixed(1) : '—', color: 'var(--warning)', bg: 'var(--warning-bg)' },
       ]
-    : [
-        { icon: 'ti-book', label: 'Enrolled',  value: data?.stats?.enrolled_count ?? 0, color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
-        { icon: 'ti-player-play', label: 'In Progress', value: data?.stats?.in_progress_count ?? 0, color: '#2563eb', bg: '#eff4fe' },
-        { icon: 'ti-award', label: 'Completed', value: data?.stats?.completed_count ?? 0, color: '#2a9d6e', bg: '#edfaf4' },
-        { icon: 'ti-clock', label: 'Hours Learned', value: data?.stats?.hours_learned ?? 0, color: '#d97706', bg: '#fef9ec' },
+      : [
+        { icon: 'ti-book', label: 'Enrolled', value: data?.stats?.enrolled_count ?? 0, color: 'var(--brand)', bg: 'var(--brand-light)' },
+        { icon: 'ti-player-play', label: 'In Progress', value: data?.stats?.in_progress_count ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
+        { icon: 'ti-award', label: 'Completed', value: data?.stats?.completed_count ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
+        { icon: 'ti-clock', label: 'Hours Learned', value: data?.stats?.hours_learned ?? 0, color: 'var(--warning)', bg: 'var(--warning-bg)' },
       ];
 
   const hasCourses = isMentor ? (data?.courses && data.courses.length > 0) : (data?.enrollments && data.enrollments.length > 0);
+
+  const roleIcon = isAdmin ? 'ti-settings' : isMentor ? 'ti-award' : 'ti-books';
+  const roleCtaIcon = isAdmin ? 'ti-settings' : isMentor ? 'ti-plus' : 'ti-compass';
+  const roleCtaLabel = isAdmin ? 'Admin Panel' : isMentor ? 'Create Course' : 'Explore Courses';
+  const roleCtaTarget = isAdmin ? '/admin/portal' : isMentor ? '/mentor/dashboard' : '/courses';
 
   return (
     <div className="dashboard-page">
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo-area">
-          <Link to="/" className="nav-logo" style={{textDecoration:'none'}}>
+          <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
             <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
             <span className="nav-logo-text">Edu<span>Path</span></span>
           </Link>
         </div>
 
         <nav className="sidebar-nav">
-          <Link to="/dashboard" className="sidebar-nav-item active">
+          <Link to="/dashboard" className="sidebar-nav-item active" aria-current="page">
             <i className="ti ti-layout-dashboard" /> Dashboard
           </Link>
           {(isMentor || isAdmin) && (
@@ -136,11 +144,11 @@ export default function Dashboard() {
           <div className="topbar-right">
             <NotificationBell user={user} />
             <Link to="/profile" className="topbar-user">
-              <div className="avatar-initials" style={{width:30,height:30,fontSize:12}}>
+              <div className="avatar-initials" style={{ width: 30, height: 30, fontSize: 12 }}>
                 {getInitials(user)}
               </div>
               <span className="topbar-user-name">{user?.username}</span>
-              <span className={`badge badge-${(user?.role||'student').toLowerCase()}`}>{user?.role}</span>
+              <span className={`badge badge-${(user?.role || 'student').toLowerCase()}`}>{user?.role}</span>
             </Link>
           </div>
         </header>
@@ -150,33 +158,26 @@ export default function Dashboard() {
 
           {/* Welcome banner */}
           <section className="welcome-banner animate-fadeIn">
+            <i className={`ti ${roleIcon} welcome-watermark`} aria-hidden="true" />
             <div className="welcome-text">
-              <h2 className="welcome-h">Welcome back, {user?.username} 👋</h2>
+              <p className="welcome-eyebrow">
+                {isAdmin ? 'Platform overview' : isMentor ? 'Mentor overview' : 'Your learning'}
+              </p>
+              <h2 className="welcome-h">Welcome back, {user?.username}</h2>
               <p className="welcome-p">
                 {isAdmin
                   ? 'Manage system content, review course moderation requests, and monitor registrations.'
                   : isMentor
-                  ? 'Manage your courses, track student engagement, and grow your audience.'
-                  : 'Pick up where you left off, explore new courses, and keep growing.'}
+                    ? 'Manage your courses, track student engagement, and grow your audience.'
+                    : 'Pick up where you left off, explore new courses, and keep growing.'}
               </p>
-              {isAdmin ? (
-                <button className="btn btn-primary btn-sm" style={{background:'#fff',color:'var(--brand)',borderColor:'transparent'}}
-                  onClick={() => navigate('/admin/portal')}>
-                  <i className="ti ti-settings" /> Admin Panel
-                </button>
-              ) : isMentor ? (
-                <button className="btn btn-primary btn-sm" style={{background:'#fff',color:'var(--brand)',borderColor:'transparent'}}
-                  onClick={() => navigate('/mentor/dashboard')}>
-                  <i className="ti ti-plus" /> Create Course
-                </button>
-              ) : (
-                <button className="btn btn-primary btn-sm" style={{background:'#fff',color:'var(--brand)',borderColor:'transparent'}}
-                  onClick={() => navigate('/courses')}>
-                  <i className="ti ti-compass" /> Explore Courses
-                </button>
-              )}
+              <button className="welcome-cta" onClick={() => navigate(roleCtaTarget)}>
+                <i className={`ti ${roleCtaIcon}`} /> {roleCtaLabel}
+              </button>
             </div>
-            <div className="welcome-emoji">{isAdmin ? '🛠️' : isMentor ? '🏆' : '🎓'}</div>
+            <div className="welcome-icon-medallion" aria-hidden="true">
+              <i className={`ti ${roleIcon}`} />
+            </div>
           </section>
 
           {/* Mentor pending notice */}
@@ -187,13 +188,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {loading ? (
-            <div className="loading-container" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'250px'}}>
-              <div className="loading-spinner" />
-              <p style={{marginTop: 12, color: 'var(--txt-3)', fontSize: '13.5px'}}>Loading dashboard statistics...</p>
-            </div>
-          ) : error ? (
-            <div className="alert alert-error animate-fadeIn" style={{marginTop: 20}}>
+          {error && !loading ? (
+            <div className="alert alert-error animate-fadeIn" style={{ marginTop: 20 }}>
               <i className="ti ti-alert-triangle" />
               <div><strong>Error:</strong> {error}</div>
             </div>
@@ -201,26 +197,46 @@ export default function Dashboard() {
             <>
               {/* Stats */}
               <div className="stats-grid">
-                {stats.map((s, i) => (
-                  <div key={s.label} className={`stat-card animate-fadeIn delay-${i+1}`}>
-                    <div className="stat-card-icon" style={{background: s.bg, color: s.color}}>
-                      <i className={`ti ${s.icon}`} style={{fontSize:20}} />
+                {loading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="stat-card stat-card-skeleton">
+                      <div className="skeleton-block skeleton-icon" />
+                      <div className="skeleton-block skeleton-num" />
+                      <div className="skeleton-block skeleton-lbl" />
                     </div>
-                    <div className="stat-card-num">{s.value}</div>
-                    <div className="stat-card-lbl">{s.label}</div>
-                  </div>
-                ))}
+                  ))
+                  : stats.map((s, i) => (
+                    <div key={s.label} className={`stat-card animate-fadeIn delay-${i + 1}`}>
+                      <div className="stat-card-icon" style={{ background: s.bg, color: s.color }}>
+                        <i className={`ti ${s.icon}`} style={{ fontSize: 20 }} />
+                      </div>
+                      <div className="stat-card-num">{s.value}</div>
+                      <div className="stat-card-lbl">{s.label}</div>
+                    </div>
+                  ))}
               </div>
 
               {/* Sections */}
               <div className="dash-sections">
-                <div className="dash-section-card animate-fadeIn delay-3">
+                <div className="card dash-section-card animate-fadeIn delay-3">
                   <div className="dash-section-hd">
                     <h3>{isMentor ? 'My Courses' : 'Continue Learning'}</h3>
-                    <Link to={isMentor ? '/mentor/dashboard' : '/courses'}>View all →</Link>
+                    <Link to={isMentor ? '/mentor/dashboard' : '/courses'}>View all <i className="ti ti-arrow-right" /></Link>
                   </div>
 
-                  {!hasCourses ? (
+                  {loading ? (
+                    <div className="dash-courses-list">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="dash-course-item dash-course-item-skeleton">
+                          <div className="dash-course-info">
+                            <div className="skeleton-block skeleton-badge" />
+                            <div className="skeleton-block skeleton-title" />
+                            <div className="skeleton-block skeleton-meta" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !hasCourses ? (
                     <div className="empty-state">
                       <i className={`ti ${isMentor ? 'ti-books' : 'ti-target'}`} />
                       <h3>{isMentor ? 'No courses yet' : 'No courses in progress'}</h3>
@@ -237,17 +253,17 @@ export default function Dashboard() {
                         return (
                           <div key={course.id} className="dash-course-item">
                             <div className="dash-course-info">
-                              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span className={`badge badge-${course.level.toLowerCase()}`}>{course.level}</span>
                                 <span className={`badge ${st.cls}`}>{st.label}</span>
                               </div>
                               <h4 className="dash-course-title">{course.title}</h4>
                               <p className="dash-course-meta">
                                 <span><i className="ti ti-clock" /> {course.duration_hours}h</span>
-                                <span style={{marginLeft: 12}}><i className="ti ti-world" /> {course.language}</span>
+                                <span style={{ marginLeft: 12 }}><i className="ti ti-world" /> {course.language}</span>
                               </p>
                             </div>
-                            <button className="btn btn-secondary btn-sm" style={{flexShrink:0}} onClick={() => navigate(`/mentor/courses/${course.id}/builder`)}>
+                            <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={() => navigate(`/mentor/courses/${course.id}/builder`)}>
                               Curriculum
                             </button>
                           </div>
@@ -271,7 +287,7 @@ export default function Dashboard() {
                                 <span className="dash-progress-text">{Math.round(enr.progress_percent)}% Complete</span>
                               </div>
                             </div>
-                            <button className="btn btn-primary btn-sm" style={{flexShrink: 0}} onClick={() => navigate(`/courses/${course.id}/learn`)}>
+                            <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={() => navigate(`/courses/${course.id}/learn`)}>
                               Resume
                             </button>
                           </div>
@@ -281,25 +297,34 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="dash-section-card animate-fadeIn delay-4">
-                  <div className="dash-section-hd"><h3>Quick Access</h3></div>
-                  <div className="quick-links">
-                    {[
-                      { to: '/profile', icon: 'ti-user', color: 'rgba(48,157,142,0.1)', iconColor: 'var(--brand)', name: 'My Profile', desc: 'Update your info & avatar' },
-                      { to: '/courses', icon: 'ti-book', color: '#eff4fe', iconColor: '#2563eb', name: 'Course Catalog', desc: 'Browse all available courses' },
-                      ...(isAdmin ? [{ to: '/admin/portal', icon: 'ti-settings', color: '#fef9ec', iconColor: '#d97706', name: 'Admin Portal', desc: 'Manage courses & mentors' }] : []),
-                      ...(isMentor ? [{ to: '/mentor/dashboard', icon: 'ti-award', color: '#edfaf4', iconColor: '#2a9d6e', name: 'Mentor Portal', desc: 'Manage curriculum & view sales' }] : []),
-                    ].map(l => (
-                      <Link key={l.to} to={l.to} className="quick-link-item">
-                        <div className="quick-link-icon" style={{background: l.color, color: l.iconColor}}>
-                          <i className={`ti ${l.icon}`} style={{fontSize:18}} />
-                        </div>
-                        <div>
-                          <p className="quick-link-name">{l.name}</p>
-                          <p className="quick-link-desc">{l.desc}</p>
-                        </div>
-                      </Link>
-                    ))}
+                {/* Right column: activity calendar (students) + quick access */}
+                <div className="dash-right-col">
+                  {isStudent && (
+                    <div className="animate-fadeIn delay-4">
+                      <ActivityCalendar activity={data?.activity_calendar ?? []} loading={loading} />
+                    </div>
+                  )}
+
+                  <div className="card dash-section-card animate-fadeIn delay-4">
+                    <div className="dash-section-hd"><h3>Quick Access</h3></div>
+                    <div className="quick-links">
+                      {[
+                        { to: '/profile', icon: 'ti-user', color: 'var(--brand-light)', iconColor: 'var(--brand)', name: 'My Profile', desc: 'Update your info & avatar' },
+                        { to: '/courses', icon: 'ti-book', color: 'var(--info-bg)', iconColor: 'var(--info)', name: 'Course Catalog', desc: 'Browse all available courses' },
+                        ...(isAdmin ? [{ to: '/admin/portal', icon: 'ti-settings', color: 'var(--warning-bg)', iconColor: 'var(--warning)', name: 'Admin Portal', desc: 'Manage courses & mentors' }] : []),
+                        ...(isMentor ? [{ to: '/mentor/dashboard', icon: 'ti-award', color: 'var(--success-bg)', iconColor: 'var(--success)', name: 'Mentor Portal', desc: 'Manage curriculum & view sales' }] : []),
+                      ].map(l => (
+                        <Link key={l.to} to={l.to} className="quick-link-item">
+                          <div className="quick-link-icon" style={{ background: l.color, color: l.iconColor }}>
+                            <i className={`ti ${l.icon}`} style={{ fontSize: 18 }} />
+                          </div>
+                          <div>
+                            <p className="quick-link-name">{l.name}</p>
+                            <p className="quick-link-desc">{l.desc}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -311,4 +336,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

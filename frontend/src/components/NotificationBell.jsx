@@ -1,26 +1,10 @@
-/**
- * NotificationBell — topbar bell icon with badge + dropdown + toast.
- *
- * Props:
- *   user {object} - current authenticated user (from useAuth)
- *
- * Drop this component into any topbar-right div.
- */
 import { useState, useRef, useEffect, memo } from 'react';
 import useNotifications from '../hooks/useNotifications.js';
+import NotificationDropdown from './NotificationDropdown.jsx';
 import './NotificationBell.css';
 
-function NotificationBell({ user }) {
-  const {
-    notifications,
-    unreadCount,
-    loading,
-    toast,
-    markAsRead,
-    markAllRead,
-    dismissToast,
-  } = useNotifications(user);
-
+function NotificationBell() {
+  const { unreadCount, toast, dismissToast } = useNotifications();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -35,24 +19,20 @@ function NotificationBell({ user }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Time-ago helper ────────────────────────────────────────────────
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
-
-  // ── Notification type → icon mapping ───────────────────────────────
+  // ── Notification type → icon mapping for toast ─────────────────────
   const typeIcon = (type) => {
-    switch (type) {
+    switch (type?.toUpperCase()) {
       case 'ENROLLMENT':  return 'ti-school';
       case 'LESSON_ADDED': return 'ti-book';
+      case 'QUESTION_REPLY':
       case 'QNA_REPLY':    return 'ti-message-circle';
+      case 'PAYMENT_SUCCESS':
+      case 'REFUND_PROCESSED':
       case 'REFUND':       return 'ti-receipt-refund';
-      case 'SYSTEM':       return 'ti-info-circle';
+      case 'CERTIFICATE_GENERATED': return 'ti-award';
+      case 'COURSE_APPROVED':
+      case 'MENTOR_APPROVED': return 'ti-circle-check';
+      case 'COURSE_REJECTED': return 'ti-circle-x';
       default:             return 'ti-bell';
     }
   };
@@ -75,54 +55,7 @@ function NotificationBell({ user }) {
 
         {/* ── Dropdown ────────────────────────────────────────────── */}
         {open && (
-          <div className="nb-dropdown" role="dialog" aria-label="Notifications">
-            <div className="nb-header">
-              <h3 className="nb-title">
-                Notifications
-                {unreadCount > 0 && <span className="nb-title-count">{unreadCount}</span>}
-              </h3>
-              {unreadCount > 0 && (
-                <button className="nb-mark-all" onClick={markAllRead}>
-                  Mark all read
-                </button>
-              )}
-            </div>
-
-            <div className="nb-list">
-              {loading && (
-                <div className="nb-empty">
-                  <span className="nb-spinner" />
-                </div>
-              )}
-
-              {!loading && notifications.length === 0 && (
-                <div className="nb-empty">
-                  <i className="ti ti-bell-off nb-empty-icon" />
-                  <p>No notifications yet</p>
-                </div>
-              )}
-
-              {!loading && notifications.slice(0, 20).map(n => (
-                <button
-                  key={n.id}
-                  className={`nb-item ${n.is_read ? '' : 'nb-item--unread'}`}
-                  onClick={() => {
-                    if (!n.is_read) markAsRead(n.id);
-                  }}
-                >
-                  <div className={`nb-item-icon nb-icon--${(n.notification_type || 'system').toLowerCase()}`}>
-                    <i className={`ti ${typeIcon(n.notification_type)}`} />
-                  </div>
-                  <div className="nb-item-body">
-                    <p className="nb-item-title">{n.title}</p>
-                    <p className="nb-item-msg">{n.message}</p>
-                    <span className="nb-item-time">{timeAgo(n.created_at)}</span>
-                  </div>
-                  {!n.is_read && <span className="nb-item-dot" />}
-                </button>
-              ))}
-            </div>
-          </div>
+          <NotificationDropdown onClose={() => setOpen(false)} />
         )}
       </div>
 

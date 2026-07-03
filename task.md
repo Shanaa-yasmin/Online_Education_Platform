@@ -69,3 +69,12 @@
 - [x] Integrate React Query / State management / general polish
 - [x] Apply rich aesthetic design, responsive layouts, transitions, loading skeletons
 - [x] Verify accessibility and SEO metadata
+
+## Phase 10: Intelligent Clickable Notifications with Deep Linking
+- [x] Extend backend `NotificationViewSet` with PageNumberPagination, filtering, and search parameters
+- [x] Implement backend Django unit tests for notification searches and filters
+- [x] Wrap React Router routes in `NotificationProvider` inside `App.jsx`
+- [x] Create React Page `NotificationCenter.jsx` with filters, search, paginated loader, and mark-all-read buttons
+- [x] Create React Stylesheet `NotificationCenter.css` aligned with global design tokens
+- [x] Add optional `onDelete` prop to `NotificationCard` to enable real-time local updates in Notification Center
+
