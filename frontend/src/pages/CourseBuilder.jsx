@@ -6,52 +6,52 @@ import './CourseBuilder.css';
 // SVG Icons
 const ArrowLeftIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/>
+    <line x1="19" x2="5" y1="12" y2="12" /><polyline points="12 19 5 12 12 5" />
   </svg>
 );
 const PlusIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>
+    <line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" />
   </svg>
 );
 const EditIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+    <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
   </svg>
 );
 const TrashIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+    <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
   </svg>
 );
 const ChevronDownIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9"/>
+    <polyline points="6 9 12 15 18 9" />
   </svg>
 );
 const ChevronUpIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="18 15 12 9 6 15"/>
+    <polyline points="18 15 12 9 6 15" />
   </svg>
 );
 const PlayIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="6 3 20 12 6 21 6 3"/>
+    <polygon points="6 3 20 12 6 21 6 3" />
   </svg>
 );
 const FileTextIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4" />
   </svg>
 );
 const QuizIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>
+    <circle cx="12" cy="12" r="10" /><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" x2="12.01" y1="17" y2="17" />
   </svg>
 );
 const HelpCircleIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>
+    <circle cx="12" cy="12" r="10" /><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" x2="12.01" y1="17" y2="17" />
   </svg>
 );
 
@@ -87,6 +87,16 @@ export default function CourseBuilder() {
     correct_option: 'A'
   });
 
+  // Edit Course Details modal
+  const [showEditCourseModal, setShowEditCourseModal] = useState(false);
+  const [editCourseForm, setEditCourseForm] = useState({
+    title: '', description: '', level: 'BEGINNER', price: '0.00', language: 'English', duration_hours: 0
+  });
+  const [editThumbnailFile, setEditThumbnailFile] = useState(null);
+  const [editThumbnailPreview, setEditThumbnailPreview] = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editSubmitError, setEditSubmitError] = useState('');
+
   const [modalParentId, setModalParentId] = useState(null); // holds module_id for lesson, or lesson_id for quiz question
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -97,7 +107,7 @@ export default function CourseBuilder() {
       const response = await api.get(`/api/courses/${courseId}/`);
       setCourse(response.data);
       setError('');
-      
+
       // Auto-expand all modules initially
       const expanded = {};
       response.data.modules?.forEach(m => {
@@ -136,6 +146,84 @@ export default function CourseBuilder() {
       alert('Failed to update publication status. Ensure curriculum is complete.');
     } finally {
       setPublishing(false);
+    }
+  };
+
+  // =========================================================
+  // Edit Course Details
+  // =========================================================
+  const openEditCourseModal = () => {
+    setEditCourseForm({
+      title: course.title,
+      description: course.description,
+      level: course.level,
+      price: course.price,
+      language: course.language,
+      duration_hours: course.duration_hours
+    });
+    setEditThumbnailFile(null);
+    setEditThumbnailPreview(course.thumbnail || null);
+    setEditSubmitError('');
+    setShowEditCourseModal(true);
+  };
+
+  const closeEditCourseModal = () => {
+    if (editThumbnailFile && editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+    setShowEditCourseModal(false);
+  };
+
+  const handleEditCourseInput = (e) => {
+    setEditCourseForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleEditThumbnailChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setEditSubmitError('Please select a valid image file.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setEditSubmitError('Thumbnail image must be smaller than 5MB.');
+      return;
+    }
+    setEditSubmitError('');
+    setEditThumbnailFile(file);
+    setEditThumbnailPreview(URL.createObjectURL(file));
+  };
+
+  const clearEditThumbnail = () => {
+    if (editThumbnailFile && editThumbnailPreview) URL.revokeObjectURL(editThumbnailPreview);
+    setEditThumbnailFile(null);
+    setEditThumbnailPreview(null); // user is explicitly clearing the thumbnail
+  };
+
+  const handleEditCourseSubmit = async (e) => {
+    e.preventDefault();
+    setEditSubmitting(true);
+    setEditSubmitError('');
+    try {
+      const fd = new FormData();
+      fd.append('title', editCourseForm.title);
+      fd.append('description', editCourseForm.description);
+      fd.append('level', editCourseForm.level);
+      fd.append('price', parseFloat(editCourseForm.price) || 0);
+      fd.append('language', editCourseForm.language);
+      fd.append('duration_hours', parseInt(editCourseForm.duration_hours) || 0);
+      if (editThumbnailFile) {
+        fd.append('thumbnail', editThumbnailFile);
+      }
+
+      const response = await api.patch(`/api/courses/${courseId}/`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setCourse(prev => ({ ...prev, ...response.data }));
+      setShowEditCourseModal(false);
+    } catch (err) {
+      console.error(err);
+      setEditSubmitError(err.response?.data?.detail || 'Failed to update course details.');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -228,7 +316,7 @@ export default function CourseBuilder() {
       formPayload.append('module', editTarget ? editTarget.module : modalParentId);
       formPayload.append('title', lessonData.title);
       formPayload.append('content_type', lessonData.content_type);
-      
+
       if (lessonData.content_type === 'VIDEO') {
         formPayload.append('video_url', lessonData.video_url);
       } else if (lessonData.content_type === 'DOCUMENT') {
@@ -386,6 +474,19 @@ export default function CourseBuilder() {
             )}
           </div>
           <p className="course-summary">{course.description}</p>
+        </div>
+
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={openEditCourseModal}>
+            <EditIcon /> Edit Course Details
+          </button>
+          <button
+            className={`btn ${course.is_published ? 'btn-secondary' : 'btn-primary'} btn-publish`}
+            onClick={handlePublishToggle}
+            disabled={publishing}
+          >
+            {publishing ? 'Updating...' : course.is_published ? 'Unpublish Course' : 'Publish Course'}
+          </button>
         </div>
 
         <div className="header-actions">
@@ -575,7 +676,7 @@ export default function CourseBuilder() {
             </div>
             <form onSubmit={handleLessonSubmit} className="modal-form">
               {actionError && <div className="alert alert-error">{actionError}</div>}
-              
+
               <div className="form-group">
                 <label htmlFor="les-title">Lesson Title</label>
                 <input
@@ -656,6 +757,108 @@ export default function CourseBuilder() {
       )}
 
       {/* =========================================================
+   EDIT COURSE DETAILS MODAL
+   ========================================================= */}
+      {showEditCourseModal && (
+        <div className="modal-overlay" onClick={closeEditCourseModal}>
+          <div className="modal-content animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Course Details</h2>
+              <button className="modal-close-btn" onClick={closeEditCourseModal}>&times;</button>
+            </div>
+            <form onSubmit={handleEditCourseSubmit} className="modal-form">
+              {editSubmitError && <div className="alert alert-error">{editSubmitError}</div>}
+
+              <div className="form-group">
+                <label htmlFor="edit-title">Course Title</label>
+                <input
+                  type="text"
+                  id="edit-title"
+                  name="title"
+                  value={editCourseForm.title}
+                  onChange={handleEditCourseInput}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-desc">Description</label>
+                <textarea
+                  id="edit-desc"
+                  name="description"
+                  value={editCourseForm.description}
+                  onChange={handleEditCourseInput}
+                  rows="4"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Course Thumbnail</label>
+                {editThumbnailPreview ? (
+                  <div className="thumbnail-preview-box">
+                    <img src={editThumbnailPreview} alt="Thumbnail preview" />
+                    <button type="button" className="thumbnail-remove-btn" onClick={clearEditThumbnail} title="Remove image">
+                      &times;
+                    </button>
+                  </div>
+                ) : (
+                  <label className="thumbnail-dropzone">
+                    <span>Click to upload an image</span>
+                    <small>16:9 recommended — auto-cropped on upload</small>
+                    <input type="file" accept="image/*" onChange={handleEditThumbnailChange} hidden />
+                  </label>
+                )}
+              </div>
+
+              <div className="form-row-grid">
+                <div className="form-group">
+                  <label htmlFor="edit-level">Difficulty Level</label>
+                  <select id="edit-level" name="level" value={editCourseForm.level} onChange={handleEditCourseInput}>
+                    <option value="BEGINNER">Beginner</option>
+                    <option value="INTERMEDIATE">Intermediate</option>
+                    <option value="ADVANCED">Advanced</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="edit-price">Price ($)</label>
+                  <input
+                    type="number" id="edit-price" name="price"
+                    value={editCourseForm.price} onChange={handleEditCourseInput}
+                    step="0.01" min="0" required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row-grid">
+                <div className="form-group">
+                  <label htmlFor="edit-lang">Language</label>
+                  <input
+                    type="text" id="edit-lang" name="language"
+                    value={editCourseForm.language} onChange={handleEditCourseInput} required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="edit-hours">Estimated Hours</label>
+                  <input
+                    type="number" id="edit-hours" name="duration_hours"
+                    value={editCourseForm.duration_hours} onChange={handleEditCourseInput} min="0" required
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={closeEditCourseModal} disabled={editSubmitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={editSubmitting}>
+                  {editSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
          QUIZ MODAL
          ========================================================= */}
       {activeModal === 'quiz' && (
@@ -667,7 +870,7 @@ export default function CourseBuilder() {
             </div>
             <form onSubmit={handleQuizSubmit} className="modal-form">
               {actionError && <div className="alert alert-error">{actionError}</div>}
-              
+
               <div className="form-group">
                 <label htmlFor="q-text">Question Prompt</label>
                 <textarea
