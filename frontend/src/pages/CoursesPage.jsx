@@ -15,33 +15,33 @@ const StarIcon = ({ filled }) => (
 
 function Sidebar({ user, onLogout, loggingOut }) {
   const isMentor = user?.role === 'MENTOR';
-  const isAdmin  = user?.role === 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
   return (
     <aside className="sidebar">
       <div className="sidebar-logo-area">
-        <Link to="/" className="nav-logo" style={{textDecoration:'none'}}>
+        <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
           <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
           <span className="nav-logo-text">Edu<span>Path</span></span>
         </Link>
       </div>
       <nav className="sidebar-nav">
         <Link to="/dashboard" className="sidebar-nav-item"><i className="ti ti-layout-dashboard" /> Dashboard</Link>
-        {(isMentor||isAdmin) && <Link to="/mentor/dashboard" className="sidebar-nav-item"><i className="ti ti-award" /> Mentor Portal</Link>}
+        {(isMentor || isAdmin) && <Link to="/mentor/dashboard" className="sidebar-nav-item"><i className="ti ti-award" /> Mentor Portal</Link>}
         {isAdmin && <Link to="/admin/portal" className="sidebar-nav-item"><i className="ti ti-settings" /> Admin Portal</Link>}
         <Link to="/courses" className="sidebar-nav-item active"><i className="ti ti-book" /> Courses</Link>
         <Link to="/profile" className="sidebar-nav-item"><i className="ti ti-user" /> Profile</Link>
       </nav>
       <div className="sidebar-footer">
         <button className="sidebar-logout" onClick={onLogout} disabled={loggingOut}>
-          {loggingOut ? <><span className="loading-spinner loading-spinner-sm"/>Signing out…</> : <><i className="ti ti-logout"/>Sign out</>}
+          {loggingOut ? <><span className="loading-spinner loading-spinner-sm" />Signing out…</> : <><i className="ti ti-logout" />Sign out</>}
         </button>
       </div>
     </aside>
   );
 }
 
-const THUMB = { BEGINNER:'cc-thumb-beg', INTERMEDIATE:'cc-thumb-int', ADVANCED:'cc-thumb-adv' };
-const ICON  = { BEGINNER:'ti-leaf', INTERMEDIATE:'ti-flame', ADVANCED:'ti-bolt' };
+const THUMB = { BEGINNER: 'cc-thumb-beg', INTERMEDIATE: 'cc-thumb-int', ADVANCED: 'cc-thumb-adv' };
+const ICON = { BEGINNER: 'ti-leaf', INTERMEDIATE: 'ti-flame', ADVANCED: 'ti-bolt' };
 
 export default function CoursesPage() {
   const { user, logout } = useAuth();
@@ -379,8 +379,12 @@ export default function CoursesPage() {
                 {courses.map(course => (
                   <article key={course.id} className="course-card-catalog">
                     <div className={`cc-thumb ${THUMB[course.level] || 'cc-thumb-beg'}`}>
-                      <i className={`ti ${ICON[course.level]||'ti-book'}`} style={{fontSize:44,opacity:0.5}} />
-                      <span className={`badge badge-${course.level.toLowerCase()} cc-level-pill`} style={{position:'absolute',top:10,left:10}}>
+                      {course.thumbnail ? (
+                        <img src={course.thumbnail} alt={course.title} className="cc-thumb-img" />
+                      ) : (
+                        <i className={`ti ${ICON[course.level] || 'ti-book'}`} style={{ fontSize: 44, opacity: 0.5 }} />
+                      )}
+                      <span className={`badge badge-${course.level.toLowerCase()} cc-level-pill`} style={{ position: 'absolute', top: 10, left: 10 }}>
                         {course.level}
                       </span>
                     </div>
@@ -407,7 +411,7 @@ export default function CoursesPage() {
                       <span className={`cc-price${parseFloat(course.price) <= 0 ? ' free' : ''}`}>
                         {parseFloat(course.price) > 0 ? `$${course.price}` : 'Free'}
                       </span>
-                      <Link to={`/courses/${course.id}`} className="btn btn-primary btn-sm" style={{borderRadius:7}}>
+                      <Link to={`/courses/${course.id}`} className="btn btn-primary btn-sm" style={{ borderRadius: 7 }}>
                         {parseFloat(course.price) > 0 ? 'View & Enroll' : 'Enroll Free'}
                       </Link>
                     </div>
@@ -425,7 +429,7 @@ export default function CoursesPage() {
                   >
                     ◀ Prev
                   </button>
-                  
+
                   {Array.from({ length: totalPages }).map((_, idx) => {
                     const pageNum = idx + 1;
                     return (

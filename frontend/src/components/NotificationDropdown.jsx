@@ -3,7 +3,7 @@ import useNotifications from '../hooks/useNotifications.js';
 import NotificationCard from './NotificationCard.jsx';
 import NotificationSkeleton from './NotificationSkeleton.jsx';
 
-export default function NotificationDropdown({ onClose }) {
+export default function NotificationDropdown({ onClose, user }) {
   const {
     notifications,
     unreadCount,
@@ -46,6 +46,7 @@ export default function NotificationDropdown({ onClose }) {
                 key={n.id}
                 notification={n}
                 onClickItem={onClose}
+                user={user}
               />
             ))}
           </div>

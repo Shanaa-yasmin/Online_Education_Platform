@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import useNotifications from '../hooks/useNotifications.js';
 
-export default function NotificationCard({ notification, onClickItem, onDelete }) {
+export default function NotificationCard({ notification, onClickItem, onDelete, user }) {
   const navigate = useNavigate();
   const { markAsRead, deleteNotification } = useNotifications();
 
@@ -40,6 +40,8 @@ export default function NotificationCard({ notification, onClickItem, onDelete }
         return '✅';
       case 'COURSE_REJECTED':
         return '❌';
+      case 'COURSE_PENDING_APPROVAL':
+        return '🕓';
       case 'LESSON_ADDED':
         return '📚';
       case 'COURSE_UPDATED':
@@ -62,6 +64,9 @@ export default function NotificationCard({ notification, onClickItem, onDelete }
       case 'COURSE_REJECTED':
         path = id ? `/mentor/courses/${id}/builder` : '/mentor/dashboard';
         break;
+      case 'COURSE_PENDING_APPROVAL':
+        path = '/admin/portal?tab=courses';
+        break;
       case 'QUESTION_REPLY':
       case 'QNA_REPLY':
         path = id ? `/courses/${id}/learn?tab=qa` : '/dashboard';
@@ -75,7 +80,10 @@ export default function NotificationCard({ notification, onClickItem, onDelete }
       case 'PAYMENT_SUCCESS':
       case 'REFUND_PROCESSED':
       case 'REFUND':
-        path = '/profile';
+        // Admins receive these for oversight; mentors for their own course sales.
+        path = notification.recipient_role === 'ADMIN'
+          ? '/admin/portal?tab=payments'
+          : '/mentor/dashboard?tab=payments';
         break;
       case 'LESSON_ADDED':
         path = id ? `/courses/${id}/learn` : '/courses';
@@ -102,7 +110,7 @@ export default function NotificationCard({ notification, onClickItem, onDelete }
       // Trigger API read state in background without blocking UI navigation
       markAsRead(notification.id);
     }
-    
+
     // Execute routing transition immediately
     handleNavigate();
 

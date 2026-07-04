@@ -149,6 +149,27 @@ export default function CourseBuilder() {
     }
   };
 
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const handleSubmitForReview = async () => {
+    if (!course) return;
+    setSubmittingReview(true);
+    try {
+      const response = await api.post(`/api/courses/${courseId}/submit_for_review/`);
+      setCourse(prev => ({
+        ...prev,
+        is_submitted_for_review: true,
+        is_rejected: false,
+      }));
+      alert(response.data.detail);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.detail || 'Failed to submit course for review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   // =========================================================
   // Edit Course Details
   // =========================================================
@@ -467,10 +488,13 @@ export default function CourseBuilder() {
           <div className="header-title-row">
             <h1 className="course-title">{course.title}</h1>
             <span className={`status-badge-inline ${course.is_published ? 'live' : 'draft'}`}>
-              {course.is_published ? 'Published' : 'Draft'}
+              {course.is_published ? 'Published' : course.is_approved ? 'Approved' : 'Draft'}
             </span>
-            {!course.is_approved && (
+            {course.is_submitted_for_review && !course.is_approved && (
               <span className="moderation-notice">Pending Admin Review</span>
+            )}
+            {course.is_rejected && (
+              <span className="moderation-notice moderation-rejected">Changes Requested</span>
             )}
           </div>
           <p className="course-summary">{course.description}</p>
@@ -480,23 +504,39 @@ export default function CourseBuilder() {
           <button className="btn btn-secondary" onClick={openEditCourseModal}>
             <EditIcon /> Edit Course Details
           </button>
-          <button
-            className={`btn ${course.is_published ? 'btn-secondary' : 'btn-primary'} btn-publish`}
-            onClick={handlePublishToggle}
-            disabled={publishing}
-          >
-            {publishing ? 'Updating...' : course.is_published ? 'Unpublish Course' : 'Publish Course'}
-          </button>
-        </div>
 
-        <div className="header-actions">
-          <button
-            className={`btn ${course.is_published ? 'btn-secondary' : 'btn-primary'} btn-publish`}
-            onClick={handlePublishToggle}
-            disabled={publishing}
-          >
-            {publishing ? 'Updating...' : course.is_published ? 'Unpublish Course' : 'Publish Course'}
-          </button>
+          {course.is_published ? (
+            <button
+              className="btn btn-secondary btn-publish"
+              onClick={handlePublishToggle}
+              disabled={publishing}
+            >
+              {publishing ? 'Updating...' : 'Unpublish Course'}
+            </button>
+          ) : course.is_approved ? (
+            <button
+              className="btn btn-primary btn-publish"
+              onClick={handlePublishToggle}
+              disabled={publishing}
+            >
+              {publishing ? 'Updating...' : 'Publish Course'}
+            </button>
+          ) : (
+            <button
+              className="btn btn-primary btn-publish"
+              onClick={handleSubmitForReview}
+              disabled={submittingReview || course.is_submitted_for_review}
+              title={course.is_submitted_for_review ? 'Waiting on admin approval' : ''}
+            >
+              {submittingReview
+                ? 'Submitting...'
+                : course.is_submitted_for_review
+                  ? 'Pending Admin Review'
+                  : course.is_rejected
+                    ? 'Resubmit for Review'
+                    : 'Submit for Review'}
+            </button>
+          )}
         </div>
       </header>
 

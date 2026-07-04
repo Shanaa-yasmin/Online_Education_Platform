@@ -3,15 +3,6 @@ payments/views.py
 ~~~~~~~~~~~~~~~~~
 Handles enrollments, lesson progress, checkout (Stripe & PayPal), webhooks,
 payment listing, and refunds.
-
-Environment variables required (set in Django settings):
-    STRIPE_SECRET_KEY
-    STRIPE_PUBLISHABLE_KEY
-    STRIPE_WEBHOOK_SECRET
-    PAYPAL_CLIENT_ID
-    PAYPAL_SECRET
-    PAYPAL_MODE          (sandbox | live)
-    FRONTEND_URL
 """
 
 import json
@@ -19,6 +10,7 @@ import logging
 
 import stripe
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -26,6 +18,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from courses.models import Course, Lesson
+from notifications.models import Notification
 
 from .models import Certificate, Enrollment, LessonProgress, Payment
 from .paypal_client import (
@@ -43,8 +36,168 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
-# ── Stripe initialisation ──────────────────────────────────────────────────
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+User = get_user_model()
+
+
+def _stripe_attr(obj, key, default=None):
+    """
+    Safely read a field from a Stripe object across SDK versions.
+    Newer stripe-python releases raise AttributeError on .get(), since
+    StripeObject routes unknown attributes through __getitem__ instead
+    of behaving like a plain dict.
+    """
+    try:
+        return obj[key]
+    except (KeyError, TypeError):
+        return getattr(obj, key, default)
+
+
+def _notify_admins(title, message, sender=None, notification_type=Notification.NotificationType.SYSTEM,
+                    related_object_id=None, related_object_type=None):
+    """Send a notification to every admin/staff user."""
+    admins = User.objects.filter(is_staff=True) | User.objects.filter(role='ADMIN')
+    admins = admins.distinct()
+    for admin in admins:
+        Notification.objects.create(
+            recipient=admin,
+            sender=sender,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            related_object_id=related_object_id,
+            related_object_type=related_object_type,
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Shared enrollment / payment state-transition helpers
+# ══════════════════════════════════════════════════════════════════════════════
+# These live at module level (not inside a ViewSet) because both
+# CheckoutViewSet (webhooks, verify) and PaymentViewSet (manual refund)
+# need to trigger the exact same state changes + notifications. Defining
+# them as a method on one ViewSet and calling `self._method` from another
+# class fails with AttributeError — that was the previous bug.
+
+def _activate_enrollment(payment: Payment) -> None:
+    """Mark payment COMPLETED and activate the associated enrollment.
+    Notifies the student, the course mentor, and all admins."""
+    payment.status = Payment.StatusChoices.COMPLETED
+    payment.save(update_fields=['status'])
+
+    enrollment = payment.enrollment
+    enrollment.is_active = True
+    enrollment.save(update_fields=['is_active'])
+
+    course = enrollment.course
+    student = enrollment.student
+
+    Notification.objects.create(
+        recipient=student,
+        sender=course.mentor,
+        title="Payment Successful",
+        message=f"Your payment for '{course.title}' was successful. You're enrolled!",
+        notification_type=Notification.NotificationType.PAYMENT_SUCCESS,
+        related_object_id=course.id,
+        related_object_type="Course",
+    )
+
+    Notification.objects.create(
+        recipient=course.mentor,
+        sender=student,
+        title="New Course Sale",
+        message=f"{student.username} just purchased '{course.title}' for ${payment.amount}.",
+        notification_type=Notification.NotificationType.PAYMENT_SUCCESS,
+        related_object_id=course.id,
+        related_object_type="Course",
+    )
+
+    _notify_admins(
+        title="New Course Sale",
+        message=f"{student.username} purchased '{course.title}' (mentor: {course.mentor.username}) for ${payment.amount}.",
+        sender=student,
+        notification_type=Notification.NotificationType.PAYMENT_SUCCESS,
+        related_object_id=course.id,
+        related_object_type="Course",
+    )
+
+    logger.info(
+        "[Payment] Enrollment %s activated via %s (%s).",
+        enrollment.id, payment.gateway, payment.transaction_id,
+    )
+
+
+def _mark_refunded(payment: Payment, refunded_by=None) -> None:
+    """
+    Mark a payment REFUNDED, revoke enrollment, and notify the student,
+    the course mentor, and all admins. Used by manual refund, Stripe
+    webhook, and PayPal webhook paths so behaviour stays consistent
+    everywhere.
+    """
+    if payment.status == Payment.StatusChoices.REFUNDED:
+        return  # already processed — avoid duplicate notifications
+
+    payment.status = Payment.StatusChoices.REFUNDED
+    payment.refunded_at = timezone.now()
+    payment.save(update_fields=['status', 'refunded_at'])
+
+    enrollment = payment.enrollment
+    enrollment.is_active = False
+    enrollment.save(update_fields=['is_active'])
+
+    course = enrollment.course
+    student = enrollment.student
+
+    Notification.objects.create(
+        recipient=student,
+        sender=refunded_by or course.mentor,
+        title="Refund Processed",
+        message=f"Your payment for '{course.title}' has been refunded. Access has been revoked.",
+        notification_type=Notification.NotificationType.REFUND_PROCESSED,
+        related_object_id=course.id,
+        related_object_type="Course",
+    )
+
+    Notification.objects.create(
+        recipient=course.mentor,
+        sender=refunded_by,
+        title="Course Sale Refunded",
+        message=f"A payment from {student.username} for '{course.title}' was refunded (${payment.amount}).",
+        notification_type=Notification.NotificationType.REFUND_PROCESSED,
+        related_object_id=course.id,
+        related_object_type="Course",
+    )
+
+    _notify_admins(
+        title="Course Sale Refunded",
+        message=f"Payment from {student.username} for '{course.title}' (mentor: {course.mentor.username}) was refunded (${payment.amount}).",
+        sender=refunded_by,
+        notification_type=Notification.NotificationType.REFUND_PROCESSED,
+        related_object_id=course.id,
+        related_object_type="Course",
+    )
+
+    logger.info(
+        "[Refund] Payment %s refunded; enrollment %s revoked.",
+        payment.transaction_id, enrollment.id,
+    )
+
+
+def _dispute_enrollment(payment: Payment, detail: str) -> None:
+    payment.status = Payment.StatusChoices.DISPUTED
+    payment.disputed_at = timezone.now()
+    payment.dispute_detail = detail[:5000]
+    payment.save(update_fields=['status', 'disputed_at', 'dispute_detail'])
+
+    enrollment = payment.enrollment
+    enrollment.is_active = False
+    enrollment.save(update_fields=['is_active'])
+
+    logger.warning(
+        "[Dispute] Enrollment %s revoked. Transaction %s. Detail: %s",
+        enrollment.id, payment.transaction_id, detail[:200],
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -86,7 +239,6 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if Enrollment.objects.filter(student=user, course=course).exists():
             raise ValidationError({"detail": "You are already enrolled in this course."})
 
-        # Paid courses must use the checkout flow
         if float(course.price) > 0:
             raise ValidationError(
                 {"detail": "Payment is required for this paid course. Please complete checkout."}
@@ -94,13 +246,37 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         serializer.save(student=user, course=course, is_active=True)
 
+        Notification.objects.create(
+            recipient=user,
+            sender=course.mentor,
+            title="Enrollment Confirmed",
+            message=f"You have successfully enrolled in '{course.title}'.",
+            notification_type=Notification.NotificationType.ENROLLMENT,
+            related_object_id=course.id,
+            related_object_type="Course",
+        )
+
+        Notification.objects.create(
+            recipient=course.mentor,
+            sender=user,
+            title="New Student Enrolled",
+            message=f"{user.username} enrolled in '{course.title}' (free course).",
+            notification_type=Notification.NotificationType.ENROLLMENT,
+            related_object_id=course.id,
+            related_object_type="Course",
+        )
+
+        _notify_admins(
+            title="New Student Enrolled",
+            message=f"{user.username} enrolled in '{course.title}' (mentor: {course.mentor.username}).",
+            sender=user,
+            notification_type=Notification.NotificationType.ENROLLMENT,
+            related_object_id=course.id,
+            related_object_type="Course",
+        )
+
     @action(detail=False, methods=['get'])
     def check(self, request):
-        """
-        GET /api/payments/enrollments/check/?course_id=<id>
-        Returns enrollment status, progress, completed lesson IDs, and certificate URL.
-        Mentors who own the course and Admins always receive enrolled=True.
-        """
         course_id = request.query_params.get('course_id')
         if not course_id:
             return Response(
@@ -110,9 +286,6 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         user = request.user
 
-        # ── Mentor / Admin bypass ───────────────────────────────────────
-        # Mentors and Admins don't enroll as students but should still be
-        # able to view the player and Q&A for their courses.
         if user.is_staff or user.role == 'ADMIN':
             return Response({
                 "enrolled": True,
@@ -134,8 +307,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                     "certificate_url": None,
                 })
             except CourseModel.DoesNotExist:
-                pass  # not their course — fall through to normal enrollment check
-        # ── End bypass ─────────────────────────────────────────────────
+                pass
 
         try:
             enrollment = Enrollment.objects.get(student=user, course_id=course_id)
@@ -174,16 +346,11 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
             })
 
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Lesson Progress ViewSet
 # ══════════════════════════════════════════════════════════════════════════════
 
 class LessonProgressViewSet(viewsets.GenericViewSet):
-    """
-    POST /api/payments/progress/lessons/<lesson_id>/complete/
-    """
-
     queryset = LessonProgress.objects.all()
     serializer_class = LessonProgressSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -234,7 +401,6 @@ class LessonProgressViewSet(viewsets.GenericViewSet):
         enrollment.progress_percent = progress_percent
         enrollment.save()
 
-        # ── Certificate generation on 100 % ──────────────────────────────
         certificate_url = None
         if progress_percent >= 100.00:
             from .utils import generate_certificate_pdf
@@ -261,20 +427,7 @@ class LessonProgressViewSet(viewsets.GenericViewSet):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class CheckoutViewSet(viewsets.ViewSet):
-    """
-    Handles real Stripe Checkout Sessions and real PayPal Sandbox/Live orders.
-
-    Endpoints
-    ---------
-    POST  checkout/create-session/   → returns checkout_url + transaction_id
-    POST  checkout/verify/           → verifies / captures payment; activates enrollment
-    POST  checkout/stripe-webhook/   → Stripe webhook receiver (public)
-    POST  checkout/paypal-webhook/   → PayPal webhook receiver (public)
-    """
-
     permission_classes = [permissions.IsAuthenticated]
-
-    # ── helpers ──────────────────────────────────────────────────────────
 
     def _get_or_create_pending_enrollment(self, user, course):
         existing = Enrollment.objects.filter(student=user, course=course).first()
@@ -286,36 +439,6 @@ class CheckoutViewSet(viewsets.ViewSet):
                 )
             return existing, None
         return Enrollment.objects.create(student=user, course=course, is_active=False), None
-
-    def _activate_enrollment(self, payment: Payment) -> None:
-        """Mark payment COMPLETED and activate the associated enrollment."""
-        payment.status = Payment.StatusChoices.COMPLETED
-        payment.save(update_fields=['status'])
-
-        enrollment = payment.enrollment
-        enrollment.is_active = True
-        enrollment.save(update_fields=['is_active'])
-
-        logger.info(
-            "[Payment] Enrollment %s activated via %s (%s).",
-            enrollment.id, payment.gateway, payment.transaction_id,
-        )
-
-    def _dispute_enrollment(self, payment: Payment, detail: str) -> None:
-        """Mark payment DISPUTED, revoke enrollment, and log detail."""
-        payment.status = Payment.StatusChoices.DISPUTED
-        payment.disputed_at = timezone.now()
-        payment.dispute_detail = detail[:5000]  # guard against huge blobs
-        payment.save(update_fields=['status', 'disputed_at', 'dispute_detail'])
-
-        enrollment = payment.enrollment
-        enrollment.is_active = False
-        enrollment.save(update_fields=['is_active'])
-
-        logger.warning(
-            "[Dispute] Enrollment %s revoked. Transaction %s. Detail: %s",
-            enrollment.id, payment.transaction_id, detail[:200],
-        )
 
     # ── create-session ────────────────────────────────────────────────────
 
@@ -436,16 +559,32 @@ class CheckoutViewSet(viewsets.ViewSet):
                         status=status.HTTP_502_BAD_GATEWAY,
                     )
 
-        Payment.objects.update_or_create(
+        # ── Create or reuse a PENDING payment row ──────────────────────
+        # Enrollment is unique per (student, course), so it gets reused
+        # across a refund → re-purchase cycle. We must NOT key this off
+        # `enrollment` alone via update_or_create, or a repeat purchase
+        # after a refund silently overwrites the original (refunded)
+        # Payment row instead of creating a fresh sales record.
+        pending_payment = Payment.objects.filter(
             enrollment=enrollment,
-            defaults={
-                'student':        user,
-                'gateway':        gateway,
-                'transaction_id': transaction_id,
-                'amount':         course.price,
-                'status':         Payment.StatusChoices.PENDING,
-            },
-        )
+            status=Payment.StatusChoices.PENDING,
+        ).first()
+
+        if pending_payment:
+            pending_payment.student = user
+            pending_payment.gateway = gateway
+            pending_payment.transaction_id = transaction_id
+            pending_payment.amount = course.price
+            pending_payment.save(update_fields=['student', 'gateway', 'transaction_id', 'amount'])
+        else:
+            Payment.objects.create(
+                enrollment=enrollment,
+                student=user,
+                gateway=gateway,
+                transaction_id=transaction_id,
+                amount=course.price,
+                status=Payment.StatusChoices.PENDING,
+            )
 
         return Response(
             {"checkout_url": checkout_url, "transaction_id": transaction_id},
@@ -493,7 +632,7 @@ class CheckoutViewSet(viewsets.ViewSet):
                 return Response({"verified": True, "detail": "Payment already verified."})
 
             if session_id.startswith('mock_'):
-                self._activate_enrollment(payment)
+                _activate_enrollment(payment)
                 return Response({"verified": True, "detail": "Stripe mock payment verified."})
 
             try:
@@ -506,7 +645,7 @@ class CheckoutViewSet(viewsets.ViewSet):
                 )
 
             if session.payment_status == 'paid':
-                self._activate_enrollment(payment)
+                _activate_enrollment(payment)
                 return Response({"verified": True, "detail": "Stripe payment verified."})
 
             return Response({
@@ -537,13 +676,13 @@ class CheckoutViewSet(viewsets.ViewSet):
                 return Response({"verified": True, "detail": "Payment already verified."})
 
             if order_id.startswith('mock_'):
-                self._activate_enrollment(payment)
+                _activate_enrollment(payment)
                 return Response({"verified": True, "detail": "PayPal mock payment captured and verified."})
 
             try:
                 cap_data = pp_capture_order(order_id)
                 if cap_data.get('status') == 'COMPLETED':
-                    self._activate_enrollment(payment)
+                    _activate_enrollment(payment)
                     return Response({"verified": True, "detail": "PayPal payment captured and verified."})
 
                 return Response({
@@ -552,10 +691,9 @@ class CheckoutViewSet(viewsets.ViewSet):
                 })
 
             except RuntimeError as exc:
-                # Order might already have been captured (double-click / webhook race)
                 if 'ORDER_ALREADY_CAPTURED' in str(exc):
                     if payment.status != Payment.StatusChoices.COMPLETED:
-                        self._activate_enrollment(payment)
+                        _activate_enrollment(payment)
                     return Response({"verified": True, "detail": "PayPal payment already captured."})
 
                 logger.error("[PayPal] Capture failed: %s", exc)
@@ -593,13 +731,11 @@ class CheckoutViewSet(viewsets.ViewSet):
         logger.info("[Stripe Webhook] %s", event_type)
 
         if event_type == 'checkout.session.completed':
-            self._stripe_fulfill(obj.get('id'))
+            self._stripe_fulfill(_stripe_attr(obj, 'id'))
 
         elif event_type == 'payment_intent.succeeded':
-            # Fallback: find payment by payment_intent id
-            pi_id = obj.get('id')
+            pi_id = _stripe_attr(obj, 'id')
             try:
-                # Session stores payment_intent; look it up
                 sessions = stripe.checkout.Session.list(payment_intent=pi_id, limit=1)
                 if sessions.data:
                     self._stripe_fulfill(sessions.data[0].id)
@@ -607,8 +743,8 @@ class CheckoutViewSet(viewsets.ViewSet):
                 logger.warning("[Stripe] payment_intent.succeeded lookup error: %s", exc)
 
         elif event_type == 'charge.refunded':
-            charge_id = obj.get('id')
-            pi_id     = obj.get('payment_intent')
+            charge_id = _stripe_attr(obj, 'id')
+            pi_id     = _stripe_attr(obj, 'payment_intent')
             if pi_id:
                 self._stripe_refund_by_pi(pi_id)
             logger.info("[Stripe] Charge %s refunded via webhook.", charge_id)
@@ -624,14 +760,12 @@ class CheckoutViewSet(viewsets.ViewSet):
         try:
             payment = Payment.objects.get(transaction_id=session_id)
             if payment.status != Payment.StatusChoices.COMPLETED:
-                self._activate_enrollment(payment)
+                _activate_enrollment(payment)
         except Payment.DoesNotExist:
             logger.warning("[Stripe] Session %s not found in DB during webhook.", session_id)
 
     def _stripe_refund_by_pi(self, payment_intent_id: str) -> None:
-        """Mark payment as REFUNDED and revoke enrollment — triggered by webhook."""
         try:
-            # Retrieve session for PI to get session id stored in DB
             sessions = stripe.checkout.Session.list(
                 payment_intent=payment_intent_id, limit=1
             )
@@ -639,24 +773,14 @@ class CheckoutViewSet(viewsets.ViewSet):
                 return
             session_id = sessions.data[0].id
             payment = Payment.objects.get(transaction_id=session_id)
-            if payment.status != Payment.StatusChoices.REFUNDED:
-                payment.status = Payment.StatusChoices.REFUNDED
-                payment.refunded_at = timezone.now()
-                payment.save(update_fields=['status', 'refunded_at'])
-                enrollment = payment.enrollment
-                enrollment.is_active = False
-                enrollment.save(update_fields=['is_active'])
-                logger.info(
-                    "[Stripe] Enrollment %s revoked via refund webhook (PI %s).",
-                    enrollment.id, payment_intent_id,
-                )
+            _mark_refunded(payment)
         except Payment.DoesNotExist:
             logger.warning("[Stripe] Refund webhook: payment not found for PI %s.", payment_intent_id)
         except Exception as exc:
             logger.error("[Stripe] _stripe_refund_by_pi error: %s", exc)
 
-    def _stripe_dispute(self, dispute_obj: dict) -> None:
-        pi_id = dispute_obj.get('payment_intent')
+    def _stripe_dispute(self, dispute_obj) -> None:
+        pi_id = _stripe_attr(dispute_obj, 'payment_intent')
         if not pi_id:
             return
         try:
@@ -666,12 +790,12 @@ class CheckoutViewSet(viewsets.ViewSet):
             session_id = sessions.data[0].id
             payment = Payment.objects.get(transaction_id=session_id)
             detail_json = json.dumps({
-                "dispute_id": dispute_obj.get('id'),
-                "reason":     dispute_obj.get('reason'),
-                "status":     dispute_obj.get('status'),
-                "amount":     dispute_obj.get('amount'),
+                "dispute_id": _stripe_attr(dispute_obj, 'id'),
+                "reason":     _stripe_attr(dispute_obj, 'reason'),
+                "status":     _stripe_attr(dispute_obj, 'status'),
+                "amount":     _stripe_attr(dispute_obj, 'amount'),
             })
-            self._dispute_enrollment(payment, detail_json)
+            _dispute_enrollment(payment, detail_json)
         except Payment.DoesNotExist:
             logger.warning("[Stripe] Dispute webhook: payment not found for PI %s.", pi_id)
         except Exception as exc:
@@ -697,22 +821,19 @@ class CheckoutViewSet(viewsets.ViewSet):
         logger.info("[PayPal Webhook] %s", event_type)
 
         if event_type == 'PAYMENT.CAPTURE.COMPLETED':
-            # resource.id is the capture ID; find the order via supplementary_data
             order_id = (
                 resource.get('supplementary_data', {})
                          .get('related_ids', {})
                          .get('order_id')
             )
             if not order_id:
-                # Fallback: search for payment whose transaction_id matches any order
-                # tied to this capture — not reliably available; log and move on.
                 logger.warning("[PayPal] CAPTURE.COMPLETED missing order_id in resource.")
                 return Response({"status": "ok"})
 
             try:
                 payment = Payment.objects.get(transaction_id=order_id)
                 if payment.status != Payment.StatusChoices.COMPLETED:
-                    self._activate_enrollment(payment)
+                    _activate_enrollment(payment)
             except Payment.DoesNotExist:
                 logger.warning("[PayPal] Order %s not found in DB during webhook.", order_id)
 
@@ -725,16 +846,7 @@ class CheckoutViewSet(viewsets.ViewSet):
             if order_id:
                 try:
                     payment = Payment.objects.get(transaction_id=order_id)
-                    if payment.status != Payment.StatusChoices.REFUNDED:
-                        payment.status = Payment.StatusChoices.REFUNDED
-                        payment.refunded_at = timezone.now()
-                        payment.save(update_fields=['status', 'refunded_at'])
-                        enrollment = payment.enrollment
-                        enrollment.is_active = False
-                        enrollment.save(update_fields=['is_active'])
-                        logger.info(
-                            "[PayPal] Enrollment %s revoked via refund webhook.", enrollment.id
-                        )
+                    _mark_refunded(payment)
                 except Payment.DoesNotExist:
                     pass
 
@@ -744,7 +856,6 @@ class CheckoutViewSet(viewsets.ViewSet):
             'RISK.DISPUTE.CREATED',
         ):
             dispute_id = resource.get('dispute_id') or resource.get('id')
-            # disputed_transactions contains order / transaction refs
             for tx in resource.get('disputed_transactions', []):
                 order_id = tx.get('order_id') or tx.get('buyer_transaction_id')
                 if order_id:
@@ -755,7 +866,7 @@ class CheckoutViewSet(viewsets.ViewSet):
                             "reason":     resource.get('reason'),
                             "status":     resource.get('status'),
                         })
-                        self._dispute_enrollment(payment, detail_json)
+                        _dispute_enrollment(payment, detail_json)
                     except Payment.DoesNotExist:
                         logger.warning(
                             "[PayPal] Dispute %s: order %s not found.", dispute_id, order_id
@@ -769,13 +880,6 @@ class CheckoutViewSet(viewsets.ViewSet):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for viewing payment history and initiating refunds.
-
-    Refund endpoint:  POST /api/payments/payments/<pk>/refund/
-    Permission: admin or mentor who owns the course.
-    """
-
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -808,9 +912,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         if payment.transaction_id.startswith('mock_'):
-            # Bypass actual api calls for mock transactions
             logger.info("[Refund] Bypassing third-party API refund for mock transaction %s", payment.transaction_id)
-        # ── Stripe refund ────────────────────────────────────────────────
         elif payment.gateway == Payment.GatewayChoices.STRIPE:
             try:
                 session = stripe.checkout.Session.retrieve(payment.transaction_id)
@@ -827,8 +929,6 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
                     {"detail": f"Stripe refund failed: {exc.user_message}"},
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
-
-        # ── PayPal refund ────────────────────────────────────────────────
         elif payment.gateway == Payment.GatewayChoices.PAYPAL:
             try:
                 capture_id = pp_get_capture_id(payment.transaction_id)
@@ -845,19 +945,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
-        # ── DB update ────────────────────────────────────────────────────
-        payment.status      = Payment.StatusChoices.REFUNDED
-        payment.refunded_at = timezone.now()
-        payment.save(update_fields=['status', 'refunded_at'])
-
-        enrollment           = payment.enrollment
-        enrollment.is_active = False
-        enrollment.save(update_fields=['is_active'])
-
-        logger.info(
-            "[Refund] Payment %s refunded; enrollment %s revoked.",
-            payment.transaction_id, enrollment.id,
-        )
+        _mark_refunded(payment, refunded_by=user)
 
         return Response({
             "detail": "Payment refunded and student enrollment revoked.",
@@ -875,29 +963,23 @@ from courses.models import Review
 from courses.serializers import CourseListSerializer
 
 class DashboardStatsView(APIView):
-    """
-    API view to retrieve stats and lists for the landing dashboard.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        
+
         if user.role == 'MENTOR':
             my_courses = Course.objects.filter(mentor=user)
             courses_count = my_courses.count()
             published_count = my_courses.filter(is_published=True).count()
-            
-            # Total students enrolled in this mentor's active courses
+
             total_students = Enrollment.objects.filter(course__mentor=user, is_active=True).count()
-            
-            # Average rating for mentor's courses
+
             avg_rating_val = Review.objects.filter(course__mentor=user).aggregate(Avg('rating'))['rating__avg']
             avg_rating = round(avg_rating_val, 1) if avg_rating_val is not None else 0.0
-            
-            # Courses created by this mentor
+
             courses_data = CourseListSerializer(my_courses.order_by('-created_at'), many=True).data
-            
+
             return Response({
                 "role": "MENTOR",
                 "stats": {
@@ -908,16 +990,13 @@ class DashboardStatsView(APIView):
                 },
                 "courses": courses_data
             })
-            
+
         elif user.role == 'ADMIN':
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            
             total_courses = Course.objects.count()
             pending_courses = Course.objects.filter(is_approved=False, is_published=True).count()
             total_students = User.objects.filter(role='STUDENT').count()
             total_mentors = User.objects.filter(role='MENTOR').count()
-            
+
             return Response({
                 "role": "ADMIN",
                 "stats": {
@@ -928,24 +1007,20 @@ class DashboardStatsView(APIView):
                 },
                 "courses": []
             })
-            
+
         else:
-            # STUDENT role
             active_enrollments = Enrollment.objects.filter(student=user, is_active=True)
             enrolled_count = active_enrollments.count()
-            
-            # In progress: progress_percent > 0 and < 100
+
             in_progress_count = active_enrollments.filter(progress_percent__gt=0, progress_percent__lt=100).count()
-            
-            # Completed: progress_percent = 100
+
             completed_count = active_enrollments.filter(progress_percent=100).count()
-            
-            # Hours Learned: sum of duration_hours of completed courses
+
             hours_learned_val = active_enrollments.filter(progress_percent=100).aggregate(total=Sum('course__duration_hours'))['total']
             hours_learned = hours_learned_val if hours_learned_val is not None else 0
-            
+
             enrollment_data = EnrollmentSerializer(active_enrollments.order_by('-enrolled_at'), many=True).data
-            
+
             return Response({
                 "role": "STUDENT",
                 "stats": {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import { QAPanel } from './LearningPlayer.jsx';
@@ -54,12 +54,25 @@ export default function MentorDashboard() {
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
 
-  const [activeTab, setTab] = useState('courses');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setTabState] = useState(searchParams.get('tab') || 'courses');
   const [payments, setPayments] = useState([]);
   const [loadingPayments, setLP] = useState(true);
   const [paymentsError, setPE] = useState('');
   const [actioningId, setActioningId] = useState(null);
   const [selectedQACourse, setSelectedQACourse] = useState(null);
+
+  const setTab = (tab) => {
+    setTabState(tab);
+    setSearchParams({ tab });
+  };
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['courses', 'qa', 'payments'].includes(tabParam) && tabParam !== activeTab) {
+      setTabState(tabParam);
+    }
+  }, [searchParams]);
 
   const fetchCourses = async () => {
     try { setLoading(true); const r = await api.get('/api/courses/'); setCourses(r.data.filter(c => String(c.mentor?.id || c.mentor) === String(user?.id))); setError(''); }

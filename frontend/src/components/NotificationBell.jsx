@@ -3,7 +3,7 @@ import useNotifications from '../hooks/useNotifications.js';
 import NotificationDropdown from './NotificationDropdown.jsx';
 import './NotificationBell.css';
 
-function NotificationBell() {
+function NotificationBell({ user }) {
   const { unreadCount, toast, dismissToast } = useNotifications();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -22,18 +22,18 @@ function NotificationBell() {
   // ── Notification type → icon mapping for toast ─────────────────────
   const typeIcon = (type) => {
     switch (type?.toUpperCase()) {
-      case 'ENROLLMENT':  return 'ti-school';
+      case 'ENROLLMENT': return 'ti-school';
       case 'LESSON_ADDED': return 'ti-book';
       case 'QUESTION_REPLY':
-      case 'QNA_REPLY':    return 'ti-message-circle';
+      case 'QNA_REPLY': return 'ti-message-circle';
       case 'PAYMENT_SUCCESS':
       case 'REFUND_PROCESSED':
-      case 'REFUND':       return 'ti-receipt-refund';
+      case 'REFUND': return 'ti-receipt-refund';
       case 'CERTIFICATE_GENERATED': return 'ti-award';
       case 'COURSE_APPROVED':
       case 'MENTOR_APPROVED': return 'ti-circle-check';
       case 'COURSE_REJECTED': return 'ti-circle-x';
-      default:             return 'ti-bell';
+      default: return 'ti-bell';
     }
   };
 
@@ -55,7 +55,7 @@ function NotificationBell() {
 
         {/* ── Dropdown ────────────────────────────────────────────── */}
         {open && (
-          <NotificationDropdown onClose={() => setOpen(false)} />
+          <NotificationDropdown onClose={() => setOpen(false)} user={user} />
         )}
       </div>
 

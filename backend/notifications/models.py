@@ -7,6 +7,7 @@ class Notification(models.Model):
         COURSE_APPROVED = 'COURSE_APPROVED', 'Course Approved'
         COURSE_REJECTED = 'COURSE_REJECTED', 'Course Rejected'
         MENTOR_APPROVED = 'MENTOR_APPROVED', 'Mentor Approved'
+        COURSE_PENDING_APPROVAL = 'COURSE_PENDING_APPROVAL', 'Course Pending Approval'
         NEW_QUESTION = 'NEW_QUESTION', 'New Question'
         QUESTION_REPLY = 'QUESTION_REPLY', 'Question Reply'
         NEW_REVIEW = 'NEW_REVIEW', 'New Review'
@@ -89,6 +90,7 @@ class NotificationPreference(models.Model):
         Notification.NotificationType.COURSE_APPROVED,
         Notification.NotificationType.COURSE_REJECTED,
         Notification.NotificationType.MENTOR_APPROVED,
+        Notification.NotificationType.COURSE_PENDING_APPROVAL,
     }
 
     @classmethod

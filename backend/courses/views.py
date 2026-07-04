@@ -83,6 +83,8 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
         course = self.get_object()
         course.is_approved = True
+        course.is_submitted_for_review = False
+        course.is_rejected = False
         course.save()
 
         from notifications.models import Notification
@@ -107,6 +109,10 @@ class CourseViewSet(viewsets.ModelViewSet):
         """
         course = self.get_object()
         course.is_approved = False
+        course.is_published = False
+        course.is_submitted_for_review = False
+        course.is_rejected = True
+        course.save()
         # If rejected, unpublish as well to keep integrity
         course.is_published = False
         course.save()
@@ -133,6 +139,11 @@ class CourseViewSet(viewsets.ModelViewSet):
         Action for Mentors to publish a course.
         """
         course = self.get_object()
+        if not course.is_approved:
+            return Response(
+                {"detail": "Course must be approved by an admin before it can be published."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         course.is_published = True
         course.save()
         
@@ -159,6 +170,38 @@ class CourseViewSet(viewsets.ModelViewSet):
             "is_published": False
         }, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'],permission_classes=[permissions.IsAuthenticated, IsCourseMentorOrAdmin])
+    def submit_for_review(self, request, pk=None):
+        course = self.get_object()
+        if course.mentor != request.user:
+            return Response({"detail": "Only the course mentor can submit this course for review."},
+                             status=status.HTTP_403_FORBIDDEN)
+        if course.is_published:
+            return Response({"detail": "This course is already published."},
+                             status=status.HTTP_400_BAD_REQUEST)
+
+        course.is_submitted_for_review = True
+        course.is_rejected = False
+        course.save()
+
+        from django.contrib.auth import get_user_model
+        from notifications.models import Notification
+        User = get_user_model()
+        admins = User.objects.filter(Q(is_staff=True) | Q(role='ADMIN'))
+        for admin in admins:
+            Notification.objects.create(
+                recipient=admin,
+                sender=request.user,
+                title="Course Pending Approval",
+                message=f"'{course.title}' by {request.user.username} was submitted for review.",
+                notification_type=Notification.NotificationType.COURSE_PENDING_APPROVAL,
+                related_object_id=course.id,
+                related_object_type="Course"
+            )
+
+        return Response({"detail": f"'{course.title}' submitted for review.",
+                          "status": course.status}, status=status.HTTP_200_OK)
+                          
     @action(detail=True, methods=['get', 'post'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
     def reviews(self, request, pk=None):
         """
@@ -410,3 +453,37 @@ class CourseAutocompleteView(generics.GenericAPIView):
         )
 
         return Response(list(suggestions))
+
+from django.contrib.auth import get_user_model
+
+@action(detail=True, methods=['post'],
+        permission_classes=[permissions.IsAuthenticated, IsCourseMentorOrAdmin])
+def submit_for_review(self, request, pk=None):
+    course = self.get_object()
+    if course.mentor != request.user:
+        return Response({"detail": "Only the course mentor can submit this course for review."},
+                         status=status.HTTP_403_FORBIDDEN)
+    if course.is_published:
+        return Response({"detail": "This course is already published."},
+                         status=status.HTTP_400_BAD_REQUEST)
+
+    course.is_submitted_for_review = True
+    course.is_rejected = False
+    course.save()
+
+    from notifications.models import Notification
+    User = get_user_model()
+    admins = User.objects.filter(Q(is_staff=True) | Q(role='ADMIN'))
+    for admin in admins:
+        Notification.objects.create(
+            recipient=admin,
+            sender=request.user,
+            title="Course Pending Approval",
+            message=f"'{course.title}' by {request.user.username} was submitted for review.",
+            notification_type=Notification.NotificationType.COURSE_PENDING_APPROVAL,
+            related_object_id=course.id,
+            related_object_type="Course"
+        )
+
+    return Response({"detail": f"'{course.title}' submitted for review.",
+                      "status": course.status}, status=status.HTTP_200_OK)
