@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from courses.models import Course, Lesson
+from courses.models import Course
 
 
 class Enrollment(models.Model):
@@ -55,45 +55,3 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment {self.transaction_id} - {self.status} (${self.amount})"
-
-
-class LessonProgress(models.Model):
-    student = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='lesson_progresses'
-    )
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='progresses')
-    is_completed = models.BooleanField(default=False)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ('student', 'lesson')
-
-    def __str__(self):
-        status = "Completed" if self.is_completed else "In Progress"
-        return f"{self.student.username} - {self.lesson.title} ({status})"
-
-
-class Certificate(models.Model):
-    """Completion certificate issued when a student finishes 100% of a course."""
-    enrollment = models.OneToOneField(
-        Enrollment,
-        on_delete=models.CASCADE,
-        related_name='certificate'
-    )
-    student = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='certificates'
-    )
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='certificates')
-    certificate_code = models.CharField(max_length=100, unique=True)
-    issued_at = models.DateTimeField(auto_now_add=True)
-    pdf_file  = models.FileField(upload_to='certificates/', null=True, blank=True)
-
-    class Meta:
-        unique_together = ('student', 'course')
-
-    def __str__(self):
-        return f"Certificate {self.certificate_code} — {self.student.username} / {self.course.title}"

@@ -3,33 +3,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
 import NotificationBell from '../components/NotificationBell.jsx';
 import api from '../utils/api.js';
+import Sidebar from '../components/Sidebar.jsx';
 import './ProfilePage.css';
-
-function Sidebar({ user, onLogout, loggingOut }) {
-  const isMentor = user?.role === 'MENTOR', isAdmin = user?.role === 'ADMIN';
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo-area">
-        <Link to="/" className="nav-logo">
-          <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
-          <span className="nav-logo-text">Edu<span>Path</span></span>
-        </Link>
-      </div>
-      <nav className="sidebar-nav">
-        <Link to="/dashboard" className="sidebar-nav-item"><i className="ti ti-layout-dashboard" /> Dashboard</Link>
-        {(isMentor || isAdmin) && <Link to="/mentor/dashboard" className="sidebar-nav-item"><i className="ti ti-award" /> Mentor Portal</Link>}
-        {isAdmin && <Link to="/admin/portal" className="sidebar-nav-item"><i className="ti ti-settings" /> Admin Portal</Link>}
-        <Link to="/courses" className="sidebar-nav-item"><i className="ti ti-book" /> Courses</Link>
-        <Link to="/profile" className="sidebar-nav-item active"><i className="ti ti-user" /> Profile</Link>
-      </nav>
-      <div className="sidebar-footer">
-        <button className="sidebar-logout" onClick={onLogout} disabled={loggingOut}>
-          {loggingOut ? <><span className="loading-spinner loading-spinner-sm" />Signing out…</> : <><i className="ti ti-logout" />Sign out</>}
-        </button>
-      </div>
-    </aside>
-  );
-}
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -221,7 +196,7 @@ export default function ProfilePage() {
 
   return (
     <div className="page-shell">
-      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} />
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="profile" />
 
       <div className="inner-page">
         <header className="topbar">

@@ -65,36 +65,6 @@ a:hover { color: var(--brand-dark); }
 img, svg { display: block; }
 h1,h2,h3,h4,h5,h6 { font-family: var(--font-ui); font-weight: 600; line-height: 1.25; color: var(--txt-1); letter-spacing: -0.01em; }
 
-/* ── Shared Nav (used on landing + app pages) ───────────── */
-.app-nav {
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  padding: 0 48px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.nav-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; cursor: pointer; }
-.nav-logo-mark {
-  width: 32px; height: 32px;
-  background: var(--brand);
-  border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-}
-.nav-logo-mark i { color: #fff; font-size: 16px; }
-.nav-logo-text { font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; color: var(--txt-1); letter-spacing: -0.02em; }
-.nav-logo-text span { color: var(--brand); }
-.nav-links { display: flex; gap: 28px; }
-.nav-link { font-size: 13.5px; color: var(--txt-3); text-decoration: none; font-weight: 400; transition: color var(--t); }
-.nav-link:hover { color: var(--brand); }
-.nav-link.active { color: var(--txt-1); font-weight: 500; }
-.nav-actions { display: flex; align-items: center; gap: 10px; }
-
 /* ── Buttons ─────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
@@ -235,45 +205,6 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-ui); font-weight: 600; line-height: 
 /* ── Avatar ──────────────────────────────────────────────── */
 .avatar { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-ui); font-weight: 600; flex-shrink: 0; background: var(--brand-subtle); color: var(--brand); }
 .avatar-initials { display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-ui); font-weight: 600; flex-shrink: 0; background: var(--brand-subtle); color: var(--brand); }
-
-/* ── Sidebar (sleek dark maroon) ─────────────────────────── */
-.sidebar {
-  width: 240px; flex-shrink: 0;
-  background: var(--brand-dark);
-  border-right: 1px solid rgba(255,255,255,0.06);
-  display: flex; flex-direction: column;
-  padding: 0; gap: 0;
-  position: sticky; top: 0; height: 100svh; overflow-y: auto;
-}
-.sidebar-logo-area {
-  padding: 24px 20px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.sidebar-logo-area .nav-logo-text {
-  color: #fff !important;
-}
-.sidebar-logo-area .nav-logo-text span {
-  color: var(--blush-mid) !important;
-}
-.sidebar-nav { padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.sidebar-nav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: var(--r-md);
-  font-size: 13.5px; font-weight: 500; color: rgba(255,255,255,0.7);
-  text-decoration: none; transition: all var(--t); border: 1px solid transparent;
-  cursor: pointer; background: none; width: 100%; font-family: var(--font-ui);
-}
-.sidebar-nav-item i { font-size: 18px; flex-shrink: 0; color: rgba(255,255,255,0.5); transition: color var(--t); }
-.sidebar-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
-.sidebar-nav-item:hover i { color: #fff; }
-.sidebar-nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.15); font-weight: 600; }
-.sidebar-nav-item.active i { color: #fff; }
-.sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.08); }
-.sidebar-logout { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border-radius: var(--r-md); border: none; background: none; color: rgba(255,255,255,0.6); font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all var(--t); font-family: var(--font-ui); }
-.sidebar-logout:hover { background: rgba(220,53,69,0.2); color: #ff9fa6; }
-.sidebar-logout i { font-size: 18px; color: rgba(255,255,255,0.4); }
-.sidebar-logout:hover i { color: #ff9fa6; }
-
 
 /* ── Top bar (app pages) ─────────────────────────────────── */
 .topbar {

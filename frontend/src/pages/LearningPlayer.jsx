@@ -66,7 +66,7 @@ const ReplyIcon = () => (
   </svg>
 );
 
-function getYouTubeEmbedUrl(url) {
+function getYouTubeEmbedUrl(url, startSeconds = 0) {
   if (!url) return '';
   try {
     const parsed = new URL(url);
@@ -74,10 +74,19 @@ function getYouTubeEmbedUrl(url) {
     if (parsed.hostname === 'youtu.be') {
       videoId = parsed.pathname.slice(1).split('?')[0];
     } else if (parsed.hostname.includes('youtube.com')) {
-      if (parsed.pathname.startsWith('/embed/')) return url;
-      videoId = parsed.searchParams.get('v');
+      if (parsed.pathname.startsWith('/embed/')) {
+        videoId = parsed.pathname.split('/')[2];
+      } else {
+        videoId = parsed.searchParams.get('v');
+      }
     }
-    if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    if (videoId) {
+      let embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+      if (startSeconds > 0) {
+        embedUrl += `&start=${startSeconds}`;
+      }
+      return embedUrl;
+    }
   } catch (_) {}
   return url;
 }
@@ -351,6 +360,28 @@ export default function LearningPlayer() {
   const [quizFinished, setQuizFinished]             = useState(false);
   const [answerResult, setAnswerResult]             = useState(null);
 
+  const lastSavedPositionRef = useRef(0);
+
+  useEffect(() => {
+    const handleYTMessage = async (e) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data.event === 'infoDelivery' && data.info && data.info.currentTime !== undefined && activeLesson?.content_type === 'VIDEO') {
+          const currentTime = Math.round(data.info.currentTime);
+          if (currentTime !== lastSavedPositionRef.current && currentTime % 5 === 0) {
+            lastSavedPositionRef.current = currentTime;
+            await api.patch('/api/progress/video-position/', {
+              lesson_id: activeLesson.id,
+              video_position_seconds: currentTime
+            });
+          }
+        }
+      } catch (err) {}
+    };
+    window.addEventListener('message', handleYTMessage);
+    return () => window.removeEventListener('message', handleYTMessage);
+  }, [activeLesson?.id, activeLesson?.content_type]);
+
   const loadLearningData = useCallback(async () => {
     try {
       setLoading(true);
@@ -362,9 +393,44 @@ export default function LearningPlayer() {
       if (!enrollResponse.data.enrolled) { navigate(`/courses/${courseId}`); return; }
       setEnrollment(enrollResponse.data);
 
-      if (courseData.modules?.length > 0 && courseData.modules[0].lessons?.length > 0) {
-        setActiveLesson(courseData.modules[0].lessons[0]);
+      if (enrollResponse.data.completed_lessons) {
+        const completedMap = {};
+        enrollResponse.data.completed_lessons.forEach(id => {
+          completedMap[id] = true;
+        });
+        setCompletedLessons(completedMap);
       }
+
+      let initialLesson = null;
+      try {
+        const progressRes = await api.get(`/api/progress/course/${courseId}/`);
+        const progData = progressRes.data;
+
+        if (progData.completed_lessons) {
+          const completedMap = {};
+          progData.completed_lessons.forEach(id => {
+            completedMap[id] = true;
+          });
+          setCompletedLessons(completedMap);
+        }
+
+        const resumeId = progData.resume_position?.lesson_id;
+        if (resumeId) {
+          const flatLessons = courseData.modules?.flatMap(m => m.lessons ?? []) ?? [];
+          const found = flatLessons.find(l => l.id === resumeId);
+          if (found) {
+            initialLesson = found;
+            initialLesson.start_seconds = progData.resume_position.video_position_seconds || 0;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load progress details:", err);
+      }
+
+      if (!initialLesson && courseData.modules?.length > 0 && courseData.modules[0].lessons?.length > 0) {
+        initialLesson = courseData.modules[0].lessons[0];
+      }
+      setActiveLesson(initialLesson);
       setError('');
     } catch (err) {
       console.error(err);
@@ -376,20 +442,26 @@ export default function LearningPlayer() {
 
   useEffect(() => { if (user) loadLearningData(); }, [user?.id, loadLearningData]);
 
-  const handleLessonClick = (lesson) => {
+  const handleLessonClick = async (lesson) => {
     setActiveLesson(lesson);
     setActiveTab('lesson');
     setCurrentQuestionIdx(0); setSelectedAnswer(null);
     setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false); setAnswerResult(null);
+
+    try {
+      await api.post(`/api/progress/lesson/${lesson.id}/resume/`);
+    } catch (err) {
+      console.error("Failed to post resume:", err);
+    }
   };
 
   const handleMarkComplete = async () => {
     if (!activeLesson || completing) return;
     setCompleting(true);
     try {
-      const response = await api.post(`/api/payments/progress/lessons/${activeLesson.id}/complete/`);
+      const response = await api.post(`/api/progress/lesson/${activeLesson.id}/complete/`);
       setCompletedLessons(prev => ({ ...prev, [activeLesson.id]: true }));
-      setEnrollment(prev => ({ ...prev, progress_percent: response.data.progress_percent }));
+      setEnrollment(prev => ({ ...prev, progress_percent: response.data.completion_percentage }));
       advanceNextLesson();
     } catch (err) {
       console.error(err);
@@ -534,7 +606,7 @@ export default function LearningPlayer() {
                     {activeLesson.video_url ? (
                       <div className="yt-embed-container">
                         <iframe
-                          src={getYouTubeEmbedUrl(activeLesson.video_url)}
+                          src={getYouTubeEmbedUrl(activeLesson.video_url, activeLesson.start_seconds || 0)}
                           title={activeLesson.title}
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -646,9 +718,12 @@ export default function LearningPlayer() {
               </div>
 
               {activeLesson.content_type !== 'QUIZ' && (
-                <footer className="player-control-footer">
+                <footer className="player-control-footer" style={{ display: 'flex', gap: 10 }}>
                   <button className="btn btn-primary btn-lg" onClick={handleMarkComplete} disabled={completing}>
                     {completing ? 'Updating...' : 'Mark as Complete & Next'}
+                  </button>
+                  <button className="btn btn-secondary btn-lg" onClick={advanceNextLesson}>
+                    Next Lesson
                   </button>
                 </footer>
               )}

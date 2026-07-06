@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
+import Sidebar from '../components/Sidebar.jsx';
 import './CoursesPage.css';
 
 // SVG Icons
@@ -12,33 +13,6 @@ const StarIcon = ({ filled }) => (
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
-
-function Sidebar({ user, onLogout, loggingOut }) {
-  const isMentor = user?.role === 'MENTOR';
-  const isAdmin = user?.role === 'ADMIN';
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo-area">
-        <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
-          <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
-          <span className="nav-logo-text">Edu<span>Path</span></span>
-        </Link>
-      </div>
-      <nav className="sidebar-nav">
-        <Link to="/dashboard" className="sidebar-nav-item"><i className="ti ti-layout-dashboard" /> Dashboard</Link>
-        {(isMentor || isAdmin) && <Link to="/mentor/dashboard" className="sidebar-nav-item"><i className="ti ti-award" /> Mentor Portal</Link>}
-        {isAdmin && <Link to="/admin/portal" className="sidebar-nav-item"><i className="ti ti-settings" /> Admin Portal</Link>}
-        <Link to="/courses" className="sidebar-nav-item active"><i className="ti ti-book" /> Courses</Link>
-        <Link to="/profile" className="sidebar-nav-item"><i className="ti ti-user" /> Profile</Link>
-      </nav>
-      <div className="sidebar-footer">
-        <button className="sidebar-logout" onClick={onLogout} disabled={loggingOut}>
-          {loggingOut ? <><span className="loading-spinner loading-spinner-sm" />Signing out…</> : <><i className="ti ti-logout" />Sign out</>}
-        </button>
-      </div>
-    </aside>
-  );
-}
 
 const THUMB = { BEGINNER: 'cc-thumb-beg', INTERMEDIATE: 'cc-thumb-int', ADVANCED: 'cc-thumb-adv' };
 const ICON = { BEGINNER: 'ti-leaf', INTERMEDIATE: 'ti-flame', ADVANCED: 'ti-bolt' };
@@ -188,7 +162,7 @@ export default function CoursesPage() {
 
   return (
     <div className="page-shell">
-      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} />
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="courses" />
 
       <div className="inner-page">
         <header className="topbar">
@@ -377,7 +351,20 @@ export default function CoursesPage() {
             <>
               <div className="courses-grid animate-fadeIn">
                 {courses.map(course => (
-                  <article key={course.id} className="course-card-catalog">
+                  <article
+                    key={course.id}
+                    className="course-card-catalog"
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => navigate(`/courses/${course.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/courses/${course.id}`);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className={`cc-thumb ${THUMB[course.level] || 'cc-thumb-beg'}`}>
                       {course.thumbnail ? (
                         <img src={course.thumbnail} alt={course.title} className="cc-thumb-img" />

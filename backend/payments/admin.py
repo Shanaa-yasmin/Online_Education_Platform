@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Enrollment, Payment, LessonProgress, Certificate
+from .models import Enrollment, Payment
 
 
 @admin.register(Enrollment)
@@ -33,19 +33,3 @@ class PaymentAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
     )
-
-
-@admin.register(LessonProgress)
-class LessonProgressAdmin(admin.ModelAdmin):
-    list_display  = ('student', 'lesson', 'is_completed', 'completed_at')
-    list_filter   = ('is_completed', 'lesson__module__course')
-    search_fields = ('student__username', 'lesson__title')
-    readonly_fields = ('completed_at',)
-
-
-@admin.register(Certificate)
-class CertificateAdmin(admin.ModelAdmin):
-    list_display  = ('certificate_code', 'student', 'course', 'issued_at')
-    list_filter   = ('course',)
-    search_fields = ('certificate_code', 'student__username', 'course__title')
-    readonly_fields = ('certificate_code', 'issued_at')

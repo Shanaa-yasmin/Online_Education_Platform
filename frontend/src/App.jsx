@@ -14,6 +14,7 @@ const NotificationCenter = lazy(() => import('./pages/NotificationCenter.jsx'));
 const MentorDashboard    = lazy(() => import('./pages/MentorDashboard.jsx'));
 const CourseBuilder      = lazy(() => import('./pages/CourseBuilder.jsx'));
 const AdminPanel         = lazy(() => import('./pages/AdminPanel.jsx'));
+const AdminReports       = lazy(() => import('./pages/AdminReports.jsx'));
 const CoursesPage        = lazy(() => import('./pages/CoursesPage.jsx'));
 const CoursePage         = lazy(() => import('./pages/CoursePage.jsx'));
 const LearningPlayer     = lazy(() => import('./pages/LearningPlayer.jsx'));
@@ -52,6 +53,7 @@ function AppContent() {
 
             {/* Admin */}
             <Route path="/admin/portal" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPanel /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReports /></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

@@ -16,6 +16,7 @@ const AdminPanel = lazy(() => import('./pages/AdminPanel.jsx'));
 const CoursesPage = lazy(() => import('./pages/CoursesPage.jsx'));
 const CoursePage = lazy(() => import('./pages/CoursePage.jsx'));
 const LearningPlayer = lazy(() => import('./pages/LearningPlayer.jsx'));
+const AdminReports = lazy(() => import('./pages/AdminReports.jsx'));
 const NotificationCenter = lazy(() => import('./pages/NotificationCenter.jsx'));
 
 const Fallback = () => (
@@ -65,6 +66,7 @@ function App() {
 
               {/* Admin */}
               <Route path="/admin/portal" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPanel /></ProtectedRoute>} />
+              <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReports /></ProtectedRoute>} />
 
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

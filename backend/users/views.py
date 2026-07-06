@@ -84,7 +84,8 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         user = instance
         
         if user.role == 'STUDENT':
-            from payments.models import Enrollment, Certificate
+            from payments.models import Enrollment
+            from certificates.models import Certificate
             enrollments = Enrollment.objects.filter(student=user, is_active=True)
             completed_enrollments = enrollments.filter(progress_percent=100.0)
             certificates = Certificate.objects.filter(student=user)

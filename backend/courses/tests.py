@@ -185,6 +185,14 @@ class CourseAPITests(APITestCase):
 
     def test_mentor_publish_course(self):
         self.client.force_authenticate(user=self.mentor1)
+        # Approve the draft course first (required by the publish action)
+        self.client.force_authenticate(user=self.admin)
+        approve_url = reverse('course-approve', kwargs={'pk': self.course_draft.pk})
+        self.client.post(approve_url)
+        self.course_draft.refresh_from_db()
+
+        # Now publish as the mentor
+        self.client.force_authenticate(user=self.mentor1)
         url = reverse('course-publish', kwargs={'pk': self.course_draft.pk})
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

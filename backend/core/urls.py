@@ -27,6 +27,8 @@ urlpatterns = [
     path('api/profile/', ProfileView.as_view(), name='core_profile'),
     path('api/profile/change-password/', ChangePasswordView.as_view(), name='core_change_password'),
     path('api/', include('courses.urls')),
+    path('api/progress/', include('progress.urls')),
+    path('api/certificates/', include('certificates.urls')),
     path('api/payments/', include('payments.urls')),
     path('api/chat/', include('chat.urls')),
     path('api/notifications/', include('notifications.urls')),

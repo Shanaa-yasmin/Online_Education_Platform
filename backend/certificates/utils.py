@@ -119,15 +119,6 @@ def generate_certificate_pdf(enrollment):
 
     Idempotent — returns the existing Certificate if one was already issued.
     Requires enrollment.progress_percent == 100.
-
-    settings.py must define:
-        CERT_FONTS_DIR = BASE_DIR / "static" / "fonts"
-
-    That folder must contain:
-        PlayfairDisplay-VariableFont_wght.ttf
-        Lora-VariableFont_wght.ttf
-        Lora-Italic-VariableFont_wght.ttf
-        LiberationSerif-Bold.ttf
     """
     if getattr(enrollment, "progress_percent", 0) < 100:
         raise ValueError("Enrollment progress is not complete; cannot generate certificate.")
@@ -164,40 +155,40 @@ def generate_certificate_pdf(enrollment):
     c.setFillColor(PARCHMENT2)
     c.rect(28, 28, W - 56, H - 56, fill=1, stroke=0)
 
-    # 2. Triple gold border
+    # Triple gold border
     _border(c, W, H)
 
-    # 3. Corner ornaments
+    # Corner ornaments
     _corner(c, 22,      H - 22,  0)
     _corner(c, W - 22,  H - 22,  -90)
     _corner(c, 22,      22,       90)
     _corner(c, W - 22,  22,       180)
 
-    # 4. Academy eyebrow + thin rule
+    # Academy eyebrow + thin rule
     c.setFillColor(INK_LIGHT)
     c.setFont("Lora", 8)
     c.drawCentredString(cx, H - 60, "LEARNHUB ACADEMY", charSpace=4)
     _thin_rule(c, cx, H - 70, 100)
 
-    # 5. Main title — Playfair Display
+    # Main title — Playfair Display
     c.setFillColor(INK_DARK)
     c.setFont("Playfair", 38)
     c.drawCentredString(cx, H - 108, "Certificate of Completion")
 
-    # 6. Gold rule under title
+    # Gold rule under title
     c.setStrokeColor(GOLD)
     c.setLineWidth(0.6)
     c.line(cx - 230, H - 120, cx + 230, H - 120)
 
-    # 7. Diamond separator
+    # Diamond separator
     _rule(c, cx, H - 155, 150)
 
-    # 8. "This is to certify that" — Lora Italic
+    # "This is to certify that" — Lora Italic
     c.setFillColor(INK_MID)
     c.setFont("LoraItalic", 12)
     c.drawCentredString(cx, H - 188, "This is to certify that")
 
-    # 9. Student name — Playfair Display large
+    # Student name — Playfair Display large
     c.setFillColor(INK_DARK)
     c.setFont("Playfair", 32)
     c.drawCentredString(cx, H - 230, display_name)
@@ -206,12 +197,12 @@ def generate_certificate_pdf(enrollment):
     c.setLineWidth(0.9)
     c.line(cx - name_w / 2, H - 237, cx + name_w / 2, H - 237)
 
-    # 10. "has successfully completed" — Lora Italic
+    # "has successfully completed" — Lora Italic
     c.setFillColor(INK_MID)
     c.setFont("LoraItalic", 12)
     c.drawCentredString(cx, H - 265, "has successfully completed the course")
 
-    # 11. Course title — Liberation Serif Bold (wraps if > 580pt)
+    # Course title — Liberation Serif Bold (wraps if > 580pt)
     c.setFillColor(INK_DARK)
     c.setFont("LibSerifBold", 16)
     if c.stringWidth(course.title, "LibSerifBold", 16) > 580:
@@ -224,10 +215,10 @@ def generate_certificate_pdf(enrollment):
         c.drawCentredString(cx, H - 293, course.title)
         course_bottom_y = H - 293
 
-    # 12. Second diamond separator
+    # Second diamond separator
     _rule(c, cx, course_bottom_y - 30, 120)
 
-    # 13. Footer — date · seal · certificate ID
+    # Footer — date · seal · certificate ID
     fy = 48
 
     c.setStrokeColor(GOLD)

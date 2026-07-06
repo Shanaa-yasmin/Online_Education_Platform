@@ -3,31 +3,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import { QAPanel } from './LearningPlayer.jsx';
+import CourseAnalytics from '../components/CourseAnalytics.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
+import Sidebar from '../components/Sidebar.jsx';
 import './MentorDashboard.css';
-
-function Sidebar({ user, onLogout, loggingOut }) {
-  const isAdmin = user?.role === 'ADMIN';
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo-area">
-        <Link to="/" className="nav-logo"><div className="nav-logo-mark"><i className="ti ti-trending-up" /></div><span className="nav-logo-text">Edu<span>Path</span></span></Link>
-      </div>
-      <nav className="sidebar-nav">
-        <Link to="/dashboard" className="sidebar-nav-item"><i className="ti ti-layout-dashboard" /> Dashboard</Link>
-        <Link to="/mentor/dashboard" className="sidebar-nav-item active"><i className="ti ti-award" /> Mentor Portal</Link>
-        {isAdmin && <Link to="/admin/portal" className="sidebar-nav-item"><i className="ti ti-settings" /> Admin Portal</Link>}
-        <Link to="/courses" className="sidebar-nav-item"><i className="ti ti-book" /> Courses</Link>
-        <Link to="/profile" className="sidebar-nav-item"><i className="ti ti-user" /> Profile</Link>
-      </nav>
-      <div className="sidebar-footer">
-        <button className="sidebar-logout" onClick={onLogout} disabled={loggingOut}>
-          {loggingOut ? <><span className="loading-spinner loading-spinner-sm" />Signing out…</> : <><i className="ti ti-logout" />Sign out</>}
-        </button>
-      </div>
-    </aside>
-  );
-}
 
 const STATUS_MAP = (course) => {
   if (course.is_approved && course.is_published) return { label: 'Live', cls: 'badge-live' };
@@ -56,6 +35,7 @@ export default function MentorDashboard() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setTabState] = useState(searchParams.get('tab') || 'courses');
+  const VALID_TABS = ['courses', 'qa', 'payments', 'analytics'];
   const [payments, setPayments] = useState([]);
   const [loadingPayments, setLP] = useState(true);
   const [paymentsError, setPE] = useState('');
@@ -69,7 +49,7 @@ export default function MentorDashboard() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['courses', 'qa', 'payments'].includes(tabParam) && tabParam !== activeTab) {
+    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
       setTabState(tabParam);
     }
   }, [searchParams]);
@@ -163,7 +143,7 @@ export default function MentorDashboard() {
 
   return (
     <div className="page-shell">
-      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} />
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="mentor" />
       <div className="inner-page">
         <header className="topbar">
           <div className="topbar-left"><h1>Mentor Portal</h1><p>Manage your courses and curriculum</p></div>
@@ -194,6 +174,9 @@ export default function MentorDashboard() {
             <button className={`tab-btn${activeTab === 'payments' ? ' active' : ''}`} onClick={() => setTab('payments')}>
               Course Sales ({payments.length})
             </button>
+            <button className={`tab-btn${activeTab === 'analytics' ? ' active' : ''}`} onClick={() => setTab('analytics')}>
+              📊 Analytics
+            </button>
           </div>
 
           {activeTab === 'courses' && (
@@ -214,7 +197,20 @@ export default function MentorDashboard() {
                   {courses.map(course => {
                     const st = STATUS_MAP(course);
                     return (
-                      <article key={course.id} className="mentor-course-card">
+                      <article
+                        key={course.id}
+                        className="mentor-course-card"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => navigate(`/courses/${course.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate(`/courses/${course.id}`);
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <div>
                           {course.thumbnail && (
                             <div className="mc-thumb">
@@ -234,7 +230,13 @@ export default function MentorDashboard() {
                         </div>
                         <div className="mc-footer">
                           <span className={`mc-price${course.price <= 0 ? ' free' : ''}`}>{course.price > 0 ? `$${course.price}` : 'Free'}</span>
-                          <Link to={`/mentor/courses/${course.id}/builder`} className="btn btn-secondary btn-sm">Manage Curriculum</Link>
+                          <Link
+                            to={`/mentor/courses/${course.id}/builder`}
+                            className="btn btn-secondary btn-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Manage Curriculum
+                          </Link>
                         </div>
                       </article>
                     );
@@ -343,6 +345,9 @@ export default function MentorDashboard() {
                 </div>
               )}
             </div>
+          )}
+          {activeTab === 'analytics' && (
+            <CourseAnalytics courses={courses} />
           )}
         </div>
       </div>

@@ -26,6 +26,7 @@ class Course(models.Model):
     level = models.CharField(max_length=15, choices=Level.choices, default=Level.BEGINNER)
     language = models.CharField(max_length=50, default='English')
     duration_hours = models.PositiveIntegerField(default=0)
+    category = models.CharField(max_length=100, default='Development')
     thumbnail = models.ImageField(upload_to='thumbnails/', null=True, blank=True)
 
     is_approved = models.BooleanField(default=False)

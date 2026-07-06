@@ -178,5 +178,5 @@ class PaymentsTests(APITestCase):
         self.assertEqual(response.data['stats']['courses_count'], 2)  # self.paid_course, self.free_course
         self.assertEqual(response.data['stats']['published_count'], 2)
         self.assertEqual(response.data['stats']['total_students'], 0)
-        self.assertEqual(len(response.data['courses']), 2)
+        self.assertEqual(len(response.data['course_performance']), 2)
 

@@ -28,7 +28,8 @@ def _send_email_async(subject, body, recipient_list):
         print(f"Error sending email: {e}")
 
 # Import external models safely
-from payments.models import Payment, Enrollment, Certificate
+from payments.models import Payment, Enrollment
+from certificates.models import Certificate
 from courses.models import Lesson, Review
 from chat.models import ChatMessage
 

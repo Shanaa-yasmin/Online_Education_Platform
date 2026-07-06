@@ -342,6 +342,13 @@ export default function CoursePage() {
                   <span>Course Progress</span>
                   <span>{enrollmentStatus.progress_percent}%</span>
                 </div>
+                <div className="block-progress-visual" style={{ letterSpacing: '1px', fontSize: '18px', color: 'var(--brand)', margin: '5px 0 15px 0', fontFamily: 'monospace' }}>
+                  {(() => {
+                    const totalBlocks = 10;
+                    const filled = Math.round((enrollmentStatus.progress_percent / 100) * totalBlocks);
+                    return '█'.repeat(filled) + '░'.repeat(totalBlocks - filled);
+                  })()}
+                </div>
                 <div className="progress-track-bg">
                   <div
                     className="progress-track-fill"
