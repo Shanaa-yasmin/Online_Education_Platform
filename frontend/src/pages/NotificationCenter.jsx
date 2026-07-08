@@ -6,6 +6,7 @@ import useNotifications from '../hooks/useNotifications.js';
 import NotificationCard from '../components/NotificationCard.jsx';
 import NotificationSkeleton from '../components/NotificationSkeleton.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
+import Sidebar from '../components/Sidebar.jsx';
 import './NotificationCenter.css';
 
 function getInitials(user) {
@@ -160,44 +161,7 @@ export default function NotificationCenter() {
   return (
     <div className="dashboard-page">
       {/* Sidebar Layout */}
-      <aside className="sidebar">
-        <div className="sidebar-logo-area">
-          <Link to="/" className="nav-logo" style={{ textDecoration: 'none' }}>
-            <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
-            <span className="nav-logo-text">Edu<span>Path</span></span>
-          </Link>
-        </div>
-
-        <nav className="sidebar-nav">
-          <Link to="/dashboard" className="sidebar-nav-item">
-            <i className="ti ti-layout-dashboard" /> Dashboard
-          </Link>
-          {(isMentor || isAdmin) && (
-            <Link to="/mentor/dashboard" className="sidebar-nav-item">
-              <i className="ti ti-award" /> Mentor Portal
-            </Link>
-          )}
-          {isAdmin && (
-            <Link to="/admin/portal" className="sidebar-nav-item">
-              <i className="ti ti-settings" /> Admin Portal
-            </Link>
-          )}
-          <Link to="/courses" className="sidebar-nav-item">
-            <i className="ti ti-book" /> Courses
-          </Link>
-          <Link to="/profile" className="sidebar-nav-item">
-            <i className="ti ti-user" /> Profile
-          </Link>
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="sidebar-logout" onClick={handleLogout} disabled={loggingOut}>
-            {loggingOut
-              ? <><span className="loading-spinner loading-spinner-sm" /> Signing out…</>
-              : <><i className="ti ti-logout" /> Sign out</>}
-          </button>
-        </div>
-      </aside>
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="" />
 
       {/* Main Container */}
       <div className="dashboard-main">

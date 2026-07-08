@@ -249,6 +249,7 @@ export default function CoursePage() {
 
   const isPaid = parseFloat(course.price) > 0;
   const isEnrolled = enrollmentStatus.enrolled && enrollmentStatus.is_active;
+  const isOwnerMentor = user && course.mentor && user.id === course.mentor.id;
 
   return (
     <div className="student-course-page">
@@ -262,7 +263,17 @@ export default function CoursePage() {
           <span className={`difficulty-tag ${course.level?.toLowerCase()}`}>
             {course.level} Level
           </span>
-          <h1 className="course-detail-title">{course.title}</h1>
+          <div className="course-title-row">
+            <h1 className="course-detail-title">{course.title}</h1>
+            {isOwnerMentor && (
+              <Link
+                to={`/mentor/courses/${courseId}/builder`}
+                className="btn btn-primary btn-sm"
+              >
+                Manage Curriculum
+              </Link>
+            )}
+          </div>
           <p className="mentor-row">
             Created by <strong>{course.mentor?.username || 'Expert'}</strong>
           </p>

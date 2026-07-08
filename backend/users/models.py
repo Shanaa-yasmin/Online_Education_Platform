@@ -47,6 +47,7 @@ class Profile(models.Model):
     title = models.CharField(max_length=100, blank=True, default='')
     skills = models.CharField(max_length=255, blank=True, default='')
     is_approved = models.BooleanField(default=False)  # Admins approve Mentors
+    is_suspended = models.BooleanField(default=False)  # Admins can suspend users
 
     def __str__(self):
         return f"{self.user.username}'s Profile ({self.user.role})"

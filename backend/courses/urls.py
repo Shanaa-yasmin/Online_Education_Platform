@@ -1,30 +1,35 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import (
-    CourseViewSet,
-    ModuleViewSet,
-    LessonViewSet,
-    QuizQuestionViewSet,
-    CourseSearchView,
-    CourseAutocompleteView,
-    ReviewViewSet
-)
+
 from .analytics_views import CourseAnalyticsView, MentorOverviewView
-from .admin_reports_views import AdminReportsView, AdminReportsExportView
+from .admin_reports_views import AdminReportsView, AdminReportsExportView, AdminReportFilterOptionsView
+from .views import (
+    CourseAutocompleteView,
+    CourseSearchView,
+    CourseViewSet,
+    LessonViewSet,
+    ModuleViewSet,
+    QuizAttemptViewSet,
+    QuizQuestionViewSet,
+    ReviewViewSet,
+)
 
 router = DefaultRouter()
-router.register('courses', CourseViewSet, basename='course')
-router.register('modules', ModuleViewSet, basename='module')
-router.register('lessons', LessonViewSet, basename='lesson')
-router.register('quiz-questions', QuizQuestionViewSet, basename='quizquestion')
-router.register('reviews', ReviewViewSet, basename='review')
+router.register(r'courses', CourseViewSet, basename='course')
+router.register(r'reviews', ReviewViewSet, basename='review')
+router.register(r'modules', ModuleViewSet, basename='module')
+router.register(r'lessons', LessonViewSet, basename='lesson')
+router.register(r'quiz-questions', QuizQuestionViewSet, basename='quizquestion')
+router.register(r'quiz-attempts', QuizAttemptViewSet, basename='quizattempt')
 
 urlpatterns = [
+    # Keep static course paths above router include to prevent course detail collisions.
     path('courses/search/', CourseSearchView.as_view(), name='course-search'),
     path('courses/autocomplete/', CourseAutocompleteView.as_view(), name='course-autocomplete'),
     path('courses/<int:course_id>/analytics/', CourseAnalyticsView.as_view(), name='course-analytics'),
-    path('mentor/dashboard-overview/', MentorOverviewView.as_view(), name='mentor-overview'),
+    path('mentor/overview/', MentorOverviewView.as_view(), name='mentor-overview'),
     path('admin-reports/', AdminReportsView.as_view(), name='admin-reports'),
     path('admin-reports/export/', AdminReportsExportView.as_view(), name='admin-reports-export'),
+    path('admin-reports/filter-options/', AdminReportFilterOptionsView.as_view(), name='admin-reports-filter-options'),
     path('', include(router.urls)),
 ]

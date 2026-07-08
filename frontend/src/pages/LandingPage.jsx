@@ -20,10 +20,9 @@ export default function LandingPage() {
   return (
     <div className="landing">
 
-      {/* NAV */}
       <nav className="nav">
         <div className="logo">
-          <div className="logo-mark"><i className="ti ti-trending-up" /></div>
+          <img src="/favicon.jpeg" alt="EduPath Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
           <span className="logo-text">Edu<span>Path</span></span>
         </div>
         <div className="nav-links">

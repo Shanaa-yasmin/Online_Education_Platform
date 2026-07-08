@@ -1,19 +1,35 @@
 from django.contrib import admin
-from .models import Course, Module, Lesson, QuizQuestion, Review
+from .models import (
+    Course, Module, Lesson,
+    QuizQuestion, QuizOption, QuizAttempt, QuizAnswer,
+    Review,
+)
+
 
 class LessonInline(admin.StackedInline):
     model = Lesson
     extra = 1
     show_change_link = True
 
+
 class ModuleInline(admin.TabularInline):
     model = Module
     extra = 1
     show_change_link = True
 
+
 class QuizQuestionInline(admin.TabularInline):
     model = QuizQuestion
     extra = 1
+    fields = ['question_text', 'question_type', 'difficulty', 'points', 'order']
+    show_change_link = True
+
+
+class QuizOptionInline(admin.TabularInline):
+    model = QuizOption
+    extra = 2
+    fields = ['text', 'is_correct', 'order']
+
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
@@ -44,7 +60,7 @@ class ModuleAdmin(admin.ModelAdmin):
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ('title', 'module', 'content_type', 'order')
+    list_display = ('title', 'module', 'content_type', 'order', 'max_quiz_attempts', 'passing_score_percent')
     list_filter = ('content_type', 'module__course')
     search_fields = ('title', 'body_text', 'module__title', 'module__course__title')
     inlines = [QuizQuestionInline]
@@ -52,9 +68,31 @@ class LessonAdmin(admin.ModelAdmin):
 
 @admin.register(QuizQuestion)
 class QuizQuestionAdmin(admin.ModelAdmin):
-    list_display = ('question_text', 'lesson', 'correct_option')
-    list_filter = ('lesson__module__course',)
-    search_fields = ('question_text', 'option_a', 'option_b', 'option_c', 'option_d')
+    list_display = ('question_text', 'lesson', 'question_type', 'difficulty', 'points')
+    list_filter = ('question_type', 'difficulty', 'lesson__module__course')
+    search_fields = ('question_text', 'options__text')
+    inlines = [QuizOptionInline]
+
+
+@admin.register(QuizAttempt)
+class QuizAttemptAdmin(admin.ModelAdmin):
+    list_display = ('student', 'lesson', 'status', 'score_percent', 'passed', 'attempt_number', 'started_at')
+    list_filter = ('status', 'passed', 'lesson__module__course')
+    search_fields = ('student__username', 'lesson__title')
+    readonly_fields = [f.name for f in QuizAttempt._meta.fields]
+
+    def has_add_permission(self, request):
+        # Attempts are only ever created via the quiz-taking API, never manually.
+        return False
+
+
+@admin.register(QuizAnswer)
+class QuizAnswerAdmin(admin.ModelAdmin):
+    list_display = ('attempt', 'question', 'is_correct', 'points_awarded')
+    list_filter = ('is_correct',)
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(Review)

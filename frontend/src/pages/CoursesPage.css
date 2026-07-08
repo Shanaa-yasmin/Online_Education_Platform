@@ -558,3 +558,10 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.course-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}

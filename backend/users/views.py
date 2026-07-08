@@ -1,4 +1,5 @@
-from rest_framework import status, generics, permissions
+from rest_framework import status, generics, permissions, viewsets
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -357,3 +358,209 @@ class AdminProfileRejectView(APIView):
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
+# ---------------------------------------------------------------------------
+# Admin User Management ViewSet
+# ---------------------------------------------------------------------------
+
+from .serializers import AdminUserListSerializer, AdminUserDetailSerializer
+from .models import Profile
+
+
+class AdminUserViewSet(viewsets.ViewSet):
+    """
+    Admin-only ViewSet for full user management:
+      list         – GET  /api/users/admin/users/
+      retrieve     – GET  /api/users/admin/users/<pk>/
+      activate     – POST /api/users/admin/users/<pk>/activate/
+      deactivate   – POST /api/users/admin/users/<pk>/deactivate/
+      suspend      – POST /api/users/admin/users/<pk>/suspend/
+      reactivate   – POST /api/users/admin/users/<pk>/reactivate/
+      destroy      – DELETE /api/users/admin/users/<pk>/
+
+    Filtering (via query params):
+      ?role=STUDENT|MENTOR|ADMIN
+      ?is_active=true|false
+      ?is_suspended=true|false
+      ?search=<string>   (matches username, email, first_name, last_name)
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+
+    def _get_profile_or_404(self, pk):
+        try:
+            return Profile.objects.select_related('user').get(user__pk=pk)
+        except Profile.DoesNotExist:
+            return None
+
+    def list(self, request):
+        """List all users with optional search/filter."""
+        qs = Profile.objects.select_related('user').order_by('-user__date_joined')
+
+        # --- Role filter ---
+        role = request.query_params.get('role')
+        if role:
+            qs = qs.filter(user__role=role.upper())
+
+        # --- is_active filter ---
+        is_active = request.query_params.get('is_active')
+        if is_active is not None:
+            qs = qs.filter(user__is_active=is_active.lower() == 'true')
+
+        # --- is_suspended filter ---
+        is_suspended = request.query_params.get('is_suspended')
+        if is_suspended is not None:
+            qs = qs.filter(is_suspended=is_suspended.lower() == 'true')
+
+        # --- Search filter ---
+        search = request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(user__username__icontains=search) |
+                Q(user__email__icontains=search) |
+                Q(user__first_name__icontains=search) |
+                Q(user__last_name__icontains=search)
+            )
+
+        serializer = AdminUserListSerializer(qs, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk=None):
+        """Retrieve full details for a single user."""
+        profile = self._get_profile_or_404(pk)
+        if not profile:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Extra statistics per role
+        user = profile.user
+        extra = {}
+
+        if user.role == User.Role.STUDENT:
+            from payments.models import Enrollment
+            from certificates.models import Certificate
+            extra['courses_enrolled'] = Enrollment.objects.filter(student=user, is_active=True).count()
+            extra['certificates_earned'] = Certificate.objects.filter(student=user).count()
+
+        elif user.role == User.Role.MENTOR:
+            from courses.models import Course
+            from payments.models import Enrollment, Payment
+            from django.db.models import Sum, Avg
+            from courses.models import Review
+            courses = Course.objects.filter(mentor=user)
+            extra['courses_created'] = courses.count()
+            extra['published_courses'] = courses.filter(is_published=True, is_approved=True).count()
+            course_ids = courses.values_list('id', flat=True)
+            extra['students_enrolled'] = Enrollment.objects.filter(course_id__in=course_ids, is_active=True).count()
+            avg = Review.objects.filter(course_id__in=course_ids).aggregate(avg=Avg('rating'))['avg']
+            extra['avg_rating'] = round(float(avg), 1) if avg else 0.0
+            total = Payment.objects.filter(
+                enrollment__course_id__in=course_ids,
+                status=Payment.StatusChoices.COMPLETED
+            ).aggregate(t=Sum('amount'))['t']
+            extra['total_earnings'] = float(total) if total else 0.0
+
+        serializer = AdminUserDetailSerializer(profile, context={'request': request})
+        data = serializer.data
+        data['extra_stats'] = extra
+        return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        """Re-enable a previously deactivated user account (is_active=True)."""
+        profile = self._get_profile_or_404(pk)
+        if not profile:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        user = profile.user
+        if user.is_active:
+            return Response({"detail": "User account is already active."}, status=status.HTTP_200_OK)
+        user.is_active = True
+        user.save()
+        return Response({
+            "detail": f"User '{user.username}' has been activated.",
+            "is_active": True
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        """Deactivate a user account (is_active=False). Prevents login."""
+        profile = self._get_profile_or_404(pk)
+        if not profile:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        user = profile.user
+        if user == request.user:
+            return Response({"detail": "You cannot deactivate your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.is_active:
+            return Response({"detail": "User account is already inactive."}, status=status.HTTP_200_OK)
+        user.is_active = False
+        user.save()
+        return Response({
+            "detail": f"User '{user.username}' has been deactivated.",
+            "is_active": False
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def suspend(self, request, pk=None):
+        """
+        Suspend a user (profile.is_suspended=True).
+        Data is preserved; user can be reactivated later.
+        """
+        profile = self._get_profile_or_404(pk)
+        if not profile:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        user = profile.user
+        if user == request.user:
+            return Response({"detail": "You cannot suspend your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        if profile.is_suspended:
+            return Response({"detail": "User is already suspended."}, status=status.HTTP_200_OK)
+        profile.is_suspended = True
+        profile.save()
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            recipient=user,
+            title="Account Suspended",
+            message="Your account has been suspended by an administrator. Please contact support.",
+            notification_type=Notification.NotificationType.GENERAL,
+            related_object_id=user.id,
+            related_object_type="User"
+        )
+        return Response({
+            "detail": f"User '{user.username}' has been suspended.",
+            "is_suspended": True
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def reactivate(self, request, pk=None):
+        """Lift a suspension (profile.is_suspended=False)."""
+        profile = self._get_profile_or_404(pk)
+        if not profile:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not profile.is_suspended:
+            return Response({"detail": "User is not currently suspended."}, status=status.HTTP_200_OK)
+        profile.is_suspended = False
+        profile.save()
+
+        from notifications.models import Notification
+        Notification.objects.create(
+            recipient=profile.user,
+            title="Account Reactivated",
+            message="Your account suspension has been lifted. Welcome back!",
+            notification_type=Notification.NotificationType.GENERAL,
+            related_object_id=profile.user.id,
+            related_object_type="User"
+        )
+        return Response({
+            "detail": f"User '{profile.user.username}' has been reactivated.",
+            "is_suspended": False
+        }, status=status.HTTP_200_OK)
+
+    def destroy(self, request, pk=None):
+        """Permanently delete a user and all their data. Admin-only."""
+        profile = self._get_profile_or_404(pk)
+        if not profile:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        user = profile.user
+        if user == request.user:
+            return Response({"detail": "You cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        username = user.username
+        user.delete()
+        return Response({"detail": f"User '{username}' has been permanently deleted."}, status=status.HTTP_200_OK)

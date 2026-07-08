@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import './CourseBuilder.css';
 
@@ -57,6 +58,8 @@ const HelpCircleIcon = () => (
 
 export default function CourseBuilder() {
   const { courseId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -128,6 +131,31 @@ export default function CourseBuilder() {
 
   const toggleModule = (id) => {
     setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const canDelete = user && course && (
+    user.is_staff || user.role === 'ADMIN' ||
+    (course.mentor && user.id === course.mentor.id)
+  );
+
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteCourse = async () => {
+    const confirmed = window.confirm(
+      `Delete "${course.title}"? It will be removed from your dashboard and the public catalog. This can be restored by an administrator if needed.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/api/courses/${courseId}/`);
+      navigate('/mentor/dashboard');
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.detail || 'Failed to delete course.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handlePublishToggle = async () => {
@@ -535,6 +563,15 @@ export default function CourseBuilder() {
                   : course.is_rejected
                     ? 'Resubmit for Review'
                     : 'Submit for Review'}
+            </button>
+          )}
+          {canDelete && (
+            <button
+              className="btn btn-danger"
+              onClick={handleDeleteCourse}
+              disabled={deleting}
+            >
+              <TrashIcon /> {deleting ? 'Deleting...' : 'Delete Course'}
             </button>
           )}
         </div>

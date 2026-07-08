@@ -1,8 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Course, Module, Lesson, QuizQuestion, Review
+from .models import (
+    Course, Module, Lesson,
+    QuizQuestion, QuizOption, QuizAttempt, QuizAnswer,
+    Review
+)
 
 User = get_user_model()
+
 
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,36 +15,122 @@ class UserMiniSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'role']
 
 
-class QuizQuestionSerializer(serializers.ModelSerializer):
+# ─────────────────────────── Quiz authoring ───────────────────────────
+
+class QuizOptionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = QuizQuestion
-        fields = ['id', 'lesson', 'question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_option']
+        model = QuizOption
+        fields = ['id', 'text', 'is_correct', 'order']
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        request = self.context.get('request')
-        
-        # Hide correct option if user is student or unauthenticated
-        if request and request.user:
-            user = request.user
-            course = instance.lesson.module.course
-            is_course_mentor = (course.mentor == user)
-            is_admin = (user.is_staff or user.role == 'ADMIN')
-            
-            if not (is_course_mentor or is_admin):
-                ret.pop('correct_option', None)
-        else:
-            ret.pop('correct_option', None)
-            
+        # `show_correct_answers` is injected by QuizQuestionSerializer based on
+        # whether the requester is the course mentor/an admin.
+        if not self.context.get('show_correct_answers'):
+            ret.pop('is_correct', None)
         return ret
 
+
+class QuizQuestionSerializer(serializers.ModelSerializer):
+    options = QuizOptionSerializer(many=True, required=False)
+
+    class Meta:
+        model = QuizQuestion
+        fields = [
+            'id', 'lesson', 'question_type', 'question_text', 'explanation',
+            'difficulty', 'points', 'order', 'correct_text_answer', 'case_sensitive', 'options'
+        ]
+
+    def _is_privileged(self, request, instance):
+        if not (request and request.user and request.user.is_authenticated):
+            return False
+        user = request.user
+        course = instance.lesson.module.course
+        return (course.mentor == user) or user.is_staff or user.role == 'ADMIN'
+
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        is_privileged = self._is_privileged(request, instance)
+
+        # Feed into nested QuizOptionSerializer instances via context
+        self.context['show_correct_answers'] = is_privileged
+        ret = super().to_representation(instance)
+
+        # Students/anonymous users never see the answer key or the explanation
+        # up front — explanation is only released once they've submitted an
+        # answer (see QuizAnswerResultSerializer).
+        if not is_privileged:
+            ret.pop('correct_text_answer', None)
+            ret.pop('case_sensitive', None)
+            ret.pop('explanation', None)
+
+        return ret
+
+    def validate(self, attrs):
+        qtype = attrs.get('question_type', getattr(self.instance, 'question_type', None))
+        options = attrs.get('options')
+
+        if qtype == QuizQuestion.QuestionType.FILL_BLANK:
+            has_existing_answer = self.instance and self.instance.correct_text_answer
+            if not attrs.get('correct_text_answer') and not has_existing_answer:
+                raise serializers.ValidationError(
+                    {"correct_text_answer": "Required for fill-in-the-blank questions."}
+                )
+        elif options is not None:
+            correct_count = sum(1 for o in options if o.get('is_correct'))
+            if len(options) < 2:
+                raise serializers.ValidationError({"options": "Provide at least 2 options."})
+            if correct_count == 0:
+                raise serializers.ValidationError({"options": "At least one option must be marked correct."})
+            if qtype == QuizQuestion.QuestionType.SINGLE_CHOICE and correct_count > 1:
+                raise serializers.ValidationError(
+                    {"options": "Single choice questions must have exactly one correct option."}
+                )
+            if qtype == QuizQuestion.QuestionType.TRUE_FALSE and len(options) != 2:
+                raise serializers.ValidationError(
+                    {"options": "True/False questions must have exactly 2 options."}
+                )
+        return attrs
+
+    def create(self, validated_data):
+        options_data = validated_data.pop('options', [])
+        question = QuizQuestion.objects.create(**validated_data)
+        self._save_options(question, options_data)
+        return question
+
+    def update(self, instance, validated_data):
+        options_data = validated_data.pop('options', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if options_data is not None:
+            instance.options.all().delete()
+            self._save_options(instance, options_data)
+        return instance
+
+    @staticmethod
+    def _save_options(question, options_data):
+        for i, opt in enumerate(options_data):
+            QuizOption.objects.create(
+                question=question,
+                order=opt.get('order', i),
+                text=opt['text'],
+                is_correct=opt.get('is_correct', False),
+            )
+
+
+# ─────────────────────────── Lesson / Module ───────────────────────────
 
 class LessonSerializer(serializers.ModelSerializer):
     quiz_questions = QuizQuestionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Lesson
-        fields = ['id', 'module', 'title', 'content_type', 'video_url', 'file_attachment', 'body_text', 'order', 'quiz_questions']
+        fields = [
+            'id', 'module', 'title', 'content_type', 'video_url', 'file_attachment',
+            'body_text', 'order', 'quiz_questions',
+            'max_quiz_attempts', 'passing_score_percent', 'quiz_time_limit_minutes',
+        ]
 
     def validate(self, attrs):
         content_type = attrs.get('content_type')
@@ -61,14 +152,16 @@ class ModuleSerializer(serializers.ModelSerializer):
         fields = ['id', 'course', 'title', 'order', 'lessons']
 
 
+# ─────────────────────────── Course ───────────────────────────
+
 class CourseListSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
 
     class Meta:
         model = Course
         fields = [
-            'id', 'title', 'description', 'mentor', 'price', 
-            'level', 'language', 'duration_hours', 'category', 'thumbnail', 
+            'id', 'title', 'description', 'mentor', 'price',
+            'level', 'language', 'duration_hours', 'category', 'thumbnail',
             'is_approved', 'is_published', 'rating_average', 'total_reviews'
         ]
 
@@ -80,9 +173,9 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            'id', 'title', 'description', 'mentor', 'price', 
-            'level', 'language', 'duration_hours', 'category', 'thumbnail', 
-            'is_approved', 'is_published', 'created_at', 'updated_at',
+            'id', 'title', 'description', 'mentor', 'price',
+            'level', 'language', 'duration_hours', 'category', 'thumbnail',
+            'is_approved', 'is_published','is_submitted_for_review', 'is_rejected', 'created_at', 'updated_at',
             'modules', 'rating_average', 'total_reviews'
         ]
         read_only_fields = ['is_approved']
@@ -101,12 +194,14 @@ class CourseSearchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            'id', 'title', 'description', 'mentor', 'price', 
-            'level', 'language', 'duration_hours', 'thumbnail', 
+            'id', 'title', 'description', 'mentor', 'price',
+            'level', 'language', 'duration_hours', 'thumbnail',
             'is_approved', 'is_published', 'created_at', 'updated_at',
             'avg_rating', 'enrollment_count'
         ]
 
+
+# ─────────────────────────── Reviews ───────────────────────────
 
 class ReviewSerializer(serializers.ModelSerializer):
     student = UserMiniSerializer(read_only=True)
@@ -127,7 +222,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not request.user:
             raise serializers.ValidationError("Authentication credentials were not provided.")
-        
+
         user = request.user
 
         # Skip enrollment/role checks on PATCH (partial update of existing review)
@@ -158,3 +253,50 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         # 3. Skip duplicate check — the reviews action handles create-or-update logic
         return attrs
+
+
+# ─────────────────────────── Quiz taking / scoring ───────────────────────────
+
+class QuizAnswerInputSerializer(serializers.Serializer):
+    """Parses a single answer within a quiz submission payload (not a ModelSerializer)."""
+    question_id = serializers.IntegerField()
+    selected_option_ids = serializers.ListField(
+        child=serializers.IntegerField(), required=False, default=list
+    )
+    text_answer = serializers.CharField(required=False, allow_blank=True, allow_null=True, default=None)
+
+
+class QuizAnswerResultSerializer(serializers.ModelSerializer):
+    question_id = serializers.IntegerField(source='question.id')
+    question_text = serializers.CharField(source='question.question_text')
+    question_type = serializers.CharField(source='question.question_type')
+    selected_option_ids = serializers.PrimaryKeyRelatedField(
+        source='selected_options', many=True, read_only=True
+    )
+    correct_option_ids = serializers.SerializerMethodField()
+    explanation = serializers.CharField(source='question.explanation')
+
+    class Meta:
+        model = QuizAnswer
+        fields = [
+            'question_id', 'question_text', 'question_type',
+            'selected_option_ids', 'text_answer', 'is_correct', 'points_awarded',
+            'correct_option_ids', 'explanation',
+        ]
+
+    def get_correct_option_ids(self, obj):
+        return list(obj.question.options.filter(is_correct=True).values_list('id', flat=True))
+
+
+class QuizAttemptSerializer(serializers.ModelSerializer):
+    answers = QuizAnswerResultSerializer(many=True, read_only=True)
+    student = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = QuizAttempt
+        fields = [
+            'id', 'lesson', 'student', 'status', 'started_at', 'submitted_at',
+            'score_points', 'total_points', 'score_percent', 'passed',
+            'attempt_number', 'answers',
+        ]
+        read_only_fields = fields

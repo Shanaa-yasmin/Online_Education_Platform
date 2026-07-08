@@ -10,8 +10,8 @@ User = get_user_model()
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['bio', 'title', 'skills', 'is_approved', 'avatar', 'phone_number', 'website', 'location']
-        read_only_fields = ['is_approved']
+        fields = ['bio', 'title', 'skills', 'is_approved', 'is_suspended', 'avatar', 'phone_number', 'website', 'location']
+        read_only_fields = ['is_approved', 'is_suspended']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -162,3 +162,77 @@ class ChangePasswordSerializer(serializers.Serializer):
         validate_password(attrs['new_password'])
         return attrs
 
+
+# ---------------------------------------------------------------------------
+# Admin User Management Serializers
+# ---------------------------------------------------------------------------
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    """
+    Compact serializer for listing all users in the admin panel.
+    Includes key status flags for quick overview.
+    """
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    is_suspended = serializers.SerializerMethodField()
+    is_approved = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+    date_joined = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    last_login = serializers.DateTimeField(source='user.last_login', read_only=True)
+    id = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    role = serializers.CharField(source='user.role', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'role',
+            'avatar', 'is_active', 'is_suspended', 'is_approved',
+            'date_joined', 'last_login',
+        ]
+
+    def get_is_suspended(self, obj):
+        return obj.is_suspended
+
+    def get_is_approved(self, obj):
+        return obj.is_approved
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar and request:
+            return request.build_absolute_uri(obj.avatar.url)
+        return None
+
+
+class AdminUserDetailSerializer(serializers.ModelSerializer):
+    """
+    Full serializer for viewing/editing a single user in the admin panel.
+    Exposes all relevant fields the admin may need to inspect or modify.
+    """
+    id = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    role = serializers.CharField(source='user.role', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    date_joined = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    last_login = serializers.DateTimeField(source='user.last_login', read_only=True)
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'role',
+            'avatar', 'bio', 'title', 'skills', 'phone_number', 'website', 'location',
+            'is_active', 'is_suspended', 'is_approved',
+            'date_joined', 'last_login',
+        ]
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar and request:
+            return request.build_absolute_uri(obj.avatar.url)
+        return None

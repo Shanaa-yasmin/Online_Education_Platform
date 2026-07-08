@@ -21,6 +21,10 @@ export default function AdminReports() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const [filterOptions, setFilterOptions] = useState({
+    courses: [], mentors: [], students: [], categories: [],
+  });
+
   // Filter state
   const [filters, setFilters] = useState({
     start_date: '',
@@ -57,8 +61,20 @@ export default function AdminReports() {
     }
   }, [buildQueryString]);
 
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const res = await api.get('/api/admin-reports/filter-options/');
+      setFilterOptions(res.data);
+    } catch (err) {
+      console.error('Failed to load filter options', err);
+    }
+  }, []);
+
   useEffect(() => {
-    if (user) fetchReports();
+    if (user) {
+      fetchReports();
+      fetchFilterOptions();
+    }
   }, [user]);
 
   const handleFilterChange = (e) => {
@@ -81,7 +97,7 @@ export default function AdminReports() {
     setExporting(true);
     try {
       const qs = buildQueryString();
-      const res = await api.get(`/api/admin-reports/export/?format=${format}${qs ? '&' + qs : ''}`, {
+      const res = await api.get(`/api/admin-reports/export/?export_format=${format}${qs ? '&' + qs : ''}`, {
         responseType: 'blob',
       });
       const blob = new Blob([res.data]);
@@ -141,20 +157,40 @@ export default function AdminReports() {
                 <input type="date" name="end_date" value={filters.end_date} onChange={handleFilterChange} />
               </div>
               <div className="form-group">
-                <label>Course ID</label>
-                <input type="text" name="course_id" value={filters.course_id} onChange={handleFilterChange} placeholder="e.g. 5" />
+                <label>Course</label>
+                <select name="course_id" value={filters.course_id} onChange={handleFilterChange}>
+                  <option value="">All Courses</option>
+                  {filterOptions.courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <label>Mentor ID</label>
-                <input type="text" name="mentor_id" value={filters.mentor_id} onChange={handleFilterChange} placeholder="e.g. 3" />
+                <label>Mentor</label>
+                <select name="mentor_id" value={filters.mentor_id} onChange={handleFilterChange}>
+                  <option value="">All Mentors</option>
+                  {filterOptions.mentors.map(m => (
+                    <option key={m.id} value={m.id}>@{m.username}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <label>Student ID</label>
-                <input type="text" name="student_id" value={filters.student_id} onChange={handleFilterChange} placeholder="e.g. 7" />
+                <label>Student</label>
+                <select name="student_id" value={filters.student_id} onChange={handleFilterChange}>
+                  <option value="">All Students</option>
+                  {filterOptions.students.map(s => (
+                    <option key={s.id} value={s.id}>@{s.username}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Category</label>
-                <input type="text" name="category" value={filters.category} onChange={handleFilterChange} placeholder="e.g. Programming" />
+                <select name="category" value={filters.category} onChange={handleFilterChange}>
+                  <option value="">All Categories</option>
+                  {filterOptions.categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Min Revenue</label>

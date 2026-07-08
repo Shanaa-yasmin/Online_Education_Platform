@@ -21,7 +21,7 @@ export default function Sidebar({ user, onLogout, loggingOut, active }) {
     <aside className="sidebar">
       <div className="sidebar-logo-area">
         <Link to="/" className="nav-logo">
-          <div className="nav-logo-mark"><i className="ti ti-trending-up" /></div>
+          <img src="/favicon.jpeg" alt="EduPath Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
           <span className="nav-logo-text">Edu<span>Path</span></span>
         </Link>
       </div>

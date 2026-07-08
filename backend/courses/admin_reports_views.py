@@ -80,10 +80,10 @@ def get_admin_reports_data(request):
     rejected_courses = Course.objects.filter(is_rejected=True).count()
 
     total_enrollments = enrollments.count()
-    
+
     revenue_sum = payments.filter(status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
     revenue = float(revenue_sum)
-    
+
     refunds_sum = payments.filter(status=Payment.StatusChoices.REFUNDED).aggregate(total=Sum('amount'))['total'] or 0.00
     refunds = float(refunds_sum)
 
@@ -92,7 +92,7 @@ def get_admin_reports_data(request):
 
     certificates_issued = Certificate.objects.filter(enrollment__in=enrollments).count()
     notifications_sent = Notification.objects.count()
-    
+
     daily_active_users = User.objects.filter(
         last_login__gte=timezone.now() - datetime.timedelta(days=1)
     ).count()
@@ -195,10 +195,9 @@ class AdminReportsView(APIView):
     def get(self, request):
         if request.user.role != 'ADMIN':
             return Response({"detail": "Only administrators can view admin reports."}, status=status.HTTP_403_FORBIDDEN)
-            
+
         data = get_admin_reports_data(request)
-        
-        # Format list to return to API
+
         return Response({
             "stats": data["stats"],
             "monthly_enrollments": data["monthly_enrollments"],
@@ -209,14 +208,44 @@ class AdminReportsView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class AdminReportFilterOptionsView(APIView):
+    """
+    Provides lightweight lookup lists (id + display name) so the frontend
+    can render dropdowns instead of asking admins to type raw IDs.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"detail": "Only administrators can view admin reports."}, status=status.HTTP_403_FORBIDDEN)
+
+        courses = list(Course.objects.order_by('title').values('id', 'title'))
+        mentors = list(User.objects.filter(role='MENTOR').order_by('username').values('id', 'username'))
+        students = list(User.objects.filter(role='STUDENT').order_by('username').values('id', 'username'))
+        categories = list(
+            Course.objects.exclude(category__isnull=True)
+            .exclude(category__exact='')
+            .order_by('category')
+            .values_list('category', flat=True)
+            .distinct()
+        )
+
+        return Response({
+            "courses": courses,
+            "mentors": mentors,
+            "students": students,
+            "categories": categories,
+        }, status=status.HTTP_200_OK)
+
+
 class AdminReportsExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         if request.user.role != 'ADMIN':
             return HttpResponse("Access Denied", status=403)
-            
-        format_type = request.query_params.get('format', 'csv').lower()
+
+        format_type = request.query_params.get('export_format', 'csv').lower()
         data = get_admin_reports_data(request)
         enrollments = data["enrollments"]
         stats = data["stats"]
@@ -224,10 +253,10 @@ class AdminReportsExportView(APIView):
         if format_type == 'csv':
             response = HttpResponse(content_type='text/csv')
             response['Content-Disposition'] = f'attachment; filename="admin_report_{datetime.datetime.now().strftime("%Y%m%d")}.csv"'
-            
+
             writer = csv.writer(response)
             writer.writerow(['Date Enrolled', 'Student Username', 'Student Email', 'Course Title', 'Category', 'Progress %', 'Revenue Amount'])
-            
+
             for enroll in enrollments:
                 pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
                 amt = float(pay.amount) if pay else 0.00
@@ -247,19 +276,18 @@ class AdminReportsExportView(APIView):
                 wb = openpyxl.Workbook()
                 ws = wb.active
                 ws.title = "Administration Report"
-                
-                # Style headers
+
                 header_font = xlFont(name="Arial", size=11, bold=True, color="FFFFFF")
                 header_fill = xlPatternFill(start_color="1A365D", end_color="1A365D", fill_type="solid")
-                
+
                 headers = ['Date Enrolled', 'Student Username', 'Student Email', 'Course Title', 'Category', 'Progress %', 'Revenue Amount']
                 ws.append(headers)
-                
+
                 for col_num, header in enumerate(headers, 1):
                     cell = ws.cell(row=1, column=col_num)
                     cell.font = header_font
                     cell.fill = header_fill
-                    
+
                 for enroll in enrollments:
                     pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
                     amt = float(pay.amount) if pay else 0.00
@@ -272,16 +300,15 @@ class AdminReportsExportView(APIView):
                         f"{enroll.progress_percent}%",
                         amt
                     ])
-                    
+
                 response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 response['Content-Disposition'] = f'attachment; filename="admin_report_{datetime.datetime.now().strftime("%Y%m%d")}.xlsx"'
                 wb.save(response)
                 return response
             else:
-                # Fallback to CSV format but with spreadsheet content type
                 response = HttpResponse(content_type='application/vnd.ms-excel')
                 response['Content-Disposition'] = f'attachment; filename="admin_report_{datetime.datetime.now().strftime("%Y%m%d")}.xls"'
-                
+
                 writer = csv.writer(response, delimiter='\t')
                 writer.writerow(['Date Enrolled', 'Student Username', 'Student Email', 'Course Title', 'Category', 'Progress %', 'Revenue Amount'])
                 for enroll in enrollments:
@@ -303,20 +330,22 @@ class AdminReportsExportView(APIView):
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="admin_report_{datetime.datetime.now().strftime("%Y%m%d")}.pdf"'
             return response
-            
+
         return HttpResponse("Invalid format type.", status=400)
 
 
 def generate_pdf_report(enrollments, stats):
+    import os
     from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib import colors
-    
+    from reportlab.lib.units import inch
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     story = []
-    
+
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         'Title',
@@ -336,13 +365,19 @@ def generate_pdf_report(enrollments, stats):
         spaceAfter=10
     )
     body_style = styles['BodyText']
-    
-    # Title
+
+    # Logo (top of report)
+    logo_path = os.path.join(os.path.dirname(__file__), 'static', 'report_assets', 'logo.jpeg')
+    if os.path.exists(logo_path):
+        logo = Image(logo_path, width=0.6*inch, height=0.6*inch)
+        logo.hAlign = 'LEFT'
+        story.append(logo)
+        story.append(Spacer(1, 8))
+
     story.append(Paragraph("EduPath Platform Administration Report", title_style))
     story.append(Paragraph(f"Generated on: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}", body_style))
     story.append(Spacer(1, 15))
-    
-    # Stats Overview Table
+
     story.append(Paragraph("Platform Overview Stats", section_style))
     stats_data = [
         ["Stat Category", "Value", "Stat Category", "Value"],
@@ -364,8 +399,7 @@ def generate_pdf_report(enrollments, stats):
     ]))
     story.append(t_stats)
     story.append(Spacer(1, 20))
-    
-    # Enrollments Detail Table (Limit to top 30 to fit on PDF nicely)
+
     story.append(Paragraph(f"Filtered Transactions (Top 30 shown)", section_style))
     tx_data = [["Date", "Student", "Course", "Progress", "Amount"]]
     for enroll in enrollments[:30]:
@@ -378,7 +412,7 @@ def generate_pdf_report(enrollments, stats):
             f"{enroll.progress_percent}%",
             amt
         ])
-    
+
     t_tx = Table(tx_data, colWidths=[80, 90, 200, 70, 80])
     t_tx.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#2B6CB0")),
@@ -390,7 +424,7 @@ def generate_pdf_report(enrollments, stats):
         ('FONTSIZE', (0,0), (-1,-1), 9),
     ]))
     story.append(t_tx)
-    
+
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
