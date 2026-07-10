@@ -12,7 +12,8 @@ def get_user_from_token(token_string):
         token = AccessToken(token_string)
         user_id = token['user_id']
         return User.objects.get(id=user_id)
-    except Exception:
+    except Exception as e:
+        print(f"[WS AUTH] Token validation failed: {type(e).__name__}: {e}")
         return AnonymousUser()
 
 class JWTAuthMiddleware:

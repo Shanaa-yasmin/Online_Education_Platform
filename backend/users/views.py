@@ -8,6 +8,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
+from django.conf import settings
+from rest_framework_simplejwt.exceptions import TokenError
+from datetime import timedelta
+
 
 from .serializers import (
     RegisterSerializer,
@@ -26,6 +30,17 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
+def set_refresh_cookie(response, refresh_token):
+    response.set_cookie(
+        settings.AUTH_COOKIE_NAME,
+        str(refresh_token),
+        max_age=int(timedelta(days=7).total_seconds()),  # keep in sync with SIMPLE_JWT REFRESH_TOKEN_LIFETIME
+        httponly=True,
+        secure=settings.AUTH_COOKIE_SECURE,
+        samesite=settings.AUTH_COOKIE_SAMESITE,
+        path=settings.AUTH_COOKIE_PATH,
+    )
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -33,40 +48,77 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Generate JWT tokens for auto-login
             tokens = get_tokens_for_user(user)
-            
-            # Serialize created user details
             user_data = UserSerializer(user).data
-            
-            return Response({
+
+            response = Response({
                 "user": user_data,
                 "access": tokens["access"],
-                "refresh": tokens["refresh"],
                 "detail": "Registration successful. Logged in automatically."
             }, status=status.HTTP_201_CREATED)
+            set_refresh_cookie(response, tokens["refresh"])
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            refresh = response.data.pop('refresh', None)  # never expose refresh token in JSON
+            if refresh:
+                set_refresh_cookie(response, refresh)
+        return response
+
+
+class CookieTokenRefreshView(APIView):
+    """Reads the refresh token from the httponly cookie instead of the request body."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+
+        refresh_token = request.COOKIES.get(settings.AUTH_COOKIE_NAME)
+        if not refresh_token:
+            return Response({"detail": "Refresh token not found."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError:
+            response = Response({"detail": "Invalid or expired refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
+            response.delete_cookie(settings.AUTH_COOKIE_NAME, path=settings.AUTH_COOKIE_PATH)
+            return response
+
+        data = serializer.validated_data
+        response = Response({"access": data["access"]}, status=status.HTTP_200_OK)
+
+        # ROTATE_REFRESH_TOKENS=True in your SIMPLE_JWT settings means a new
+        # refresh token comes back on every call — re-set the cookie each time.
+        new_refresh = data.get("refresh")
+        if new_refresh:
+            set_refresh_cookie(response, new_refresh)
+
+        return response
+
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        try:
-            refresh_token = request.data.get("refresh")
-            if not refresh_token:
-                return Response({"detail": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"detail": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
+        refresh_token = request.COOKIES.get(settings.AUTH_COOKIE_NAME)
+        response = Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
 
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except Exception:
+                pass  # already invalid/expired — irrelevant, we're logging out either way
+
+        response.delete_cookie(settings.AUTH_COOKIE_NAME, path=settings.AUTH_COOKIE_PATH)
+        return response
 
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
@@ -87,7 +139,8 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         if user.role == 'STUDENT':
             from payments.models import Enrollment
             from certificates.models import Certificate
-            enrollments = Enrollment.objects.filter(student=user, is_active=True)
+            # Exclude enrollments for soft-deleted courses
+            enrollments = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False)
             completed_enrollments = enrollments.filter(progress_percent=100.0)
             certificates = Certificate.objects.filter(student=user)
             
@@ -134,7 +187,8 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             drafts = drafts.distinct()
             
             mentor_course_ids = courses.values_list('id', flat=True)
-            enrollments = Enrollment.objects.filter(course_id__in=mentor_course_ids, is_active=True)
+            # Exclude enrollments tied to deleted courses
+            enrollments = Enrollment.objects.filter(course_id__in=mentor_course_ids, is_active=True, course__is_deleted=False)
             reviews = Review.objects.filter(course_id__in=mentor_course_ids)
             
             avg_rating = reviews.aggregate(avg=Avg('rating'))['avg'] or 0.0
@@ -437,7 +491,7 @@ class AdminUserViewSet(viewsets.ViewSet):
         if user.role == User.Role.STUDENT:
             from payments.models import Enrollment
             from certificates.models import Certificate
-            extra['courses_enrolled'] = Enrollment.objects.filter(student=user, is_active=True).count()
+            extra['courses_enrolled'] = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False).count()
             extra['certificates_earned'] = Certificate.objects.filter(student=user).count()
 
         elif user.role == User.Role.MENTOR:
@@ -449,7 +503,7 @@ class AdminUserViewSet(viewsets.ViewSet):
             extra['courses_created'] = courses.count()
             extra['published_courses'] = courses.filter(is_published=True, is_approved=True).count()
             course_ids = courses.values_list('id', flat=True)
-            extra['students_enrolled'] = Enrollment.objects.filter(course_id__in=course_ids, is_active=True).count()
+            extra['students_enrolled'] = Enrollment.objects.filter(course_id__in=course_ids, is_active=True, course__is_deleted=False).count()
             avg = Review.objects.filter(course_id__in=course_ids).aggregate(avg=Avg('rating'))['avg']
             extra['avg_rating'] = round(float(avg), 1) if avg else 0.0
             total = Payment.objects.filter(

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api.js';
+import { tokenStore } from '../utils/tokenStore.js';
+import axios from 'axios';
 
 const NotificationContext = createContext(undefined);
 
@@ -21,9 +23,9 @@ export function NotificationProvider({ children, user }) {
       const res = await api.get('/api/notifications/');
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setNotifications(data);
-      
-      const count = res.data.unread_count !== undefined 
-        ? res.data.unread_count 
+
+      const count = res.data.unread_count !== undefined
+        ? res.data.unread_count
         : data.filter(n => !n.is_read).length;
       setUnreadCount(count);
     } catch (err) {
@@ -34,9 +36,9 @@ export function NotificationProvider({ children, user }) {
   }, [user]);
 
   // ── WebSocket connection ──────────────────────────────────────────
-  const connectWS = useCallback(() => {
+  const connectWS = useCallback((overrideToken) => {
     if (!user) return;
-    const token = localStorage.getItem('access_token');
+    const token = overrideToken ?? tokenStore.getToken();
     if (!token) return;
 
     if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
@@ -65,10 +67,29 @@ export function NotificationProvider({ children, user }) {
       }
     };
 
-    ws.onclose = (event) => {
+    ws.onclose = async (event) => {
       console.log('[WS] Notifications disconnected', event.code);
-      // Reconnect after 3s (skip if intentional close = 1000 or auth fail = 4001)
-      if (event.code !== 1000 && event.code !== 4001 && user) {
+
+      if (event.code === 1000) return; // intentional close
+
+      if (event.code === 4001) {
+        try {
+          const res = await axios.post(
+            'http://localhost:8000/api/auth/refresh/',
+            {},
+            { withCredentials: true }
+          );
+          tokenStore.setToken(res.data.access);
+          connectWS(res.data.access); // reconnect with the fresh token explicitly
+        } catch (err) {
+          console.error('[WS] Refresh failed — user needs to re-login', err);
+          // api.js's own refresh failure already dispatches 'auth_change' on the next
+          // HTTP call, which your logout effect below will pick up
+        }
+        return;
+      }
+
+      if (user) {
         reconnectTimer.current = setTimeout(connectWS, 3000);
       }
     };
@@ -77,6 +98,9 @@ export function NotificationProvider({ children, user }) {
       // onclose handles reconnect
     };
   }, [user]);
+
+  const userId = user?.id ?? null;
+
 
   // ── Initialize & Clean up WebSocket ──────────────────────────────
   useEffect(() => {
@@ -95,10 +119,23 @@ export function NotificationProvider({ children, user }) {
     }
 
     return () => {
-      // Unmount cleanup
       clearTimeout(reconnectTimer.current);
     };
-  }, [user, fetchNotifications, connectWS]);
+  }, [userId]);
+
+  // ── Reconnect WS whenever token is refreshed elsewhere ────────────
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const token = tokenStore.getToken();
+      if (token && user) {
+        connectWS();
+      } else {
+        wsRef.current?.close(1000);
+      }
+    };
+    window.addEventListener('auth_change', handleAuthChange);
+    return () => window.removeEventListener('auth_change', handleAuthChange);
+  }, [user, connectWS]);
 
   // ── Actions ───────────────────────────────────────────────────────
   const markAsRead = useCallback(async (id) => {

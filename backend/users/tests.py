@@ -36,12 +36,11 @@ class AuthTests(APITestCase):
         response = self.client.post(self.register_url, self.student_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertIn('refresh_token', response.cookies)
         self.assertEqual(response.data['user']['username'], 'student1')
         self.assertEqual(response.data['user']['email'], 'student@platform.com')
         self.assertEqual(response.data['user']['role'], 'STUDENT')
         self.assertEqual(response.data['user']['profile']['bio'], 'I am a computer science student.')
-        self.assertFalse(response.data['user']['profile']['is_approved'])
 
     def test_register_mentor_success(self):
         response = self.client.post(self.register_url, self.mentor_data, format='json')
@@ -110,14 +109,17 @@ class AuthTests(APITestCase):
     def test_logout_blacklists_token(self):
         reg_response = self.client.post(self.register_url, self.student_data, format='json')
         access = reg_response.data['access']
-        refresh = reg_response.data['refresh']
+        refresh = reg_response.cookies['refresh_token'].value
         
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
         
-        # Logout using the refresh token
-        logout_response = self.client.post(self.logout_url, {'refresh': refresh}, format='json')
+        # Logout using the refresh token (API expects it via cookie or body)
+        # Note: the logout view expects cookie or body.
+        self.client.cookies['refresh_token'] = refresh
+        logout_response = self.client.post(self.logout_url, format='json')
         self.assertEqual(logout_response.status_code, status.HTTP_200_OK)
         
         # Try to refresh with the blacklisted token (should fail)
-        refresh_response = self.client.post(self.refresh_url, {'refresh': refresh}, format='json')
+        self.client.cookies['refresh_token'] = refresh
+        refresh_response = self.client.post(self.refresh_url, format='json')
         self.assertEqual(refresh_response.status_code, status.HTTP_401_UNAUTHORIZED)

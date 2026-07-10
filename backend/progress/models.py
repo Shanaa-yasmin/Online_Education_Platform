@@ -100,7 +100,8 @@ def recalculate_course_progress(student, course):
 
     # Also sync to the Enrollment.progress_percent
     from payments.models import Enrollment
-    enrollment = Enrollment.objects.filter(student=student, course=course).first()
+    # Don't return enrollments for soft-deleted courses
+    enrollment = Enrollment.objects.filter(student=student, course=course, course__is_deleted=False).first()
     if enrollment:
         enrollment.progress_percent = completion_percentage
         enrollment.save(update_fields=['progress_percent'])

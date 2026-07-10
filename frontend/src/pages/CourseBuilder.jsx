@@ -65,6 +65,11 @@ export default function CourseBuilder() {
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState(false);
 
+  const CATEGORY_OPTIONS = [
+    'Development', 'Design', 'Business', 'Marketing',
+    'IT & Software', 'Personal Development', 'Data Science'
+  ];
+
   // Accordion active modules
   const [expandedModules, setExpandedModules] = useState({});
 
@@ -93,7 +98,7 @@ export default function CourseBuilder() {
   // Edit Course Details modal
   const [showEditCourseModal, setShowEditCourseModal] = useState(false);
   const [editCourseForm, setEditCourseForm] = useState({
-    title: '', description: '', level: 'BEGINNER', price: '0.00', language: 'English', duration_hours: 0
+    title: '', description: '', level: 'BEGINNER', price: '0.00', language: 'English', duration_hours: 0, category: 'Development'
   });
   const [editThumbnailFile, setEditThumbnailFile] = useState(null);
   const [editThumbnailPreview, setEditThumbnailPreview] = useState(null);
@@ -198,6 +203,7 @@ export default function CourseBuilder() {
     }
   };
 
+
   // =========================================================
   // Edit Course Details
   // =========================================================
@@ -208,7 +214,8 @@ export default function CourseBuilder() {
       level: course.level,
       price: course.price,
       language: course.language,
-      duration_hours: course.duration_hours
+      duration_hours: course.duration_hours,
+      category: course.category
     });
     setEditThumbnailFile(null);
     setEditThumbnailPreview(course.thumbnail || null);
@@ -259,6 +266,7 @@ export default function CourseBuilder() {
       fd.append('price', parseFloat(editCourseForm.price) || 0);
       fd.append('language', editCourseForm.language);
       fd.append('duration_hours', parseInt(editCourseForm.duration_hours) || 0);
+      fd.append('category', editCourseForm.category);
       if (editThumbnailFile) {
         fd.append('thumbnail', editThumbnailFile);
       }
@@ -574,6 +582,23 @@ export default function CourseBuilder() {
               <TrashIcon /> {deleting ? 'Deleting...' : 'Delete Course'}
             </button>
           )}
+        </div>
+        <div className="form-group">
+          <label htmlFor="edit-category">Category</label>
+          <select
+            id="edit-category"
+            name="category"
+            value={editCourseForm.category}
+            onChange={handleEditCourseInput}
+          >
+            <option value="Development">Development</option>
+            <option value="Design">Design</option>
+            <option value="Business">Business</option>
+            <option value="Marketing">Marketing</option>
+            <option value="IT & Software">IT & Software</option>
+            <option value="Personal Development">Personal Development</option>
+            <option value="Data Science">Data Science</option>
+          </select>
         </div>
       </header>
 

@@ -22,10 +22,11 @@ class CourseAnalyticsView(APIView):
             return Response({"detail": "You do not have permission to view this course's analytics."}, status=status.HTTP_403_FORBIDDEN)
             
         # 1. Stat cards
-        total_students = Enrollment.objects.filter(course=course).count()
-        active_students = Enrollment.objects.filter(course=course, is_active=True).count()
+        # Exclude enrollments for soft-deleted courses
+        total_students = Enrollment.objects.filter(course=course, course__is_deleted=False).count()
+        active_students = Enrollment.objects.filter(course=course, is_active=True, course__is_deleted=False).count()
         
-        avg_progress = Enrollment.objects.filter(course=course, is_active=True).aggregate(avg=Avg('progress_percent'))['avg'] or 0.0
+        avg_progress = Enrollment.objects.filter(course=course, is_active=True, course__is_deleted=False).aggregate(avg=Avg('progress_percent'))['avg'] or 0.0
         avg_progress = round(float(avg_progress), 2)
         
         completed_count = CourseProgress.objects.filter(course=course, completed=True).count()
@@ -38,7 +39,7 @@ class CourseAnalyticsView(APIView):
         
         # Most and Least viewed lessons
         lesson_views = list(
-            LessonProgress.objects.filter(lesson__module__course=course)
+            LessonProgress.objects.filter(lesson__module__course=course, lesson__module__course__is_deleted=False)
             .values('lesson_id', 'lesson__title')
             .annotate(views=Count('student', distinct=True))
             .order_by('-views')
@@ -63,6 +64,7 @@ class CourseAnalyticsView(APIView):
         # Average watch percentage (VIDEO)
         avg_watch = LessonProgress.objects.filter(
             lesson__module__course=course,
+            lesson__module__course__is_deleted=False,
             lesson__content_type='VIDEO'
         ).aggregate(avg=Avg('completion_percentage'))['avg'] or 0.0
         avg_watch = round(float(avg_watch), 2)
@@ -71,7 +73,7 @@ class CourseAnalyticsView(APIView):
         quiz_lessons = Lesson.objects.filter(module__course=course, content_type='QUIZ')
         total_quizzes = quiz_lessons.count()
         if total_quizzes > 0 and active_students > 0:
-            completed_quizzes = LessonProgress.objects.filter(lesson__in=quiz_lessons, completed=True).count()
+            completed_quizzes = LessonProgress.objects.filter(lesson__in=quiz_lessons, completed=True, lesson__module__course__is_deleted=False).count()
             quiz_completion_rate = round((completed_quizzes / (total_quizzes * active_students) * 100), 2)
         else:
             quiz_completion_rate = 0.0
@@ -80,7 +82,7 @@ class CourseAnalyticsView(APIView):
         from django.db.models.functions import TruncDay
         thirty_days_ago = timezone.now() - datetime.timedelta(days=30)
         daily_enrollments = list(
-            Enrollment.objects.filter(course=course, enrolled_at__gte=thirty_days_ago)
+            Enrollment.objects.filter(course=course, enrolled_at__gte=thirty_days_ago, course__is_deleted=False)
             .annotate(day=TruncDay('enrolled_at'))
             .values('day')
             .annotate(count=Count('id'))
@@ -100,10 +102,10 @@ class CourseAnalyticsView(APIView):
                 enrollment_trend.append({"date": day, "enrollments": 0})
                 
         # 3. Chart Data: Progress Distribution (Brackets)
-        p_0_25 = Enrollment.objects.filter(course=course, progress_percent__lte=25.0).count()
-        p_26_50 = Enrollment.objects.filter(course=course, progress_percent__gt=25.0, progress_percent__lte=50.0).count()
-        p_51_75 = Enrollment.objects.filter(course=course, progress_percent__gt=50.0, progress_percent__lte=75.0).count()
-        p_76_100 = Enrollment.objects.filter(course=course, progress_percent__gt=75.0).count()
+        p_0_25 = Enrollment.objects.filter(course=course, progress_percent__lte=25.0, course__is_deleted=False).count()
+        p_26_50 = Enrollment.objects.filter(course=course, progress_percent__gt=25.0, progress_percent__lte=50.0, course__is_deleted=False).count()
+        p_51_75 = Enrollment.objects.filter(course=course, progress_percent__gt=50.0, progress_percent__lte=75.0, course__is_deleted=False).count()
+        p_76_100 = Enrollment.objects.filter(course=course, progress_percent__gt=75.0, course__is_deleted=False).count()
         
         progress_distribution = [
             {"name": "0-25%", "value": p_0_25},
@@ -116,7 +118,7 @@ class CourseAnalyticsView(APIView):
         lessons = Lesson.objects.filter(module__course=course).order_by('module__order', 'order')[:10]  # limit to top 10
         lesson_completion_data = []
         for l in lessons:
-            comp_count = LessonProgress.objects.filter(lesson=l, completed=True).count()
+            comp_count = LessonProgress.objects.filter(lesson=l, completed=True, lesson__module__course__is_deleted=False).count()
             lesson_completion_data.append({
                 "title": l.title[:15],
                 "completed": comp_count
@@ -154,11 +156,11 @@ class MentorOverviewView(APIView):
         if not (request.user.role == 'MENTOR' or request.user.role == 'ADMIN' or request.user.is_staff):
             return Response({"detail": "Only mentors can view mentor overview stats."}, status=status.HTTP_403_FORBIDDEN)
             
-        # Get all courses created by this mentor
-        courses = Course.objects.filter(mentor=request.user)
+        # Get all non-deleted courses created by this mentor
+        courses = Course.objects.filter(mentor=request.user, is_deleted=False)
         
-        total_students = Enrollment.objects.filter(course__in=courses).count()
-        active_students = Enrollment.objects.filter(course__in=courses, is_active=True).count()
+        total_students = Enrollment.objects.filter(course__in=courses, course__is_deleted=False).count()
+        active_students = Enrollment.objects.filter(course__in=courses, is_active=True, course__is_deleted=False).count()
         
         avg_progress = Enrollment.objects.filter(course__in=courses, is_active=True).aggregate(avg=Avg('progress_percent'))['avg'] or 0.0
         avg_progress = round(float(avg_progress), 2)
@@ -178,7 +180,7 @@ class MentorOverviewView(APIView):
         # Course list performance
         course_performance = []
         for c in courses:
-            c_enrolls = Enrollment.objects.filter(course=c).count()
+            c_enrolls = Enrollment.objects.filter(course=c, course__is_deleted=False).count()
             c_rev = Payment.objects.filter(enrollment__course=c, status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
             course_performance.append({
                 "id": c.id,

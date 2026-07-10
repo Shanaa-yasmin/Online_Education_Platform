@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import dj_database_url
 
 load_dotenv()  # reads .env file automatically
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -93,15 +94,57 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database
+# Database — PostgreSQL on Supabase
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+#
+# Preferred:  set DATABASE_URL in .env  (copy the connection string from
+#             Supabase → Project Settings → Database → Connection string).
+# Fallback:   set individual DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT.
+#
+# Supabase connection-pooler (pgbouncer) — recommended for serverless or
+# high-concurrency workloads — runs on port 6543.  Set USE_PGBOUNCER=true
+# in .env to switch to the pooler endpoint automatically.
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_USE_PGBOUNCER = os.environ.get('USE_PGBOUNCER', 'false').lower() == 'true'
+_DEFAULT_PORT = '6543' if _USE_PGBOUNCER else '5432'
+
+_DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+_PARSED_DB = None
+
+if _DATABASE_URL:
+    try:
+        _PARSED_DB = dj_database_url.parse(
+            _DATABASE_URL,
+            conn_max_age=int(os.environ.get('CONN_MAX_AGE', 600)),
+            ssl_require=True,
+        )
+    except Exception:
+        # Placeholder / malformed URL — fall through to individual env vars
+        _PARSED_DB = None
+
+if _PARSED_DB:
+    DATABASES = {'default': _PARSED_DB}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME':     os.environ.get('DB_NAME', 'postgres'),
+            'USER':     os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST':     os.environ.get('DB_HOST', 'localhost'),
+            'PORT':     os.environ.get('DB_PORT', _DEFAULT_PORT),
+            'CONN_MAX_AGE': int(os.environ.get('CONN_MAX_AGE', 600)),
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
     }
-}
+
+# When using pgbouncer in transaction-pooling mode, server-side cursors and
+# prepared statements must be disabled — Django's DISABLE_SERVER_SIDE_CURSORS
+# handles the ORM side.
+if _USE_PGBOUNCER:
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 
 # Password validation
@@ -187,7 +230,9 @@ CHANNEL_LAYERS = {
 }
 
 # CORS Headers Config
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+]
 CORS_ALLOW_CREDENTIALS = True
 
 # Authentication Backends
@@ -212,3 +257,8 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 # Email Configuration (Console fallback for local testing)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'no-reply@edupath.com'
+
+AUTH_COOKIE_NAME = 'refresh_token'
+AUTH_COOKIE_SECURE = not DEBUG          # True in production (HTTPS only)
+AUTH_COOKIE_SAMESITE = 'Lax'            # 'None' + Secure=True if frontend/backend end up on different domains
+AUTH_COOKIE_PATH = '/api/auth/'         # cookie only sent to auth endpoints, not every request

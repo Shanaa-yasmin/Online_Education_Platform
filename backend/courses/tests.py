@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Course, Module, Lesson, QuizQuestion
+from .models import Course, Module, Lesson, QuizQuestion, QuizOption
 
 User = get_user_model()
 
@@ -71,13 +71,15 @@ class CourseAPITests(APITestCase):
         )
         self.quiz_question = QuizQuestion.objects.create(
             lesson=self.lesson_quiz,
+            question_type=QuizQuestion.QuestionType.SINGLE_CHOICE,
             question_text="What is the print function output for print(2+2)?",
-            option_a="22",
-            option_b="4",
-            option_c="Error",
-            option_d="None",
-            correct_option=QuizQuestion.CorrectOptionChoices.B
+            points=1,
+            order=1
         )
+        self.option_a = QuizOption.objects.create(question=self.quiz_question, text="22", is_correct=False, order=1)
+        self.option_b = QuizOption.objects.create(question=self.quiz_question, text="4", is_correct=True, order=2)
+        self.option_c = QuizOption.objects.create(question=self.quiz_question, text="Error", is_correct=False, order=3)
+        self.option_d = QuizOption.objects.create(question=self.quiz_question, text="None", is_correct=False, order=4)
 
     def test_student_cannot_create_course(self):
         self.client.force_authenticate(user=self.student)
@@ -132,42 +134,42 @@ class CourseAPITests(APITestCase):
         self.assertEqual(len(response.data), 1)
 
     def test_quiz_question_correct_option_visibility(self):
-        # 1. Student should not see the correct_option field in quiz question GET queries
+        # 1. Student should not see the is_correct field or explanation in quiz question detail queries
         self.client.force_authenticate(user=self.student)
         url = reverse('quizquestion-detail', kwargs={'pk': self.quiz_question.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertNotIn('correct_option', response.data)
+        # options array should not have 'is_correct' for student
+        for opt in response.data['options']:
+            self.assertNotIn('is_correct', opt)
+        self.assertNotIn('explanation', response.data)
 
-        # 2. Mentor (creator) should see the correct_option field
+        # 2. Mentor (creator) should see the is_correct field and explanation
         self.client.force_authenticate(user=self.mentor1)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('correct_option', response.data)
-        self.assertEqual(response.data['correct_option'], 'B')
+        self.assertTrue(any(opt['is_correct'] for opt in response.data['options']))
+        self.assertIn('explanation', response.data)
 
-    def test_quiz_question_check_answer_endpoint(self):
+    def test_quiz_attempt_start(self):
+        # Student should be able to start an attempt
+        # Enroll first (since it's a student)
+        from payments.models import Enrollment
+        Enrollment.objects.create(student=self.student, course=self.course_published_approved, is_active=True)
+
         self.client.force_authenticate(user=self.student)
-        url = reverse('quizquestion-check-answer', kwargs={'pk': self.quiz_question.pk})
-
-        response = self.client.post(url, {"selected_option": "B"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['is_correct'])
-        self.assertEqual(response.data['correct_option'], 'B')
-        self.assertEqual(response.data['selected_option'], 'B')
-
-        response = self.client.post(url, {"selected_option": "A"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data['is_correct'])
-        self.assertEqual(response.data['correct_option'], 'B')
-
-    def test_quiz_question_check_answer_rejects_invalid_option(self):
-        self.client.force_authenticate(user=self.student)
-        url = reverse('quizquestion-check-answer', kwargs={'pk': self.quiz_question.pk})
-
-        response = self.client.post(url, {"selected_option": "E"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['detail'], 'selected_option must be one of A, B, C, D.')
+        # Endpoint: POST /api/quiz-attempts/lessons/{lesson_pk}/start/
+        url = f"/api/payments/quiz-attempts/lessons/{self.lesson_quiz.pk}/start/"
+        # Let's check what the base path for courses views is:
+        # Actually it's registered under router which is included in core/urls.py as:
+        # path('api/courses/', include('courses.urls'))
+        # Let's check:
+        # wait! In urls.py: path('api/courses/', include('courses.urls'))
+        # So it is: /api/quiz-attempts/lessons/{lesson_pk}/start/
+        url = f"/api/quiz-attempts/lessons/{self.lesson_quiz.pk}/start/"
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('attempt_number', response.data)
 
     def test_admin_approve_course(self):
         self.client.force_authenticate(user=self.admin)

@@ -73,7 +73,8 @@ class CourseViewSet(viewsets.ModelViewSet):
         if old_title != instance.title or old_desc != instance.description:
             from payments.models import Enrollment
             from notifications.models import Notification
-            enrollments = Enrollment.objects.filter(course=instance, is_active=True)
+            # Don't notify students of courses that have been soft-deleted
+            enrollments = Enrollment.objects.filter(course=instance, is_active=True, course__is_deleted=False)
             for enroll in enrollments:
                 Notification.objects.create(
                     recipient=enroll.student,
@@ -395,7 +396,8 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         if user.is_staff or user.role == 'ADMIN' or lesson.module.course.mentor == user:
             return
         from payments.models import Enrollment
-        if not Enrollment.objects.filter(student=user, course=lesson.module.course).exists():
+        # Enrollment check must ensure the course isn't soft-deleted
+        if not Enrollment.objects.filter(student=user, course=lesson.module.course, course__is_deleted=False).exists():
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You must be enrolled in this course to take the quiz.")
 

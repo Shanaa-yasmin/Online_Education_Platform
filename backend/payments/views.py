@@ -63,8 +63,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if user.is_staff or user.role == 'ADMIN':
             return Enrollment.objects.all()
         if user.role == 'MENTOR':
-            return Enrollment.objects.filter(course__mentor=user)
-        return Enrollment.objects.filter(student=user)
+            return Enrollment.objects.filter(course__mentor=user, course__is_deleted=False)
+        return Enrollment.objects.filter(student=user, course__is_deleted=False)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -80,7 +80,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if not (course.is_approved and course.is_published):
             raise PermissionDenied("This course is not currently available for enrollment.")
 
-        if Enrollment.objects.filter(student=user, course=course).exists():
+        if Enrollment.objects.filter(student=user, course=course, course__is_deleted=False).exists():
             raise ValidationError({"detail": "You are already enrolled in this course."})
 
         if float(course.price) > 0:
@@ -126,7 +126,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 pass
 
         try:
-            enrollment = Enrollment.objects.get(student=user, course_id=course_id)
+            enrollment = Enrollment.objects.get(student=user, course_id=course_id,course__is_deleted=False)
 
             completed_lesson_ids = list(
                 LessonProgress.objects.filter(

@@ -27,7 +27,8 @@ class ChatMessageViewSet(viewsets.ViewSet):
         elif user.role == 'MENTOR':
             has_access = course.mentor == user
         elif user.role == 'STUDENT':
-            has_access = Enrollment.objects.filter(student=user, course=course, is_active=True).exists()
+            # Ensure enrollments for soft-deleted courses do not grant access
+            has_access = Enrollment.objects.filter(student=user, course=course, is_active=True, course__is_deleted=False).exists()
 
         if not has_access:
             raise PermissionDenied("You do not have access to this course's Q&A chat.")

@@ -1,0 +1,68 @@
+name: CI — Django Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_oep
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test_user -d test_oep"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      # Django settings
+      SECRET_KEY: ci-test-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: "*"
+      FRONTEND_URL: http://localhost:5173
+
+      # Point tests at the CI Postgres service
+      TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_oep
+      TEST_DB_SSL: "false"   # CI postgres doesn't use SSL
+
+      # Dummy payment keys (tests mock external services)
+      STRIPE_SECRET_KEY: sk_test_mock
+      STRIPE_PUBLISHABLE_KEY: pk_test_mock
+      STRIPE_WEBHOOK_SECRET: whsec_mock
+      PAYPAL_CLIENT_ID: paypal_mock
+      PAYPAL_SECRET: paypal_mock
+      PAYPAL_MODE: sandbox
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run migrations
+        working-directory: backend
+        run: python manage.py migrate --settings=core.settings_test
+
+      - name: Run tests
+        working-directory: backend
+        run: python manage.py test --settings=core.settings_test --verbosity=2

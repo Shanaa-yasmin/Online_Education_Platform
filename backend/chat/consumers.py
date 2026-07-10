@@ -160,7 +160,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         elif self.user.role == 'MENTOR':
             return course.mentor == self.user
         elif self.user.role == 'STUDENT':
-            return Enrollment.objects.filter(student=self.user, course=course, is_active=True).exists()
+            # Exclude enrollments pointing to soft-deleted courses
+            return Enrollment.objects.filter(student=self.user, course=course, is_active=True, course__is_deleted=False).exists()
         return False
 
     @database_sync_to_async

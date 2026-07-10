@@ -32,7 +32,8 @@ def get_or_create_pending_enrollment(user, course):
     Response describing the conflict. Otherwise an existing inactive
     enrollment is reused (e.g. after a refund) or a new one is created.
     """
-    existing = Enrollment.objects.filter(student=user, course=course).first()
+    # Ignore enrollments that reference soft-deleted courses when checking for existing
+    existing = Enrollment.objects.filter(student=user, course=course, course__is_deleted=False).first()
     if existing:
         if existing.is_active:
             return None, Response(

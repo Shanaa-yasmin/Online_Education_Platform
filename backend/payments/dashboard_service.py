@@ -10,7 +10,7 @@ inline, for a given role.
 import datetime
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Sum
+from django.db.models import Avg, Sum, Q
 from django.utils import timezone
 
 from certificates.models import Certificate
@@ -29,7 +29,7 @@ def get_mentor_dashboard(user) -> dict:
     courses_count = my_courses.count()
     published_count = my_courses.filter(is_published=True).count()
 
-    total_students = Enrollment.objects.filter(course__mentor=user, is_active=True).count()
+    total_students = Enrollment.objects.filter(course__mentor=user, is_active=True, course__is_deleted=False).count()
 
     avg_rating_val = Review.objects.filter(course__mentor=user).aggregate(Avg('rating'))['rating__avg']
     avg_rating = round(avg_rating_val, 1) if avg_rating_val is not None else 0.0
@@ -44,7 +44,7 @@ def get_mentor_dashboard(user) -> dict:
     # Course list performance
     course_performance = []
     for c in my_courses:
-        c_enrolls = Enrollment.objects.filter(course=c).count()
+        c_enrolls = Enrollment.objects.filter(course=c, course__is_deleted=False).count()
         c_rev = Payment.objects.filter(enrollment__course=c, status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
         course_performance.append({
             "id": c.id,
@@ -55,7 +55,7 @@ def get_mentor_dashboard(user) -> dict:
         })
 
     # Recent enrollments
-    recent_enrollments_qs = Enrollment.objects.filter(course__mentor=user).order_by('-enrolled_at')[:5].select_related('student', 'course')
+    recent_enrollments_qs = Enrollment.objects.filter(course__mentor=user, course__is_deleted=False).order_by('-enrolled_at')[:5].select_related('student', 'course')
     recent_enrollments = []
     for re in recent_enrollments_qs:
         recent_enrollments.append({
@@ -184,7 +184,8 @@ def get_admin_dashboard() -> dict:
 
 
 def get_student_dashboard(user, request) -> dict:
-    active_enrollments = Enrollment.objects.filter(student=user, is_active=True).select_related('course')
+    # Exclude enrollments that point to soft-deleted courses
+    active_enrollments = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False).select_related('course')
     enrolled_count = active_enrollments.count()
 
     in_progress_count = active_enrollments.filter(progress_percent__gt=0, progress_percent__lt=100).count()
@@ -194,7 +195,14 @@ def get_student_dashboard(user, request) -> dict:
     hours_learned = hours_learned_val if hours_learned_val is not None else 0
 
     # 1. Continue Learning
-    last_progress = LessonProgress.objects.filter(student=user).order_by('-last_accessed').select_related('lesson', 'course').first()
+    # Find the most recent lesson progress but ignore entries for soft-deleted courses
+    last_progress = (
+        LessonProgress.objects.filter(student=user)
+        .filter(Q(course__is_deleted=False) | Q(lesson__module__course__is_deleted=False))
+        .order_by('-last_accessed')
+        .select_related('lesson', 'course')
+        .first()
+    )
     continue_learning = None
     upcoming_lessons = []
 
@@ -224,7 +232,12 @@ def get_student_dashboard(user, request) -> dict:
                 })
 
     # 3. Learning streak (consecutive days of lesson progress updates)
-    progress_history = LessonProgress.objects.filter(student=user).values_list('last_accessed', flat=True)
+    # Only consider progress history for non-deleted courses
+    progress_history = (
+        LessonProgress.objects.filter(student=user)
+        .filter(Q(course__is_deleted=False) | Q(lesson__module__course__is_deleted=False))
+        .values_list('last_accessed', flat=True)
+    )
     days = sorted(list(set([d.date() for d in progress_history])), reverse=True)
     streak = 0
     current_date = timezone.now().date()

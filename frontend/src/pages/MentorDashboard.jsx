@@ -127,6 +127,7 @@ export default function MentorDashboard() {
       fd.append('price', parseFloat(form.price) || 0);
       fd.append('language', form.language);
       fd.append('duration_hours', parseInt(form.duration_hours) || 0);
+      fd.append('category', form.category);
       if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
 
       const r = await api.post('/api/courses/', fd, {
@@ -391,8 +392,28 @@ export default function MentorDashboard() {
                 <div className="form-group"><label>Price ($)</label><input name="price" type="number" value={form.price} onChange={handleInput} step="0.01" min="0" required /></div>
               </div>
               <div className="modal-form form-row-2">
-                <div className="form-group"><label>Language</label><input name="language" value={form.language} onChange={handleInput} placeholder="English" required /></div>
-                <div className="form-group"><label>Estimated Hours</label><input name="duration_hours" type="number" value={form.duration_hours} onChange={handleInput} min="0" required /></div>
+                <div className="form-group">
+                  <label>Language</label>
+                  <input name="language" value={form.language} onChange={handleInput} placeholder="English" required />
+                </div>
+                <div className="form-group">
+                  <label>Category</label>
+                  <select name="category" value={form.category} onChange={handleInput}>
+                    <option value="Development">Development</option>
+                    <option value="Design">Design</option>
+                    <option value="Business">Business</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="IT & Software">IT & Software</option>
+                    <option value="Personal Development">Personal Development</option>
+                    <option value="Data Science">Data Science</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-form form-row-2">
+                <div className="form-group">
+                  <label>Estimated Hours</label>
+                  <input name="duration_hours" type="number" value={form.duration_hours} onChange={handleInput} min="0" required />
+                </div>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>

@@ -35,6 +35,8 @@ from chat.models import ChatMessage
 
 @receiver(post_save, sender=Notification)
 def send_realtime_and_email_notification(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):
+        return
     if not created:
         return
 
@@ -79,6 +81,8 @@ def send_realtime_and_email_notification(sender, instance, created, **kwargs):
 # ── Payment/Enrollment Signals ───────────────────────────────────────────────
 @receiver(post_save, sender=Payment)
 def handle_payment_status_notifications(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):
+        return
     course = instance.enrollment.course
     # Only notify on status changes
     if instance.status == Payment.StatusChoices.COMPLETED:
@@ -125,9 +129,12 @@ def handle_payment_status_notifications(sender, instance, created, **kwargs):
 # ── Lesson Creation Signal ───────────────────────────────────────────────────
 @receiver(post_save, sender=Lesson)
 def notify_students_new_lesson(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):
+        return
     if created:
         course = instance.module.course
-        enrollments = Enrollment.objects.filter(course=course, is_active=True)
+        # Only notify active enrollments for non-deleted courses
+        enrollments = Enrollment.objects.filter(course=course, is_active=True, course__is_deleted=False)
         for enrollment in enrollments:
             lesson_msg = f"A new lesson '{instance.title}' has been added to the course '{course.title}'."
             Notification.objects.create(
@@ -144,6 +151,8 @@ def notify_students_new_lesson(sender, instance, created, **kwargs):
 # ── Q&A Replies Signal ───────────────────────────────────────────────────────
 @receiver(post_save, sender=ChatMessage)
 def notify_qna_reply(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):
+        return
     if created and instance.parent:
         parent_sender = instance.parent.sender
         if parent_sender != instance.sender:
@@ -162,6 +171,8 @@ def notify_qna_reply(sender, instance, created, **kwargs):
 # ── Certificate Generation Signal ─────────────────────────────────────────────
 @receiver(post_save, sender=Certificate)
 def notify_certificate_generated(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):
+        return
     if created:
         Notification.objects.create(
             recipient=instance.student,
@@ -176,6 +187,8 @@ def notify_certificate_generated(sender, instance, created, **kwargs):
 # ── Review Creation Signal ───────────────────────────────────────────────────
 @receiver(post_save, sender=Review)
 def notify_mentor_new_review(sender, instance, created, **kwargs):
+    if kwargs.get('raw'):
+        return
     if created:
         course = instance.course
         Notification.objects.create(

@@ -75,7 +75,8 @@ class CourseProgressListView(APIView):
 
     def get(self, request):
         # Allow students to see their course progress list
-        enrollments = Enrollment.objects.filter(student=request.user, is_active=True).select_related('course')
+        # Exclude enrollments for soft-deleted courses
+        enrollments = Enrollment.objects.filter(student=request.user, is_active=True, course__is_deleted=False).select_related('course')
         results = []
         for enroll in enrollments:
             progress_data = get_course_progress_data(request.user, enroll.course)
@@ -122,7 +123,7 @@ class CourseProgressDetailView(APIView):
     def get(self, request, course_id):
         course = get_object_or_404(Course, pk=course_id)
         # Check enrollment
-        if not request.user.is_staff and not request.user.role == 'ADMIN' and not Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists():
+        if not request.user.is_staff and not request.user.role == 'ADMIN' and not Enrollment.objects.filter(student=request.user, course=course, is_active=True, course__is_deleted=False).exists():
             return Response({"detail": "You are not enrolled in this course."}, status=status.HTTP_403_FORBIDDEN)
             
         progress_data = get_course_progress_data(request.user, course)
@@ -136,8 +137,8 @@ class LessonCompleteView(APIView):
         lesson = get_object_or_404(Lesson, pk=lesson_id)
         course = lesson.module.course
         
-        # Check enrollment
-        if not Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists():
+        # Check enrollment (exclude soft-deleted courses)
+        if not Enrollment.objects.filter(student=request.user, course=course, is_active=True, course__is_deleted=False).exists():
             return Response({"detail": "You must be enrolled in this course."}, status=status.HTTP_403_FORBIDDEN)
             
         progress, created = LessonProgress.objects.get_or_create(
@@ -170,8 +171,8 @@ class LessonResumeView(APIView):
         lesson = get_object_or_404(Lesson, pk=lesson_id)
         course = lesson.module.course
         
-        # Check enrollment
-        if not Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists():
+        # Check enrollment (exclude soft-deleted courses)
+        if not Enrollment.objects.filter(student=request.user, course=course, is_active=True, course__is_deleted=False).exists():
             return Response({"detail": "You must be enrolled in this course."}, status=status.HTTP_403_FORBIDDEN)
             
         progress, created = LessonProgress.objects.get_or_create(
@@ -204,8 +205,8 @@ class VideoPositionUpdateView(APIView):
         lesson = get_object_or_404(Lesson, pk=lesson_id)
         course = lesson.module.course
         
-        # Check enrollment
-        if not Enrollment.objects.filter(student=request.user, course=course, is_active=True).exists():
+        # Check enrollment (exclude soft-deleted courses)
+        if not Enrollment.objects.filter(student=request.user, course=course, is_active=True, course__is_deleted=False).exists():
             return Response({"detail": "You must be enrolled in this course."}, status=status.HTTP_403_FORBIDDEN)
             
         progress, created = LessonProgress.objects.get_or_create(

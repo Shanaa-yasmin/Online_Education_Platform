@@ -40,10 +40,39 @@ class Migration(migrations.Migration):
         ),
         # 3. Populate slugs for existing rows
         migrations.RunPython(populate_slugs, migrations.RunPython.noop),
-        # 4. Now enforce unique + remove null
-        migrations.AlterField(
-            model_name='course',
-            name='slug',
-            field=models.SlugField(max_length=220, blank=True, unique=True),
+        # Remove any leftover index from a previously interrupted run.
+        migrations.RunSQL(
+            sql=(
+                'DROP INDEX IF EXISTS courses_course_slug_9c670f14_like; '
+                'DROP INDEX IF EXISTS courses_course_slug_9c670f14;'
+            ),
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        # 4. Now enforce unique + remove null without triggering Django's
+        # PostgreSQL slug index creation twice.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql='ALTER TABLE "courses_course" ALTER COLUMN "slug" SET NOT NULL;',
+                    reverse_sql='ALTER TABLE "courses_course" ALTER COLUMN "slug" DROP NOT NULL;',
+                ),
+                migrations.RunSQL(
+                    sql=(
+                        'DO $$ BEGIN '
+                        'ALTER TABLE "courses_course" '
+                        'ADD CONSTRAINT "courses_course_slug_9c670f14_uniq" UNIQUE ("slug"); '
+                        'EXCEPTION WHEN duplicate_object THEN NULL; '
+                        'END $$;'
+                    ),
+                    reverse_sql='ALTER TABLE "courses_course" DROP CONSTRAINT IF EXISTS "courses_course_slug_9c670f14_uniq";',
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='course',
+                    name='slug',
+                    field=models.SlugField(max_length=220, blank=True, unique=True),
+                ),
+            ],
         ),
     ]

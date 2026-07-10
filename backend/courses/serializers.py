@@ -248,7 +248,8 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         # 2. Enforce that only enrolled students can post reviews
         from payments.models import Enrollment
-        if not Enrollment.objects.filter(student=user, course=course).exists():
+        # Ensure reviews can't be posted for soft-deleted courses
+        if not Enrollment.objects.filter(student=user, course=course, course__is_deleted=False).exists():
             raise serializers.ValidationError("You must be enrolled in the course to write a review.")
 
         # 3. Skip duplicate check — the reviews action handles create-or-update logic
