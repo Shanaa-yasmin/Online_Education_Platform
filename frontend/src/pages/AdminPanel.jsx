@@ -45,9 +45,9 @@ export default function AdminPanel() {
     }
   }, [searchParams]);
 
-  const fetchCourses = async () => { try { setLC(true); const r = await api.get('/api/courses/'); setPendingCourses(r.data.filter(c => !c.is_approved)); setCE(''); } catch { setCE('Failed to fetch pending courses.'); } finally { setLC(false); } };
-  const fetchMentors = async () => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); setPendingMentors(r.data); setME(''); } catch { setME('Failed to fetch pending mentors.'); } finally { setLM(false); } };
-  const fetchPayments = async () => { try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data); setPE(''); } catch { setPE('Failed to fetch payments logs.'); } finally { setLP(false); } };
+  const fetchCourses = async () => { try { setLC(true); const r = await api.get('/api/courses/'); setPendingCourses((r.data.results || r.data).filter(c => !c.is_approved)); setCE(''); } catch { setCE('Failed to fetch pending courses.'); } finally { setLC(false); } };
+  const fetchMentors = async () => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); setPendingMentors(r.data.results || r.data); setME(''); } catch { setME('Failed to fetch pending mentors.'); } finally { setLM(false); } };
+  const fetchPayments = async () => { try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data.results || r.data); setPE(''); } catch { setPE('Failed to fetch payments logs.'); } finally { setLP(false); } };
 
   const fetchUsers = async () => {
     try {
@@ -63,7 +63,7 @@ export default function AdminPanel() {
         url += '?' + params.join('&');
       }
       const r = await api.get(url);
-      setUsers(r.data);
+      setUsers(r.data.results || r.data);
       setUE('');
     } catch {
       setUE('Failed to fetch users list.');

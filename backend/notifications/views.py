@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
-from .models import Notification, NotificationPreference
-from .serializers import NotificationSerializer, NotificationPreferenceSerializer
+from .models import Notification
+from .serializers import NotificationSerializer
 
 class NotificationPagination(PageNumberPagination):
     page_size = 10
@@ -78,27 +78,3 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             "marked_count": count
         }, status=status.HTTP_200_OK)
 
-
-class NotificationPreferenceView(APIView):
-    """
-    GET/PATCH the current user's social-notification email preferences.
-    Auto-creates a row with all-defaults-off on first access, so the
-    frontend never has to handle a 404 for a user who hasn't set anything.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self, user):
-        prefs, _ = NotificationPreference.objects.get_or_create(user=user)
-        return prefs
-
-    def get(self, request):
-        prefs = self.get_object(request.user)
-        serializer = NotificationPreferenceSerializer(prefs)
-        return Response(serializer.data)
-
-    def patch(self, request):
-        prefs = self.get_object(request.user)
-        serializer = NotificationPreferenceSerializer(prefs, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)

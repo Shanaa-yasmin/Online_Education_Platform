@@ -50,68 +50,23 @@ class Notification(models.Model):
     def __str__(self):
         return f"Notification for {self.recipient.username}: {self.title} (Read: {self.is_read})"
 
-
-class NotificationPreference(models.Model):
-    """
-    Per-user opt-in controls for *social/activity* email notifications.
-    Transactional notifications (payments, refunds, certificates, approval
-    decisions) always email regardless of these settings.
-    """
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='notification_preferences'
-    )
-    email_new_lesson = models.BooleanField(default=False)
-    email_new_review = models.BooleanField(default=False)
-    email_qna_reply = models.BooleanField(default=False)
-    email_enrollment = models.BooleanField(default=False)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Notification preferences for {self.user.username}"
-
-    # Maps a "social" notification type to the preference field that gates
-    # its email. Types not listed here are never emailed automatically.
-    SOCIAL_TYPE_PREF_FIELDS = {
-        Notification.NotificationType.LESSON_ADDED: 'email_new_lesson',
-        Notification.NotificationType.NEW_REVIEW: 'email_new_review',
-        Notification.NotificationType.QUESTION_REPLY: 'email_qna_reply',
-        Notification.NotificationType.ENROLLMENT: 'email_enrollment',
-    }
-
     # Notification types that always email, no opt-out. High-stakes /
     # transactional in nature: money, credentials, approval decisions.
     TRANSACTIONAL_TYPES = {
-        Notification.NotificationType.PAYMENT_SUCCESS,
-        Notification.NotificationType.REFUND_PROCESSED,
-        Notification.NotificationType.REFUND,
-        Notification.NotificationType.CERTIFICATE_GENERATED,
-        Notification.NotificationType.COURSE_APPROVED,
-        Notification.NotificationType.COURSE_REJECTED,
-        Notification.NotificationType.MENTOR_APPROVED,
-        Notification.NotificationType.COURSE_PENDING_APPROVAL,
+        NotificationType.PAYMENT_SUCCESS,
+        NotificationType.REFUND_PROCESSED,
+        NotificationType.REFUND,
+        NotificationType.CERTIFICATE_GENERATED,
+        NotificationType.COURSE_APPROVED,
+        NotificationType.COURSE_REJECTED,
+        NotificationType.MENTOR_APPROVED,
+        NotificationType.COURSE_PENDING_APPROVAL,
     }
 
-    @classmethod
-    def should_email(cls, notification):
+    @property
+    def should_email(self):
         """
-        Decide whether a given Notification instance should trigger an email.
-        Transactional types: always yes. Social types: only if the recipient
-        has opted in via their preference field. Anything unmapped (SYSTEM,
-        ANNOUNCEMENT, etc.): no email by default.
+        Decide whether this Notification instance should trigger an email.
+        Only TRANSACTIONAL_TYPES are emailed.
         """
-        ntype = notification.notification_type
-
-        if ntype in cls.TRANSACTIONAL_TYPES:
-            return True
-
-        pref_field = cls.SOCIAL_TYPE_PREF_FIELDS.get(ntype)
-        if not pref_field:
-            return False
-
-        prefs = getattr(notification.recipient, 'notification_preferences', None)
-        if prefs is None:
-            return False
-
-        return getattr(prefs, pref_field, False)
+        return self.notification_type in self.TRANSACTIONAL_TYPES

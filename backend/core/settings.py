@@ -15,6 +15,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 import dj_database_url
+import ssl
+
+# Bypass SSL verification for local dev environments (SMTP/Brevo)
+if hasattr(ssl, '_create_unverified_context'):
+    ssl._create_default_https_context = ssl._create_unverified_context
+    ssl.create_default_context = ssl._create_unverified_context
+import dj_database_url
 
 load_dotenv()  # reads .env file automatically
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -204,6 +211,8 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 # SimpleJWT Config
@@ -254,9 +263,18 @@ PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')  # sandbox or live
 # Frontend URL for redirects
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
-# Email Configuration (Console fallback for local testing)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'no-reply@edupath.com'
+# Email Configuration
+if os.environ.get('EMAIL_HOST'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-reply@edupath.com')
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'no-reply@edupath.com'
 
 AUTH_COOKIE_NAME = 'refresh_token'
 AUTH_COOKIE_SECURE = not DEBUG          # True in production (HTTPS only)

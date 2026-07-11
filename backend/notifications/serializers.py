@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Notification, NotificationPreference
-
+from .models import Notification
 User = get_user_model()
 
 class UserMiniSerializer(serializers.ModelSerializer):
@@ -25,18 +24,3 @@ class NotificationSerializer(serializers.ModelSerializer):
             'related_object_id', 'related_object_type'
         ]
 
-
-class NotificationPreferenceSerializer(serializers.ModelSerializer):
-    """
-    Lets a user control which *social/activity* notification types also
-    send an email. Transactional notifications (payments, refunds,
-    certificates, approval decisions) are not represented here — they
-    always email and are not user-configurable.
-    """
-    class Meta:
-        model = NotificationPreference
-        fields = [
-            'email_new_lesson', 'email_new_review',
-            'email_qna_reply', 'email_enrollment', 'updated_at'
-        ]
-        read_only_fields = ['updated_at']

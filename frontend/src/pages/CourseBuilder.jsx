@@ -518,9 +518,9 @@ export default function CourseBuilder() {
       {/* Top Header Row */}
       <header className="builder-header">
         <div className="header-left">
-          <Link to="/mentor/dashboard" className="back-link">
-            <ArrowLeftIcon /> Dashboard
-          </Link>
+          <button onClick={() => navigate(-1)} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
+            <ArrowLeftIcon /> Back
+          </button>
           <div className="header-title-row">
             <h1 className="course-title">{course.title}</h1>
             <span className={`status-badge-inline ${course.is_published ? 'live' : 'draft'}`}>
@@ -582,23 +582,6 @@ export default function CourseBuilder() {
               <TrashIcon /> {deleting ? 'Deleting...' : 'Delete Course'}
             </button>
           )}
-        </div>
-        <div className="form-group">
-          <label htmlFor="edit-category">Category</label>
-          <select
-            id="edit-category"
-            name="category"
-            value={editCourseForm.category}
-            onChange={handleEditCourseInput}
-          >
-            <option value="Development">Development</option>
-            <option value="Design">Design</option>
-            <option value="Business">Business</option>
-            <option value="Marketing">Marketing</option>
-            <option value="IT & Software">IT & Software</option>
-            <option value="Personal Development">Personal Development</option>
-            <option value="Data Science">Data Science</option>
-          </select>
         </div>
       </header>
 
@@ -662,7 +645,11 @@ export default function CourseBuilder() {
                                 {getLessonIcon(lesson.content_type)}
                               </span>
                               <div>
-                                <h4 className="lesson-title">{lesson.title}</h4>
+                                <h4 className="lesson-title">
+                                  <Link to={`/courses/${courseId}/learn?lesson=${lesson.id}`} style={{ color: 'inherit', textDecoration: 'none' }} className="lesson-preview-link">
+                                    {lesson.title}
+                                  </Link>
+                                </h4>
                                 <span className="lesson-meta-tag">{lesson.content_type}</span>
                                 {lesson.content_type === 'VIDEO' && lesson.video_url && (
                                   <span className="meta-sub">URL: {lesson.video_url}</span>
@@ -939,6 +926,23 @@ export default function CourseBuilder() {
                     type="text" id="edit-lang" name="language"
                     value={editCourseForm.language} onChange={handleEditCourseInput} required
                   />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="edit-category">Category</label>
+                  <select
+                    id="edit-category"
+                    name="category"
+                    value={editCourseForm.category}
+                    onChange={handleEditCourseInput}
+                  >
+                    <option value="Development">Development</option>
+                    <option value="Design">Design</option>
+                    <option value="Business">Business</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="IT & Software">IT & Software</option>
+                    <option value="Personal Development">Personal Development</option>
+                    <option value="Data Science">Data Science</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label htmlFor="edit-hours">Estimated Hours</label>

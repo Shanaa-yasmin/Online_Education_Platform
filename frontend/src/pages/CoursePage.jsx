@@ -253,9 +253,9 @@ export default function CoursePage() {
 
   return (
     <div className="student-course-page">
-      <Link to="/courses" className="back-link">
-        <ArrowLeftIcon /> Back to Explore
-      </Link>
+      <button onClick={() => navigate(-1)} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
+        <ArrowLeftIcon /> Back
+      </button>
 
       <div className="course-detail-layout">
         {/* ── Left: Course Info ─────────────────────────────────────────── */}
@@ -301,7 +301,15 @@ export default function CoursePage() {
                       {mod.lessons?.map(lesson => (
                         <div key={lesson.id} className="curriculum-lesson-bullet">
                           <span className="bullet-icon">{getLessonIcon(lesson.content_type)}</span>
-                          <span className="bullet-title">{lesson.title}</span>
+                          <span className="bullet-title">
+                            {(isEnrolled || isOwnerMentor) ? (
+                              <Link to={`/courses/${courseId}/learn?lesson=${lesson.id}`} className="lesson-preview-link" style={{ color: 'inherit', textDecoration: 'none' }}>
+                                {lesson.title}
+                              </Link>
+                            ) : (
+                              lesson.title
+                            )}
+                          </span>
                           <span className="bullet-type">{lesson.content_type}</span>
                         </div>
                       ))}

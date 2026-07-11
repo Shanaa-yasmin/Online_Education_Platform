@@ -82,6 +82,14 @@
     color: #8B2500;
 }
 
+.course-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    margin: 8px 0;
+}
+
 .course-detail-title {
     font-family: 'Playfair Display', serif;
     font-size: clamp(1.7rem, 3vw, 2.4rem);
@@ -714,3 +722,5 @@
     height: 48px;
     border-width: 4px;
 }
+.lesson-preview-link:hover { text-decoration: underline !important; color: var(--primary-color) !important; }
+

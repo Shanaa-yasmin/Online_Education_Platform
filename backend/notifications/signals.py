@@ -3,29 +3,36 @@ import threading
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.mail import send_mail
+from django.db import connection
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from .models import Notification, NotificationPreference
+from .models import Notification
 from .serializers import NotificationSerializer
 
 
-def _send_email_async(subject, body, recipient_list):
+def _send_email_async(subject, body, recipient_list, is_priority=False):
     """
     Runs the actual send_mail call on a background thread so a slow SMTP
     call never adds latency to the request that triggered the notification
     (e.g. a payment completing, a lesson being saved).
     """
     try:
+        from django.conf import settings
+        print(f"[EMAIL DEBUG] Using DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+        print(f"[EMAIL QUEUE] Attempting to send email to {recipient_list} (Subject: {subject})")
         send_mail(
             subject=subject,
             message=body,
             from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
             recipient_list=recipient_list,
-            fail_silently=True
+            fail_silently=False
         )
+        print(f"[EMAIL SUCCESS] Email successfully sent to {recipient_list}")
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"[EMAIL FAILED] Error sending email to {recipient_list}: {e}")
+    finally:
+        connection.close()
 
 # Import external models safely
 from payments.models import Payment, Enrollment
@@ -57,9 +64,8 @@ def send_realtime_and_email_notification(sender, instance, created, **kwargs):
         except Exception as ws_err:
             print(f"WebSocket send error: {ws_err}")
 
-    # 2. Email — only for transactional types, or social types the
-    # recipient has explicitly opted into. See NotificationPreference.should_email.
-    if NotificationPreference.should_email(instance):
+    # 2. Email — only for transactional types.
+    if instance.should_email:
         subject = f"[EduPath] {instance.title}"
         body = (
             f"Hello {instance.recipient.username},\n\n"
@@ -70,12 +76,16 @@ def send_realtime_and_email_notification(sender, instance, created, **kwargs):
             f"Best regards,\nThe EduPath Team"
         )
         recipient_list = [instance.recipient.email]
+        is_priority = True
 
+        print(f"[NOTIFICATION] should_email=True for {instance.notification_type}, starting email thread.")
         threading.Thread(
             target=_send_email_async,
-            args=(subject, body, recipient_list),
+            args=(subject, body, recipient_list, is_priority),
             daemon=True
         ).start()
+    else:
+        print(f"[NOTIFICATION] should_email=False for {instance.notification_type}. Skipping email.")
 
 
 # ── Payment/Enrollment Signals ───────────────────────────────────────────────

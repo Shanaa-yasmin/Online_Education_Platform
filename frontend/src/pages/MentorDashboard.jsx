@@ -55,14 +55,14 @@ export default function MentorDashboard() {
   }, [searchParams]);
 
   const fetchCourses = async () => {
-    try { setLoading(true); const r = await api.get('/api/courses/'); setCourses(r.data.filter(c => String(c.mentor?.id || c.mentor) === String(user?.id))); setError(''); }
+    try { setLoading(true); const r = await api.get('/api/courses/'); setCourses((r.data.results || r.data).filter(c => String(c.mentor?.id || c.mentor) === String(user?.id))); setError(''); }
     catch { setError('Failed to load courses.'); }
 
     finally { setLoading(false); }
   };
 
   const fetchPayments = async () => {
-    try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data); setPE(''); }
+    try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data.results || r.data); setPE(''); }
     catch { setPE('Failed to load payments logs.'); }
     finally { setLP(false); }
   };

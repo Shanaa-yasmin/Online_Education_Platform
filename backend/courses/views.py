@@ -28,6 +28,23 @@ from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
 from .filters import CourseFilter
 
 
+def _revoke_course_approval(course, user):
+    """
+    If a mentor edits a course, module, or lesson, the course needs to be reviewed again.
+    This revokes published and approved statuses.
+    """
+    if user.role == 'MENTOR':
+        changed = False
+        if course.is_approved or course.is_published or course.is_submitted_for_review:
+            course.is_approved = False
+            course.is_published = False
+            course.is_submitted_for_review = False
+            changed = True
+        
+        if changed:
+            course.save(update_fields=['is_approved', 'is_published', 'is_submitted_for_review'])
+
+
 class CourseViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling Course creation, listing, updates, and moderation approvals.
@@ -85,6 +102,8 @@ class CourseViewSet(viewsets.ModelViewSet):
                     related_object_id=instance.id,
                     related_object_type="Course"
                 )
+        
+        _revoke_course_approval(instance, self.request.user)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminOrStaff])
     def approve(self, request, pk=None):
@@ -329,7 +348,17 @@ class ModuleViewSet(viewsets.ModelViewSet):
         if course.mentor != self.request.user and not (self.request.user.is_staff or self.request.user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add modules to this course.")
-        serializer.save()
+        instance = serializer.save()
+        _revoke_course_approval(instance.course, self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        _revoke_course_approval(instance.course, self.request.user)
+
+    def perform_destroy(self, instance):
+        course = instance.course
+        instance.delete()
+        _revoke_course_approval(course, self.request.user)
 
 
 class LessonViewSet(viewsets.ModelViewSet):
@@ -346,7 +375,17 @@ class LessonViewSet(viewsets.ModelViewSet):
         if module.course.mentor != self.request.user and not (self.request.user.is_staff or self.request.user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add lessons to this course module.")
-        serializer.save()
+        instance = serializer.save()
+        _revoke_course_approval(instance.module.course, self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        _revoke_course_approval(instance.module.course, self.request.user)
+
+    def perform_destroy(self, instance):
+        course = instance.module.course
+        instance.delete()
+        _revoke_course_approval(course, self.request.user)
 
 
 class QuizQuestionViewSet(viewsets.ModelViewSet):
@@ -364,7 +403,17 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
         if lesson.module.course.mentor != self.request.user and not (self.request.user.is_staff or self.request.user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add quiz questions to this lesson.")
-        serializer.save()
+        instance = serializer.save()
+        _revoke_course_approval(instance.lesson.module.course, self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        _revoke_course_approval(instance.lesson.module.course, self.request.user)
+
+    def perform_destroy(self, instance):
+        course = instance.lesson.module.course
+        instance.delete()
+        _revoke_course_approval(course, self.request.user)
 
 
 class QuizAttemptViewSet(viewsets.GenericViewSet):

@@ -113,7 +113,7 @@ export function QAPanel({ courseId, user }) {
       try {
         setLH(true);
         const res = await api.get(`/api/chat/messages/course/${courseId}/`);
-        setMessages(res.data);
+        setMessages(res.data.results || res.data);
       } catch (err) {
         console.error('[Q&A] Failed to load message history:', err);
       } finally {
@@ -427,6 +427,17 @@ export default function LearningPlayer() {
         console.error("Failed to load progress details:", err);
       }
 
+      const params = new URLSearchParams(window.location.search);
+      const queryLessonId = params.get('lesson');
+      const flatLessons = courseData.modules?.flatMap(m => m.lessons ?? []) ?? [];
+      
+      if (queryLessonId) {
+        const foundQueryLesson = flatLessons.find(l => String(l.id) === queryLessonId);
+        if (foundQueryLesson) {
+          initialLesson = foundQueryLesson;
+        }
+      }
+
       if (!initialLesson && courseData.modules?.length > 0 && courseData.modules[0].lessons?.length > 0) {
         initialLesson = courseData.modules[0].lessons[0];
       }
@@ -535,7 +546,9 @@ export default function LearningPlayer() {
       {/* Sidebar Syllabus */}
       <aside className="player-sidebar">
         <div className="sidebar-header">
-          <Link to={`/courses/${courseId}`} className="back-link"><ArrowLeftIcon /> Back to Syllabus</Link>
+          <button onClick={() => navigate(-1)} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
+            <ArrowLeftIcon /> Back
+          </button>
           <h2 className="sidebar-course-title">{course.title}</h2>
           <div className="progress-indicator">
             <div className="progress-header">
