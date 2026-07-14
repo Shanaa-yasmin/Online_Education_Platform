@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom';
 
 const NAV_ITEMS = [
   { key: 'dashboard', to: '/dashboard', icon: 'ti ti-layout-dashboard', label: 'Dashboard', roles: 'all' },
-  { key: 'mentor', to: '/mentor/dashboard', icon: 'ti ti-award', label: 'Mentor Portal', roles: ['MENTOR', 'ADMIN'] },
+  { key: 'mentor', to: '/mentor/dashboard', icon: 'ti ti-award', label: 'Mentor Portal', roles: ['MENTOR'] },
   { key: 'admin-portal', to: '/admin/portal', icon: 'ti ti-settings', label: 'Admin Portal', roles: ['ADMIN'] },
   { key: 'admin-reports', to: '/admin/reports', icon: 'ti ti-chart-bar', label: 'Reports', roles: ['ADMIN'] },
+  { key: 'my-courses', to: '/my-courses', icon: 'ti ti-notebook', label: 'My Courses', roles: ['STUDENT', 'MENTOR'] },
   { key: 'courses', to: '/courses', icon: 'ti ti-book', label: 'Courses', roles: 'all' },
   { key: 'profile', to: '/profile', icon: 'ti ti-user', label: 'Profile', roles: 'all' },
 ];

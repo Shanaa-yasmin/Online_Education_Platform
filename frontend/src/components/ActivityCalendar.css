@@ -128,9 +128,9 @@
 }
 
 .activity-cal-cell.level-active {
-    background: rgba(48, 157, 142, 0.22);
+    background: rgba(148, 58, 57, 0.732);
     color: var(--brand-deeper, var(--brand));
-    border-color: rgba(48, 157, 142, 0.35);
+    border-color: rgba(148, 58, 57, 0.732);
     font-weight: 600;
 }
 
@@ -201,8 +201,8 @@
 }
 
 .legend-swatch.level-active {
-    background: rgba(48, 157, 142, 0.22);
-    border-color: rgba(48, 157, 142, 0.35);
+    background: rgba(148, 58, 57, 0.732);
+    border-color: rgba(148, 58, 57, 0.732);
 }
 
 .legend-swatch.level-high {

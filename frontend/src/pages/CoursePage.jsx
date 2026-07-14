@@ -92,28 +92,36 @@ export default function CoursePage() {
   }, [location.hash, loading]);
 
   // ── Load course + enrollment ────────────────────────────────────────────
-  const loadData = async () => {
+  const loadData = async (active) => {
     try {
       setLoading(true);
-      const courseRes = await api.get(`/api/courses/${courseId}/`);
-      setCourse(courseRes.data);
-
+      const promises = [api.get(`/api/courses/${courseId}/`)];
       if (user) {
-        const enrollRes = await api.get(
-          `/api/payments/enrollments/check/?course_id=${courseId}`
-        );
+        promises.push(api.get(`/api/payments/enrollments/check/?course_id=${courseId}`));
+      }
+
+      const [courseRes, enrollRes] = await Promise.all(promises);
+
+      if (!active.current) return;
+
+      setCourse(courseRes.data);
+      if (user && enrollRes) {
         setEnrollmentStatus(enrollRes.data);
       }
       setPageError('');
     } catch (err) {
       console.error(err);
-      setPageError('Failed to load course details.');
+      if (active.current) setPageError('Failed to load course details.');
     } finally {
-      setLoading(false);
+      if (active.current) setLoading(false);
     }
   };
 
-  useEffect(() => { loadData(); }, [courseId, user]);
+  useEffect(() => {
+    const active = { current: true };
+    loadData(active);
+    return () => { active.current = false; };
+  }, [courseId, user]);
 
   // ── Handle return from Stripe / PayPal ─────────────────────────────────
   useEffect(() => {

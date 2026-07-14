@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
   }, []);
 
 
-  const bootstrapAuth = useCallback(async () => {
+  const bootstrapAuth = useCallback(async (active = { current: true }) => {
     setLoading(true);
     try {
       const refreshRes = await axios.post(
@@ -49,16 +49,24 @@ export function AuthProvider({ children }) {
         {},
         { withCredentials: true }
       );
-      tokenStore.setToken(refreshRes.data.access);
+      if (active.current) {
+        tokenStore.setToken(refreshRes.data.access);
+      }
 
       const profileRes = await api.get('/api/auth/profile/');
-      const { stats, ...cleanUser } = profileRes.data;
-      setUser(cleanUser);
+      if (active.current) {
+        const { stats, ...cleanUser } = profileRes.data;
+        setUser(cleanUser);
+      }
     } catch {
-      tokenStore.setToken(null);
-      setUser(null);
+      if (active.current) {
+        tokenStore.setToken(null);
+        setUser(null);
+      }
     } finally {
-      setLoading(false);
+      if (active.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -73,11 +81,11 @@ export function AuthProvider({ children }) {
   }, [bootstrapAuth]);
 
   useEffect(() => {
-    if (!hasBootstrapped.current && !initialBootstrapTriggered) {
-      hasBootstrapped.current = true;
-      initialBootstrapTriggered = true;
-      bootstrapAuth();
-    }
+    const active = { current: true };
+    bootstrapAuth(active);
+    return () => {
+      active.current = false;
+    };
   }, [bootstrapAuth]);
 
   const login = useCallback(async (email, password) => {

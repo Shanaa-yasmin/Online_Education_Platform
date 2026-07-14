@@ -2,10 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     RegisterView,
+    VerifyEmailView,
+    ResendVerificationEmailView,
     CustomTokenObtainPairView,
     CookieTokenRefreshView,
     LogoutView,
     ProfileView,
+    CompleteProfileView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
     AdminProfileListView,
@@ -21,6 +24,9 @@ admin_user_router.register(r'users', AdminUserViewSet, basename='admin-users')
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='auth_register'),
+    path('complete-profile/', CompleteProfileView.as_view(), name='auth_complete_profile'),
+    path('verify-email/', VerifyEmailView.as_view(), name='auth_verify_email'),
+    path('resend-verification/', ResendVerificationEmailView.as_view(), name='auth_resend_verification'),
     path('login/', CustomTokenObtainPairView.as_view(), name='auth_login'),
     path('refresh/', CookieTokenRefreshView.as_view(), name='auth_refresh'),
     path('logout/', LogoutView.as_view(), name='auth_logout'),

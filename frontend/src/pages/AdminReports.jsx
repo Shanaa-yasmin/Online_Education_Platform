@@ -46,35 +46,37 @@ export default function AdminReports() {
     return params.toString();
   }, [filters]);
 
-  const fetchReports = useCallback(async () => {
+  const fetchReports = useCallback(async (active) => {
     try {
       setLoading(true);
       setError('');
       const qs = buildQueryString();
       const res = await api.get(`/api/admin-reports/${qs ? '?' + qs : ''}`);
-      setData(res.data);
+      if (active.current) setData(res.data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load report data. Ensure you have admin permissions.');
+      if (active.current) setError('Failed to load report data. Ensure you have admin permissions.');
     } finally {
-      setLoading(false);
+      if (active.current) setLoading(false);
     }
   }, [buildQueryString]);
 
-  const fetchFilterOptions = useCallback(async () => {
+  const fetchFilterOptions = useCallback(async (active) => {
     try {
       const res = await api.get('/api/admin-reports/filter-options/');
-      setFilterOptions(res.data);
+      if (active.current) setFilterOptions(res.data);
     } catch (err) {
       console.error('Failed to load filter options', err);
     }
   }, []);
 
   useEffect(() => {
+    const active = { current: true };
     if (user) {
-      fetchReports();
-      fetchFilterOptions();
+      fetchReports(active);
+      fetchFilterOptions(active);
     }
+    return () => { active.current = false; };
   }, [user]);
 
   const handleFilterChange = (e) => {

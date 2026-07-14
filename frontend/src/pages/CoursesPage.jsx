@@ -68,7 +68,7 @@ export default function CoursesPage() {
   }, [query]);
 
   // Fetch search results
-  const fetchCourses = async () => {
+  const fetchCourses = async (active) => {
     try {
       setLoading(true);
       setError('');
@@ -88,6 +88,8 @@ export default function CoursesPage() {
       if (minRating !== 'ALL') params.set('min_rating', minRating);
 
       const res = await api.get(`/api/courses/search/?${params.toString()}`);
+      if (!active.current) return;
+
       if (res.data.results) {
         setCourses(res.data.results);
         setTotalCount(res.data.count || 0);
@@ -101,14 +103,16 @@ export default function CoursesPage() {
       }
     } catch (err) {
       console.error(err);
-      setError('Failed to load courses. Please try again.');
+      if (active.current) setError('Failed to load courses. Please try again.');
     } finally {
-      setLoading(false);
+      if (active.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCourses();
+    const active = { current: true };
+    fetchCourses(active);
+    return () => { active.current = false; };
   }, [query, level, language, minPrice, maxPrice, isFree, minRating, ordering, page]);
 
   const handleLogout = async () => {
@@ -367,7 +371,7 @@ export default function CoursesPage() {
                   >
                     <div className={`cc-thumb ${THUMB[course.level] || 'cc-thumb-beg'}`}>
                       {course.thumbnail ? (
-                        <img src={course.thumbnail} alt={course.title} className="cc-thumb-img" />
+                        <img src={course.thumbnail} alt={course.title} className="cc-thumb-img" loading="lazy" />
                       ) : (
                         <i className={`ti ${ICON[course.level] || 'ti-book'}`} style={{ fontSize: 44, opacity: 0.5 }} />
                       )}

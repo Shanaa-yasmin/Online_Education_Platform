@@ -3,8 +3,8 @@
    Matches homepage: Playfair Display + Inter, #6B1A1A, #FBF0F0/#fff
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
-@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css');
+@import './local_fonts.css';
+@import './tabler-icons.min.css';
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
@@ -54,11 +54,11 @@
   --info: #2563eb;
   --info-bg: #eff4fe;
 
-  --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 18px;
-  --r-2xl: 24px;
+  --r-sm: 0px;
+  --r-md: 0px;
+  --r-lg: 0px;
+  --r-xl: 0px;
+  --r-2xl: 0px;
   --r-full: 9999px;
 
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.04);
@@ -723,6 +723,21 @@ h6 {
   color: var(--brand);
 }
 
+/* ── Global Dashboard Layout ────────────────────────────── */
+.dashboard-page {
+  display: flex;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+.dashboard-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* ── Sidebar (sleek dark maroon) ─────────────────────────── */
 .sidebar {
   width: 240px;
@@ -1151,5 +1166,131 @@ h6 {
 .max-w-content {
   max-width: 1200px;
   width: 100%;
-  margin: 0 auto
+  margin: 0 auto;
+}
+
+/* ── Mobile Responsive Overrides (max-width: 768px) ──────── */
+@media (max-width: 768px) {
+  .dashboard-page {
+    flex-direction: column !important;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 16px !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .sidebar-logo-area {
+    padding: 0 !important;
+    border-bottom: none !important;
+  }
+
+  .sidebar-logo-area .nav-logo {
+    margin: 0 !important;
+  }
+
+  .sidebar-logo-area .nav-logo-text {
+    font-size: 15px !important;
+  }
+
+  .sidebar-nav {
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 12px !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    flex: 1 !important;
+    justify-content: center !important;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+
+  .sidebar-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .sidebar-nav-item {
+    padding: 8px 10px !important;
+    font-size: 13px !important;
+    width: auto !important;
+    gap: 6px !important;
+    margin: 0 !important;
+  }
+
+  .sidebar-nav-item i {
+    font-size: 16px !important;
+  }
+
+  .sidebar-footer {
+    padding: 0 !important;
+    border-top: none !important;
+  }
+
+  .sidebar-logout {
+    padding: 8px 10px !important;
+    width: auto !important;
+    gap: 6px !important;
+    margin: 0 !important;
+  }
+
+  .sidebar-logout i {
+    font-size: 16px !important;
+  }
+
+  /* Compact content wrapper padding for mobile screen edges */
+  .dashboard-main,
+  .courses-page-wrap,
+  .profile-page-wrap,
+  .mentor-dashboard-wrap,
+  .admin-panel-wrap,
+  .admin-reports-wrap,
+  .learning-player-wrap {
+    padding: 16px 12px !important;
+  }
+
+  .topbar {
+    padding: 0 16px !important;
+    height: 52px !important;
+  }
+
+  /* Collapse flex layout rows into columns */
+  .welcome-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 20px 24px !important;
+  }
+
+  .stats-grid-4, .stats-grid-3, .stats-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ── Extra Narrow Mobile Screen Adjustments (max-width: 480px) ── */
+@media (max-width: 480px) {
+  .sidebar-nav-item {
+    font-size: 0 !important; /* Hide labels, icons-only to prevent overflow */
+    padding: 8px !important;
+  }
+
+  .sidebar-nav-item i {
+    margin-right: 0 !important;
+  }
+
+  .sidebar-logout {
+    font-size: 0 !important; /* Hide sign-out text label */
+    padding: 8px !important;
+  }
+  
+  .sidebar-logo-area .nav-logo-text {
+    display: none !important; /* Hide brand text on very small screens */
+  }
 }

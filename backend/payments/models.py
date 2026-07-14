@@ -11,9 +11,9 @@ class Enrollment(models.Model):
         limit_choices_to={'role': 'STUDENT'}
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
-    enrolled_at = models.DateTimeField(auto_now_add=True)
+    enrolled_at = models.DateTimeField(auto_now_add=True, db_index=True)
     # True = Active, False = Revoked (refunded, disputed, or payment pending)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     progress_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
     class Meta:
@@ -48,8 +48,8 @@ class Payment(models.Model):
     status        = models.CharField(
         max_length=15, choices=StatusChoices.choices, default=StatusChoices.PENDING
     )
-    created_at    = models.DateTimeField(auto_now_add=True)
-    refunded_at   = models.DateTimeField(null=True, blank=True)
+    created_at    = models.DateTimeField(auto_now_add=True, db_index=True)
+    refunded_at   = models.DateTimeField(null=True, blank=True, db_index=True)
     disputed_at   = models.DateTimeField(null=True, blank=True)
     dispute_detail = models.TextField(blank=True, default='')   # JSON / text log from gateway
 

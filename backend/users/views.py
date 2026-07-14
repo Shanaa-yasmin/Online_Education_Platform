@@ -6,11 +6,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.conf import settings
 from rest_framework_simplejwt.exceptions import TokenError
 from datetime import timedelta
+from payments.dashboard_service import ADMIN_DASHBOARD_CACHE_KEY
 
 
 from .serializers import (
@@ -48,17 +50,113 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            tokens = get_tokens_for_user(user)
-            user_data = UserSerializer(user).data
+            
+            # Generate verification token
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            
+            # Build verification URL
+            # We assume frontend is running on localhost:5173 for local dev, or use origin
+            origin = request.headers.get('origin', 'http://localhost:5173')
+            verify_url = f"{origin}/verify-email?uidb64={uidb64}&token={token}"
+            
+            # Send email asynchronously
+            from django.core.mail import send_mail
+            import threading
+            
+            def send_verification_email():
+                try:
+                    send_mail(
+                        subject="Verify your EduPath email",
+                        message=f"Hi {user.username},\n\nPlease verify your email address by clicking the link below:\n{verify_url}\n\nThanks,\nEduPath Team",
+                        from_email=None,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    print(f"Failed to send verification email to {user.email}: {e}")
 
+            threading.Thread(target=send_verification_email).start()
+
+            user_data = UserSerializer(user, context={'request': request}).data
+            
+            # Issue tokens immediately so they can proceed to Complete Profile
+            tokens = get_tokens_for_user(user)
+            
             response = Response({
                 "user": user_data,
-                "access": tokens["access"],
-                "detail": "Registration successful. Logged in automatically."
+                "access": tokens['access'],
+                "detail": "Registration successful. Please complete your profile."
             }, status=status.HTTP_201_CREATED)
-            set_refresh_cookie(response, tokens["refresh"])
+            
+            set_refresh_cookie(response, tokens['refresh'])
             return response
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        uidb64 = request.data.get('uidb64')
+        token = request.data.get('token')
+        
+        if not uidb64 or not token:
+            return Response({"detail": "Missing uidb64 or token."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({"detail": "Invalid verification link."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if default_token_generator.check_token(user, token):
+            user.is_email_verified = True
+            user.save()
+            return Response({"detail": "Email verified successfully."}, status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "Verification link is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResendVerificationEmailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = User.objects.get(email__iexact=email)
+            if user.is_email_verified:
+                return Response({"detail": "Email is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            origin = request.headers.get('origin', 'http://localhost:5173')
+            verify_url = f"{origin}/verify-email?uidb64={uidb64}&token={token}"
+            
+            from django.core.mail import send_mail
+            import threading
+            def send_verification_email():
+                try:
+                    send_mail(
+                        subject="Verify your EduPath email",
+                        message=f"Hi {user.username},\n\nPlease verify your email address by clicking the link below:\n{verify_url}\n\nThanks,\nEduPath Team",
+                        from_email=None,
+                        recipient_list=[user.email],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    print(f"Failed to send verification email to {user.email}: {e}")
+
+            threading.Thread(target=send_verification_email).start()
+            
+            return Response({"detail": "Verification email sent."}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            # Return success even if user doesn't exist to prevent email enumeration
+            return Response({"detail": "If the email is registered, a verification link has been sent."}, status=status.HTTP_200_OK)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -139,19 +237,24 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         if user.role == 'STUDENT':
             from payments.models import Enrollment
             from certificates.models import Certificate
-            # Exclude enrollments for soft-deleted courses
-            enrollments = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False)
-            completed_enrollments = enrollments.filter(progress_percent=100.0)
-            certificates = Certificate.objects.filter(student=user)
+            
+            # Exclude enrollments for soft-deleted courses, prefetch course & mentor details
+            enrollments_list = list(Enrollment.objects.filter(
+                student=user, is_active=True, course__is_deleted=False
+            ).select_related('course', 'course__mentor'))
+            
+            completed_enrollments_count = sum(1 for e in enrollments_list if e.progress_percent == 100.0)
+            certificates = list(Certificate.objects.filter(student=user).select_related('course'))
             
             # Simple calculations
-            progress_sum = sum(e.progress_percent for e in enrollments)
-            learning_progress = float(progress_sum / enrollments.count()) if enrollments.exists() else 0.0
+            progress_sum = sum(e.progress_percent for e in enrollments_list)
+            enrollments_count = len(enrollments_list)
+            learning_progress = float(progress_sum / enrollments_count) if enrollments_count > 0 else 0.0
             
             stats = {
-                'courses_enrolled': enrollments.count(),
-                'courses_completed': completed_enrollments.count(),
-                'certificates_earned': certificates.count(),
+                'courses_enrolled': enrollments_count,
+                'courses_completed': completed_enrollments_count,
+                'certificates_earned': len(certificates),
                 'current_streak': 3,  # Modern default streak
                 'learning_progress': round(learning_progress, 1),
                 'recent_learning': [
@@ -163,7 +266,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                         'duration_hours': e.course.duration_hours,
                         'mentor_name': e.course.mentor.username,
                         'progress_percent': float(e.progress_percent),
-                    } for e in enrollments.order_by('-enrolled_at')[:4]
+                    } for e in sorted(enrollments_list, key=lambda x: x.enrolled_at, reverse=True)[:4]
                 ],
                 'certificates': [
                     {
@@ -179,14 +282,19 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         elif user.role == 'MENTOR':
             from courses.models import Course, Review
             from payments.models import Enrollment, Payment
-            from django.db.models import Sum, Avg
+            from django.db.models import Sum, Avg,Count,Q
             
-            courses = Course.objects.filter(mentor=user)
-            published = courses.filter(is_published=True, is_approved=True)
-            drafts = courses.filter(is_published=False) | courses.filter(is_approved=False)
-            drafts = drafts.distinct()
+            # Annotate student counts in courses to avoid counting in loop
+            courses_with_counts = Course.objects.filter(mentor=user).annotate(
+                active_students_count=Count('enrollments', filter=Q(enrollments__is_active=True))
+            )
+            courses_list = list(courses_with_counts.order_by('-created_at'))
             
-            mentor_course_ids = courses.values_list('id', flat=True)
+            published_count = sum(1 for c in courses_list if c.is_published and c.is_approved)
+            drafts_count = sum(1 for c in courses_list if not c.is_published or not c.is_approved)
+            
+            mentor_course_ids = [c.id for c in courses_list]
+            
             # Exclude enrollments tied to deleted courses
             enrollments = Enrollment.objects.filter(course_id__in=mentor_course_ids, is_active=True, course__is_deleted=False)
             reviews = Review.objects.filter(course_id__in=mentor_course_ids)
@@ -202,10 +310,13 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             monthly_payments = payments.filter(created_at__gte=last_30_days)
             monthly_earnings = monthly_payments.aggregate(total=Sum('amount'))['total'] or 0.00
             
+            # Pre-fetch recent sales to avoid N+1 queries in loops
+            recent_sales_list = list(payments.select_related('enrollment__course', 'student').order_by('-created_at')[:5])
+            
             stats = {
-                'courses_created': courses.count(),
-                'published_courses': published.count(),
-                'draft_courses': drafts.count(),
+                'courses_created': len(courses_list),
+                'published_courses': published_count,
+                'draft_courses': drafts_count,
                 'students_enrolled': enrollments.count(),
                 'avg_rating': round(float(avg_rating), 1),
                 'total_reviews': reviews.count(),
@@ -218,17 +329,17 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                         'student_name': p.student.username,
                         'amount': float(p.amount),
                         'created_at': p.created_at.strftime('%Y-%m-%d %H:%M'),
-                    } for p in payments.order_by('-created_at')[:5]
+                    } for p in recent_sales_list
                 ],
                 'latest_courses': [
                     {
                         'id': c.id,
                         'title': c.title,
                         'status': 'Approved' if c.is_approved else ('Pending Approval' if c.is_published else 'Draft'),
-                        'students_count': c.enrollments.filter(is_active=True).count(),
+                        'students_count': c.active_students_count,
                         'rating_average': float(c.rating_average),
                         'thumbnail': c.thumbnail.url if c.thumbnail else None,
-                    } for c in courses.order_by('-created_at')[:4]
+                    } for c in courses_list[:4]
                 ]
             }
             
@@ -248,6 +359,11 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             pending_courses = Course.objects.filter(is_approved=False).count()
             reported_msg = ChatMessage.objects.filter(is_flagged_abuse=True).count()
             
+            # Pre-fetch user data to avoid N+1 queries in loops
+            pending_mentors_list = list(UserProfile.objects.filter(
+                user__role='MENTOR', is_approved=False
+            ).select_related('user').order_by('-user__date_joined')[:5])
+            
             stats = {
                 'total_users': total_users,
                 'students': students_count,
@@ -261,7 +377,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                         'type': 'MENTOR_SIGNUP',
                         'message': f"New mentor '{p.user.username}' signed up, waiting for approval.",
                         'time': p.user.date_joined.strftime('%Y-%m-%d %H:%M') if p.user.date_joined else 'Just now'
-                    } for p in UserProfile.objects.filter(user__role='MENTOR', is_approved=False).order_by('-user__date_joined')[:5]
+                    } for p in pending_mentors_list
                 ]
             }
             
@@ -376,6 +492,10 @@ class AdminProfileApproveView(APIView):
             profile.is_approved = True
             profile.save()
 
+            # Invalidate admin dashboard cache so the pending_mentor_approvals
+            # list no longer shows this mentor on the next admin page load.
+            cache.delete(ADMIN_DASHBOARD_CACHE_KEY)
+
             from notifications.models import Notification
             Notification.objects.create(
                 recipient=user,
@@ -405,6 +525,11 @@ class AdminProfileRejectView(APIView):
             profile = user.profile
             profile.is_approved = False
             profile.save()
+
+            # Invalidate admin dashboard cache so the change is visible
+            # immediately on the admin dashboard pending approvals list.
+            cache.delete(ADMIN_DASHBOARD_CACHE_KEY)
+
             return Response({
                 "detail": f"Mentor {user.username} approval has been revoked.",
                 "is_approved": False
@@ -618,3 +743,63 @@ class AdminUserViewSet(viewsets.ViewSet):
         username = user.username
         user.delete()
         return Response({"detail": f"User '{username}' has been permanently deleted."}, status=status.HTTP_200_OK)
+
+
+class CompleteProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        profile = user.profile
+        data = request.data
+
+        # Student specific fields
+        if user.is_student:
+            if 'date_of_birth' in data:
+                profile.date_of_birth = data.get('date_of_birth') or None
+            if 'education_level' in data:
+                profile.education_level = data.get('education_level')
+            if 'areas_of_interest' in data:
+                import json
+                try:
+                    # Depending on how frontend sends it (form-data might stringify arrays)
+                    val = data.get('areas_of_interest')
+                    if isinstance(val, str):
+                        profile.areas_of_interest = json.loads(val)
+                    else:
+                        profile.areas_of_interest = val
+                except (ValueError, TypeError):
+                    pass
+
+        # Mentor specific fields
+        elif user.is_mentor:
+            if 'title' in data:
+                profile.title = data.get('title')
+            if 'years_of_experience' in data:
+                try:
+                    profile.years_of_experience = int(data.get('years_of_experience', 0))
+                except ValueError:
+                    pass
+            if 'areas_of_expertise' in data:
+                import json
+                try:
+                    val = data.get('areas_of_expertise')
+                    if isinstance(val, str):
+                        profile.areas_of_expertise = json.loads(val)
+                    else:
+                        profile.areas_of_expertise = val
+                except (ValueError, TypeError):
+                    pass
+            if 'bio' in data:
+                profile.bio = data.get('bio')
+            if 'website' in data:
+                profile.website = data.get('website')
+            if 'resume' in request.FILES:
+                profile.resume = request.FILES['resume']
+
+        profile.save()
+        user.profile_complete = True
+        user.save()
+        
+        user_data = UserSerializer(user, context={'request': request}).data
+        return Response(user_data, status=status.HTTP_200_OK)

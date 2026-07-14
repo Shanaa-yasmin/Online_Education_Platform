@@ -87,18 +87,18 @@ function getYouTubeEmbedUrl(url, startSeconds = 0) {
       }
       return embedUrl;
     }
-  } catch (_) {}
+  } catch (_) { }
   return url;
 }
 
 // ── Q&A Chat Panel Component ────────────────────────────────────────────────
 export function QAPanel({ courseId, user }) {
-  const [messages, setMessages]       = useState([]);
-  const [inputText, setInputText]     = useState('');
-  const [replyTo, setReplyTo]         = useState(null);   // { id, username }
-  const [wsStatus, setWsStatus]       = useState('connecting'); // connecting | open | closed
-  const [loadingHistory, setLH]       = useState(true);
-  const wsRef   = useRef(null);
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [replyTo, setReplyTo] = useState(null);   // { id, username }
+  const [wsStatus, setWsStatus] = useState('connecting'); // connecting | open | closed
+  const [loadingHistory, setLH] = useState(true);
+  const wsRef = useRef(null);
   const bottomRef = useRef(null);
   const isMod = user?.role === 'ADMIN' || user?.role === 'MENTOR';
 
@@ -209,17 +209,17 @@ export function QAPanel({ courseId, user }) {
   const repliesFor = (parentId) => messages.filter(m => m.parent_id === parentId);
 
   const avatarLetter = (username) => (username?.[0] ?? '?').toUpperCase();
-  const avatarColor  = (username) => {
-    const colors = ['#309d8e','#6366f1','#f59e0b','#ef4444','#10b981','#8b5cf6'];
+  const avatarColor = (username) => {
+    const colors = ['#309d8e', '#6366f1', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6'];
     let code = 0;
     for (const ch of (username ?? '')) code += ch.charCodeAt(0);
     return colors[code % colors.length];
   };
 
   const renderMessage = (msg, isReply = false) => {
-    const isOwn   = msg.sender?.id === user?.id;
-    const canMod  = isMod || isOwn;
-    const hidden  = msg.is_hidden;
+    const isOwn = msg.sender?.id === user?.id;
+    const canMod = isMod || isOwn;
+    const hidden = msg.is_hidden;
 
     return (
       <div key={msg.id} className={`qa-msg ${isReply ? 'qa-msg-reply' : ''} ${hidden ? 'qa-msg-hidden' : ''}`}>
@@ -230,7 +230,7 @@ export function QAPanel({ courseId, user }) {
           <div className="qa-msg-meta">
             <span className="qa-sender">{msg.sender?.username}</span>
             {msg.sender?.role === 'MENTOR' && <span className="qa-badge-mentor">Mentor</span>}
-            {msg.sender?.role === 'ADMIN'  && <span className="qa-badge-admin">Admin</span>}
+            {msg.sender?.role === 'ADMIN' && <span className="qa-badge-admin">Admin</span>}
             <span className="qa-time">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             {msg.is_flagged_abuse && <span className="qa-badge-flagged">🚩 Flagged</span>}
             {hidden && isMod && <span className="qa-badge-hidden">Hidden</span>}
@@ -329,14 +329,14 @@ export default function LearningPlayer() {
   const { user } = useAuth();
   const location = useLocation();
 
-  const [course, setCourse]               = useState(null);
-  const [enrollment, setEnrollment]       = useState(null);
+  const [course, setCourse] = useState(null);
+  const [enrollment, setEnrollment] = useState(null);
   const [completedLessons, setCompletedLessons] = useState({});
-  const [activeLesson, setActiveLesson]   = useState(null);
+  const [activeLesson, setActiveLesson] = useState(null);
 
   // Read initial tab parameter
   const searchParams = new URLSearchParams(location.search);
-  const [activeTab, setActiveTab]         = useState(searchParams.get('tab') || 'lesson'); // 'lesson' | 'qa'
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'lesson'); // 'lesson' | 'qa'
 
   // Update active tab when URL changes (deep linking)
   useEffect(() => {
@@ -347,18 +347,19 @@ export default function LearningPlayer() {
     }
   }, [location.search]);
 
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
-  const [error, setError]         = useState('');
+  const [error, setError] = useState('');
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
-  // Quiz states
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-  const [selectedAnswer, setSelectedAnswer]         = useState(null);
-  const [isAnswerSubmitted, setIsAnswerSubmitted]   = useState(false);
-  const [quizScore, setQuizScore]                   = useState(0);
-  const [quizFinished, setQuizFinished]             = useState(false);
-  const [answerResult, setAnswerResult]             = useState(null);
+  // ── Quiz attempt state (matches QuizAttemptViewSet: start / submit / history) ──
+  const [quizAttempt, setQuizAttempt] = useState(null);   // { attempt_id, attempt_number, time_limit_minutes, started_at, questions }
+  const [quizAnswers, setQuizAnswers] = useState({});     // { [question_id]: { selected_option_ids: [], text_answer: '' } }
+  const [quizResult, setQuizResult] = useState(null);   // graded QuizAttemptSerializer payload
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
+  const [quizError, setQuizError] = useState('');
+  const [quizTimeLeft, setQuizTimeLeft] = useState(null);   // seconds remaining, or null if untimed
 
   const lastSavedPositionRef = useRef(0);
 
@@ -376,7 +377,7 @@ export default function LearningPlayer() {
             });
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     };
     window.addEventListener('message', handleYTMessage);
     return () => window.removeEventListener('message', handleYTMessage);
@@ -385,33 +386,37 @@ export default function LearningPlayer() {
   const loadLearningData = useCallback(async () => {
     try {
       setLoading(true);
-      const courseResponse = await api.get(`/api/courses/${courseId}/`);
+      
+      const [courseResponse, enrollResponse, progressRes] = await Promise.all([
+        api.get(`/api/courses/${courseId}/`),
+        api.get(`/api/payments/enrollments/check/?course_id=${courseId}`),
+        api.get(`/api/progress/course/${courseId}/`).catch(err => {
+          console.error("Failed to load progress details:", err);
+          return null;
+        })
+      ]);
+
       const courseData = courseResponse.data;
       setCourse(courseData);
 
-      const enrollResponse = await api.get(`/api/payments/enrollments/check/?course_id=${courseId}`);
       if (!enrollResponse.data.enrolled) { navigate(`/courses/${courseId}`); return; }
       setEnrollment(enrollResponse.data);
 
+      const completedMap = {};
       if (enrollResponse.data.completed_lessons) {
-        const completedMap = {};
         enrollResponse.data.completed_lessons.forEach(id => {
           completedMap[id] = true;
         });
-        setCompletedLessons(completedMap);
       }
 
       let initialLesson = null;
-      try {
-        const progressRes = await api.get(`/api/progress/course/${courseId}/`);
+      if (progressRes && progressRes.data) {
         const progData = progressRes.data;
 
         if (progData.completed_lessons) {
-          const completedMap = {};
           progData.completed_lessons.forEach(id => {
             completedMap[id] = true;
           });
-          setCompletedLessons(completedMap);
         }
 
         const resumeId = progData.resume_position?.lesson_id;
@@ -423,14 +428,13 @@ export default function LearningPlayer() {
             initialLesson.start_seconds = progData.resume_position.video_position_seconds || 0;
           }
         }
-      } catch (err) {
-        console.error("Failed to load progress details:", err);
       }
+      setCompletedLessons(completedMap);
 
       const params = new URLSearchParams(window.location.search);
       const queryLessonId = params.get('lesson');
       const flatLessons = courseData.modules?.flatMap(m => m.lessons ?? []) ?? [];
-      
+
       if (queryLessonId) {
         const foundQueryLesson = flatLessons.find(l => String(l.id) === queryLessonId);
         if (foundQueryLesson) {
@@ -453,11 +457,92 @@ export default function LearningPlayer() {
 
   useEffect(() => { if (user) loadLearningData(); }, [user?.id, loadLearningData]);
 
+  // ── Start (or resume) a quiz attempt whenever a QUIZ lesson becomes active ──
+  const startQuiz = async (lessonId) => {
+    setQuizLoading(true);
+    setQuizError('');
+    setQuizResult(null);
+    setQuizAnswers({});
+    try {
+      const res = await api.post(`/api/quiz-attempts/lessons/${lessonId}/start/`);
+      setQuizAttempt(res.data);
+      setQuizTimeLeft(res.data.time_limit_minutes ? res.data.time_limit_minutes * 60 : null);
+    } catch (err) {
+      console.error('Failed to start quiz:', err);
+      setQuizAttempt(null);
+      setQuizTimeLeft(null);
+      setQuizError(err.response?.data?.detail || 'Failed to load quiz.');
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeLesson?.content_type === 'QUIZ') {
+      startQuiz(activeLesson.id);
+    } else {
+      setQuizAttempt(null);
+      setQuizResult(null);
+      setQuizAnswers({});
+      setQuizError('');
+      setQuizTimeLeft(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLesson?.id]);
+
+  // ── Countdown timer — auto-submits when it hits zero ──
+  useEffect(() => {
+    if (quizTimeLeft === null || quizResult) return;
+    if (quizTimeLeft <= 0) {
+      submitQuiz();
+      return;
+    }
+    const timer = setTimeout(() => setQuizTimeLeft(t => (t !== null ? t - 1 : t)), 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizTimeLeft, quizResult]);
+
+  const setOptionAnswer = (questionId, optionId, questionType) => {
+    setQuizAnswers(prev => {
+      const current = prev[questionId]?.selected_option_ids || [];
+      let next;
+      if (questionType === 'MULTIPLE_CHOICE') {
+        next = current.includes(optionId) ? current.filter(id => id !== optionId) : [...current, optionId];
+      } else {
+        next = [optionId];
+      }
+      return { ...prev, [questionId]: { selected_option_ids: next, text_answer: null } };
+    });
+  };
+
+  const setTextAnswer = (questionId, text) => {
+    setQuizAnswers(prev => ({ ...prev, [questionId]: { selected_option_ids: [], text_answer: text } }));
+  };
+
+  const submitQuiz = async () => {
+    if (!quizAttempt || quizSubmitting) return;
+    setQuizSubmitting(true);
+    setQuizError('');
+    try {
+      const answers = quizAttempt.questions.map(q => ({
+        question_id: q.id,
+        selected_option_ids: quizAnswers[q.id]?.selected_option_ids || [],
+        text_answer: quizAnswers[q.id]?.text_answer ?? '',
+      }));
+      const res = await api.post(`/api/quiz-attempts/${quizAttempt.attempt_id}/submit/`, { answers });
+      setQuizResult(res.data);
+      setQuizTimeLeft(null);
+    } catch (err) {
+      console.error('Quiz submission failed:', err);
+      setQuizError(err.response?.data?.detail || 'Failed to submit quiz.');
+    } finally {
+      setQuizSubmitting(false);
+    }
+  };
+
   const handleLessonClick = async (lesson) => {
     setActiveLesson(lesson);
     setActiveTab('lesson');
-    setCurrentQuestionIdx(0); setSelectedAnswer(null);
-    setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false); setAnswerResult(null);
 
     try {
       await api.post(`/api/progress/lesson/${lesson.id}/resume/`);
@@ -493,44 +578,17 @@ export default function LearningPlayer() {
     }
   };
 
-  // Quiz handlers
-  const handleQuizAnswerSelect  = (key) => { if (!isAnswerSubmitted) setSelectedAnswer(key); };
-  const handleQuizSubmitAnswer  = async () => {
-    if (!selectedAnswer || isAnswerSubmitted) return;
-    const q = activeLesson.quiz_questions[currentQuestionIdx];
-    try {
-      const res = await api.post(`/api/quiz-questions/${q.id}/check_answer/`, {
-        selected_option: selectedAnswer,
-      });
-      setAnswerResult(res.data);
-      if (res.data.is_correct) setQuizScore(p => p + 1);
-    } catch (err) {
-      console.error('Quiz check failed:', err);
-    } finally {
-      setIsAnswerSubmitted(true);
-    }
-  };
-  const handleQuizNextQuestion  = () => {
-    setSelectedAnswer(null); setIsAnswerSubmitted(false); setAnswerResult(null);
-    if (currentQuestionIdx < activeLesson.quiz_questions.length - 1) setCurrentQuestionIdx(p => p + 1);
-    else setQuizFinished(true);
-  };
-  const handleQuizRetry = () => {
-    setCurrentQuestionIdx(0); setSelectedAnswer(null);
-    setIsAnswerSubmitted(false); setQuizScore(0); setQuizFinished(false); setAnswerResult(null);
-  };
-
   const getLessonTypeIcon = (type) => {
     switch (type) {
       case 'VIDEO': return <PlayIcon />;
-      case 'PDF':   return <FileTextIcon />;
-      case 'QUIZ':  return <QuizIcon />;
-      default:      return <FileTextIcon />;
+      case 'PDF': return <FileTextIcon />;
+      case 'QUIZ': return <QuizIcon />;
+      default: return <FileTextIcon />;
     }
   };
 
   if (loading) return (
-    <div className="player-loading-page"><div className="loading-spinner"/><p>Entering the Classroom...</p></div>
+    <div className="player-loading-page"><div className="loading-spinner" /><p>Entering the Classroom...</p></div>
   );
 
   if (error || !course || !enrollment) return (
@@ -546,7 +604,7 @@ export default function LearningPlayer() {
       {/* Sidebar Syllabus */}
       <aside className="player-sidebar">
         <div className="sidebar-header">
-          <button onClick={() => navigate(-1)} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
+          <button onClick={() => navigate(-1)} className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}>
             <ArrowLeftIcon /> Back
           </button>
           <h2 className="sidebar-course-title">{course.title}</h2>
@@ -567,7 +625,7 @@ export default function LearningPlayer() {
               <div className="module-lessons-menu">
                 {module.lessons?.map(lesson => {
                   const isActive = activeLesson?.id === lesson.id;
-                  const isDone   = !!completedLessons[lesson.id];
+                  const isDone = !!completedLessons[lesson.id];
                   return (
                     <button key={lesson.id}
                       className={`syllabus-lesson-btn ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}
@@ -669,62 +727,137 @@ export default function LearningPlayer() {
                 {/* QUIZ */}
                 {activeLesson.content_type === 'QUIZ' && (
                   <div className="quiz-player-wrapper">
-                    {!activeLesson.quiz_questions || activeLesson.quiz_questions.length === 0 ? (
-                      <div className="alert alert-warning">No quiz questions have been added to this lesson yet.</div>
-                    ) : quizFinished ? (
+                    {quizLoading ? (
+                      <div className="loading-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '48px 0' }}>
+                        <div className="loading-spinner" />
+                        <p>Loading quiz…</p>
+                      </div>
+                    ) : quizError && !quizAttempt ? (
+                      <div className="alert alert-error">{quizError}</div>
+                    ) : quizResult ? (
                       <div className="quiz-result-card animate-scaleIn">
-                        <div className="trophy-icon">🏆</div>
-                        <h2>Quiz Completed!</h2>
-                        <p className="score-desc">You scored <strong>{quizScore}</strong> out of <strong>{activeLesson.quiz_questions.length}</strong> questions correct.</p>
-                        <div className="percentage-score">{Math.round((quizScore / activeLesson.quiz_questions.length) * 100)}%</div>
+                        <div className="trophy-icon">{quizResult.passed ? '🏆' : '📝'}</div>
+                        <h2>{quizResult.passed ? 'Quiz Passed!' : 'Quiz Submitted'}</h2>
+                        <p className="score-desc">
+                          You scored <strong>{quizResult.score_points}</strong> out of <strong>{quizResult.total_points}</strong> points.
+                        </p>
+                        <div className="percentage-score">{quizResult.score_percent}%</div>
+                        {!quizResult.passed && (
+                          <p className="alert alert-warning">
+                            You needed {activeLesson.passing_score_percent}% to pass this quiz.
+                          </p>
+                        )}
+                        {quizResult.warning && <p className="alert alert-warning">{quizResult.warning}</p>}
+
+                        <div style={{ textAlign: 'left', width: '100%', margin: '10px 0 4px' }}>
+                          {quizResult.answers.map((ans, i) => (
+                            <div
+                              key={ans.question_id}
+                              className="lesson-summary-box"
+                              style={{
+                                marginBottom: 10,
+                                borderColor: ans.is_correct ? '#B2D9C2' : '#F5CCCC',
+                                background: ans.is_correct ? '#F3FAF6' : '#FFF6F6',
+                              }}
+                            >
+                              <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>{i + 1}. {ans.question_text}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: ans.is_correct ? '#1A6B3A' : '#8B0000' }}>
+                                  {ans.is_correct ? '✓ Correct' : '✗ Incorrect'} · {ans.points_awarded} pt{ans.points_awarded === 1 ? '' : 's'}
+                                </span>
+                              </h3>
+                              {ans.question_type === 'FILL_BLANK' && (
+                                <p>Your answer: <em>{ans.text_answer || '(left blank)'}</em></p>
+                              )}
+                              {ans.explanation && <p>💡 {ans.explanation}</p>}
+                            </div>
+                          ))}
+                        </div>
+
                         <div className="result-actions">
-                          <button className="btn btn-secondary" onClick={handleQuizRetry}>Retry Quiz</button>
+                          <button className="btn btn-secondary" onClick={() => startQuiz(activeLesson.id)}>Retry Quiz</button>
                           <button className="btn btn-primary" onClick={handleMarkComplete}>Mark Lesson Complete</button>
                         </div>
                       </div>
-                    ) : (
+                    ) : quizAttempt ? (
                       <div className="quiz-question-card animate-fadeIn">
                         <div className="quiz-card-header">
-                          <span>Question {currentQuestionIdx + 1} of {activeLesson.quiz_questions.length}</span>
-                          <span className="score-track-tag">Score: {quizScore}</span>
-                        </div>
-                        <h3 className="quiz-question-text">{activeLesson.quiz_questions[currentQuestionIdx].question_text}</h3>
-                        <div className="quiz-options-list">
-                          {['A', 'B', 'C', 'D'].map(key => {
-                            const optVal   = activeLesson.quiz_questions[currentQuestionIdx][`option_${key.toLowerCase()}`];
-                            const isSelected = selectedAnswer === key;
-                            const isCorrect  = key === answerResult?.correct_option;
-                            let optClass = '';
-                            if (isSelected) optClass += ' selected';
-                            if (isAnswerSubmitted) { if (isCorrect) optClass += ' correct'; else if (isSelected) optClass += ' incorrect'; }
-                            return (
-                              <button key={key} className={`quiz-option-btn${optClass}`}
-                                onClick={() => handleQuizAnswerSelect(key)} disabled={isAnswerSubmitted}>
-                                <span className="opt-key">{key}</span>
-                                <span className="opt-val">{optVal}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {isAnswerSubmitted && answerResult && (
-                          <div className={`quiz-feedback-banner ${answerResult?.is_correct ? 'correct' : 'incorrect'}`}>
-                            {answerResult?.is_correct ? (
-                              <span>✓ Correct! Well done.</span>
-                            ) : (
-                              <span>✗ Incorrect. Correct answer was <strong>Option {answerResult?.correct_option}</strong>.</span>
-                            )}
-                          </div>
-                        )}
-                        <div className="quiz-card-footer">
-                          {!isAnswerSubmitted ? (
-                            <button className="btn btn-primary" onClick={handleQuizSubmitAnswer} disabled={!selectedAnswer}>Submit Answer</button>
-                          ) : (
-                            <button className="btn btn-primary" onClick={handleQuizNextQuestion}>
-                              {currentQuestionIdx === activeLesson.quiz_questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
-                            </button>
+                          <span>
+                            Attempt #{quizAttempt.attempt_number}
+                            {activeLesson.max_quiz_attempts ? ` of ${activeLesson.max_quiz_attempts}` : ''}
+                          </span>
+                          {quizTimeLeft !== null && (
+                            <span className="score-track-tag">
+                              ⏱ {Math.floor(quizTimeLeft / 60)}:{String(quizTimeLeft % 60).padStart(2, '0')}
+                            </span>
                           )}
                         </div>
+
+                        {quizError && <div className="alert alert-error">{quizError}</div>}
+
+                        {quizAttempt.questions.map((q, i) => (
+                          <div
+                            key={q.id}
+                            style={{
+                              paddingBottom: 20,
+                              marginBottom: i < quizAttempt.questions.length - 1 ? 20 : 0,
+                              borderBottom: i < quizAttempt.questions.length - 1 ? '1px solid var(--border-c)' : 'none',
+                            }}
+                          >
+                            <h3 className="quiz-question-text" style={{ marginBottom: 14 }}>
+                              {i + 1}. {q.question_text}{' '}
+                              <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted-2)' }}>
+                                ({q.points} pt{q.points === 1 ? '' : 's'})
+                              </span>
+                            </h3>
+
+                            {q.question_type === 'FILL_BLANK' ? (
+                              <input
+                                type="text"
+                                value={quizAnswers[q.id]?.text_answer || ''}
+                                onChange={(e) => setTextAnswer(q.id, e.target.value)}
+                                placeholder="Type your answer…"
+                                style={{
+                                  width: '100%',
+                                  padding: '13px 18px',
+                                  borderRadius: 12,
+                                  border: '1.5px solid var(--border-c)',
+                                  fontSize: '13.5px',
+                                  fontFamily: 'Inter, sans-serif',
+                                  outline: 'none',
+                                }}
+                              />
+                            ) : (
+                              <div className="quiz-options-list">
+                                {q.options.map(opt => {
+                                  const selected = (quizAnswers[q.id]?.selected_option_ids || []).includes(opt.id);
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      className={`quiz-option-btn${selected ? ' selected' : ''}`}
+                                      onClick={() => setOptionAnswer(q.id, opt.id, q.question_type)}
+                                    >
+                                      <span className="opt-key">
+                                        {q.question_type === 'MULTIPLE_CHOICE' ? (selected ? '☑' : '☐') : (selected ? '●' : '○')}
+                                      </span>
+                                      <span className="opt-val">{opt.text}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        <div className="quiz-card-footer">
+                          <button className="btn btn-primary" onClick={submitQuiz} disabled={quizSubmitting}>
+                            {quizSubmitting ? 'Submitting…' : 'Submit Quiz'}
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <div className="alert alert-warning">No quiz questions have been added to this lesson yet.</div>
                     )}
                   </div>
                 )}
@@ -745,7 +878,7 @@ export default function LearningPlayer() {
             <div className="no-active-lesson-state">
               <div className="icon">📂</div>
               <h3>Select a lesson to begin learning</h3>
-              <p>Navigate the curriculum sidebar to select video lectures, PDFs, or MCQ quizzes.</p>
+              <p>Navigate the curriculum sidebar to select video lectures, PDFs, or quizzes.</p>
             </div>
           )
         )}

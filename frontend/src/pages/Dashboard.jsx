@@ -245,7 +245,7 @@ export default function Dashboard() {
                               <div>
                                 <div className="my-learning-thumb" style={{ background: LEVEL_ICON_BG[course.level] || 'var(--brand-light)' }}>
                                   {course.thumbnail ? (
-                                    <img src={course.thumbnail} alt={course.title} />
+                                    <img src={course.thumbnail} alt={course.title} loading="lazy" />
                                   ) : (
                                     <i
                                       className={`ti ${LEVEL_ICON[course.level] || 'ti-book'}`}

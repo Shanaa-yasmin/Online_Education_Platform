@@ -10,8 +10,20 @@ User = get_user_model()
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['bio', 'title', 'skills', 'is_approved', 'is_suspended', 'avatar', 'phone_number', 'website', 'location']
+        fields = [
+            'bio', 'title', 'skills', 'is_approved', 'is_suspended', 
+            'avatar', 'phone_number', 'website', 'location',
+            'date_of_birth', 'education_level', 'areas_of_interest',
+            'years_of_experience', 'areas_of_expertise', 'resume'
+        ]
         read_only_fields = ['is_approved', 'is_suspended']
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and ret.get('resume'):
+            ret['resume'] = request.build_absolute_uri(instance.resume.url)
+        return ret
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -19,8 +31,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'profile']
-        read_only_fields = ['id', 'role', 'email']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'profile_complete', 'profile']
+        read_only_fields = ['id', 'role', 'email', 'profile_complete']
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('profile', None)
@@ -40,8 +52,15 @@ class UserSerializer(serializers.ModelSerializer):
             profile.phone_number = profile_data.get('phone_number', profile.phone_number)
             profile.website = profile_data.get('website', profile.website)
             profile.location = profile_data.get('location', profile.location)
+            profile.date_of_birth = profile_data.get('date_of_birth', profile.date_of_birth)
+            profile.education_level = profile_data.get('education_level', profile.education_level)
+            profile.areas_of_interest = profile_data.get('areas_of_interest', profile.areas_of_interest)
+            profile.years_of_experience = profile_data.get('years_of_experience', profile.years_of_experience)
+            profile.areas_of_expertise = profile_data.get('areas_of_expertise', profile.areas_of_expertise)
             if 'avatar' in profile_data:
                 profile.avatar = profile_data.get('avatar', profile.avatar)
+            if 'resume' in profile_data:
+                profile.resume = profile_data.get('resume', profile.resume)
             profile.save()
 
         return instance
@@ -110,14 +129,18 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         attrs[self.username_field] = email
         
         data = super().validate(attrs)
+        # We removed the strict is_email_verified block to allow quick-login,
+        # relying instead on profile_complete route-guarding in the frontend.
         
-        user = self.user
         data['user'] = {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'role': user.role,
-            'is_approved': user.profile.is_approved if hasattr(user, 'profile') else False
+            'id': self.user.id,
+            'username': self.user.username,
+            'email': self.user.email,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'role': self.user.role,
+            'profile_complete': self.user.profile_complete,
+            'profile': ProfileSerializer(self.user.profile, context=self.context).data
         }
         return data
 

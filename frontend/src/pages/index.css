@@ -3,8 +3,8 @@
    Matches homepage: Playfair Display + Inter, #6B1A1A, #FBF0F0/#fff
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap');
-@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css');
+@import '../local_fonts.css';
+@import '../tabler-icons.min.css';
 
 /* ── Tokens ─────────────────────────────────────────────── */
 :root {
@@ -40,11 +40,11 @@
   --info        : #2563eb;
   --info-bg     : #eff4fe;
 
-  --r-sm   : 6px;
-  --r-md   : 10px;
-  --r-lg   : 14px;
-  --r-xl   : 18px;
-  --r-2xl  : 24px;
+  --r-sm   : 0px;
+  --r-md   : 0px;
+  --r-lg   : 0px;
+  --r-xl   : 0px;
+  --r-2xl  : 0px;
   --r-full : 9999px;
 
   --shadow-card : 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);

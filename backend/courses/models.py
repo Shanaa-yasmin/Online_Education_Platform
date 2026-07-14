@@ -38,16 +38,16 @@ class Course(models.Model):
     category = models.CharField(max_length=100, default='Development')
     thumbnail = models.ImageField(upload_to='thumbnails/', null=True, blank=True)
 
-    is_approved = models.BooleanField(default=False)
-    is_published = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=False, db_index=True)
+    is_published = models.BooleanField(default=False, db_index=True)
     rating_average = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
     total_reviews = models.PositiveIntegerField(default=0)
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_submitted_for_review = models.BooleanField(default=False)
     is_rejected = models.BooleanField(default=False)
-    is_deleted = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     objects = CourseManager()          # default — excludes deleted

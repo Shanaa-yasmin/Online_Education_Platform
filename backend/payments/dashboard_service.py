@@ -10,7 +10,8 @@ inline, for a given role.
 import datetime
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Sum, Q
+from django.core.cache import cache
+from django.db.models import Avg, Sum, Q, Count
 from django.utils import timezone
 
 from certificates.models import Certificate
@@ -22,6 +23,14 @@ from .models import Enrollment, Payment
 from .serializers import EnrollmentSerializer
 
 User = get_user_model()
+
+# ── Cache constants ────────────────────────────────────────────────────────────
+# Import this constant in any view that invalidates admin dashboard data so that
+# the key string is defined in exactly one place.
+ADMIN_DASHBOARD_CACHE_KEY = "admin_dashboard"
+ADMIN_DASHBOARD_CACHE_TTL = 60  # seconds — short so stale data cannot persist
+                                 # more than 60 s even if explicit invalidation
+                                 # misses an edge case.
 
 
 def get_mentor_dashboard(user) -> dict:
@@ -41,18 +50,25 @@ def get_mentor_dashboard(user) -> dict:
     ).aggregate(total=Sum('amount'))['total'] or 0.00
     revenue = float(revenue_sum)
 
-    # Course list performance
-    course_performance = []
-    for c in my_courses:
-        c_enrolls = Enrollment.objects.filter(course=c, course__is_deleted=False).count()
-        c_rev = Payment.objects.filter(enrollment__course=c, status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
-        course_performance.append({
+    # Course list performance optimized: 2 queries instead of 2 * N queries
+    enroll_counts = dict(
+        Enrollment.objects.filter(course__mentor=user, course__is_deleted=False)
+        .values('course_id').annotate(n=Count('id')).values_list('course_id', 'n')
+    )
+    revenue_by_course = dict(
+        Payment.objects.filter(enrollment__course__mentor=user, status=Payment.StatusChoices.COMPLETED)
+        .values('enrollment__course_id').annotate(r=Sum('amount')).values_list('enrollment__course_id', 'r')
+    )
+    course_performance = [
+        {
             "id": c.id,
             "title": c.title,
-            "students": c_enrolls,
-            "revenue": float(c_rev),
-            "rating": float(c.rating_average)
-        })
+            "students": enroll_counts.get(c.id, 0),
+            "revenue": float(revenue_by_course.get(c.id, 0) or 0.00),
+            "rating": float(c.rating_average),
+        }
+        for c in my_courses
+    ]
 
     # Recent enrollments
     recent_enrollments_qs = Enrollment.objects.filter(course__mentor=user, course__is_deleted=False).order_by('-enrolled_at')[:5].select_related('student', 'course')
@@ -64,9 +80,9 @@ def get_mentor_dashboard(user) -> dict:
             "enrolled_at": re.enrolled_at
         })
 
-    # Recent reviews
+    # Recent reviews optimized: select_related('student', 'course')
     from courses.serializers import ReviewSerializer
-    recent_reviews = Review.objects.filter(course__mentor=user).order_by('-created_at')[:5]
+    recent_reviews = Review.objects.filter(course__mentor=user).select_related('student', 'course').order_by('-created_at')[:5]
     reviews_data = ReviewSerializer(recent_reviews, many=True).data
 
     # Pending questions
@@ -105,11 +121,35 @@ def get_mentor_dashboard(user) -> dict:
 
 
 def get_admin_dashboard() -> dict:
-    total_courses = Course.objects.count()
-    published_count = Course.objects.filter(is_published=True).count()
-    pending_courses = Course.objects.filter(is_submitted_for_review=True, is_approved=False).count()
-    total_students = User.objects.filter(role='STUDENT').count()
-    total_mentors = User.objects.filter(role='MENTOR').count()
+    """
+    Return shared admin dashboard stats.
+
+    Results are cached for ADMIN_DASHBOARD_CACHE_TTL seconds.  Any admin
+    action that mutates the data visible here (course approve/reject, mentor
+    approve/reject) must call cache.delete(ADMIN_DASHBOARD_CACHE_KEY) so the
+    next request sees fresh data immediately rather than waiting for TTL expiry.
+    """
+    cached = cache.get(ADMIN_DASHBOARD_CACHE_KEY)
+    if cached is not None:
+        return cached
+
+    from django.db.models import Count
+    
+    course_stats = Course.objects.aggregate(
+        total=Count('id'),
+        published=Count('id', filter=Q(is_published=True)),
+        pending=Count('id', filter=Q(is_submitted_for_review=True, is_approved=False))
+    )
+    total_courses = course_stats['total']
+    published_count = course_stats['published']
+    pending_courses = course_stats['pending']
+
+    user_stats = User.objects.aggregate(
+        students=Count('id', filter=Q(role='STUDENT')),
+        mentors=Count('id', filter=Q(role='MENTOR'))
+    )
+    total_students = user_stats['students']
+    total_mentors = user_stats['mentors']
 
     # Revenue Overview
     revenue_sum = Payment.objects.filter(status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
@@ -131,8 +171,8 @@ def get_admin_dashboard() -> dict:
             "title": pm.profile.title
         })
 
-    # Pending course approvals
-    pending_course_approvals_qs = Course.objects.filter(is_submitted_for_review=True, is_approved=False)[:5]
+    # Pending course approvals optimized: select_related('mentor')
+    pending_course_approvals_qs = Course.objects.filter(is_submitted_for_review=True, is_approved=False).select_related('mentor')[:5]
     pending_course_approvals = []
     for pc in pending_course_approvals_qs:
         pending_course_approvals.append({
@@ -142,8 +182,8 @@ def get_admin_dashboard() -> dict:
             "price": float(pc.price)
         })
 
-    # Recent refunds
-    recent_refunds_qs = Payment.objects.filter(status=Payment.StatusChoices.REFUNDED).order_by('-refunded_at')[:5]
+    # Recent refunds optimized: select_related('student', 'enrollment__course')
+    recent_refunds_qs = Payment.objects.filter(status=Payment.StatusChoices.REFUNDED).select_related('student', 'enrollment__course').order_by('-refunded_at')[:5]
     recent_refunds = []
     for pr in recent_refunds_qs:
         recent_refunds.append({
@@ -165,7 +205,7 @@ def get_admin_dashboard() -> dict:
             "created_at": sa.created_at
         })
 
-    return {
+    result = {
         "role": "ADMIN",
         "stats": {
             "total_courses": total_courses,
@@ -182,17 +222,28 @@ def get_admin_dashboard() -> dict:
         "system_activity": system_activity
     }
 
+    cache.set(ADMIN_DASHBOARD_CACHE_KEY, result, ADMIN_DASHBOARD_CACHE_TTL)
+    return result
+
 
 def get_student_dashboard(user, request) -> dict:
-    # Exclude enrollments that point to soft-deleted courses
-    active_enrollments = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False).select_related('course')
-    enrolled_count = active_enrollments.count()
-
-    in_progress_count = active_enrollments.filter(progress_percent__gt=0, progress_percent__lt=100).count()
-    completed_count = active_enrollments.filter(progress_percent=100).count()
-
-    hours_learned_val = active_enrollments.filter(progress_percent=100).aggregate(total=Sum('course__duration_hours'))['total']
-    hours_learned = hours_learned_val if hours_learned_val is not None else 0
+    # Exclude enrollments that point to soft-deleted courses. Prefetch course and course__mentor.
+    active_enrollments = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False).select_related('course', 'course__mentor')
+    
+    # Collapse student stats into a single aggregate query
+    from django.db.models import Count, Avg, Sum
+    enrollment_stats = active_enrollments.aggregate(
+        enrolled=Count('id'),
+        in_progress=Count('id', filter=Q(progress_percent__gt=0, progress_percent__lt=100)),
+        completed=Count('id', filter=Q(progress_percent=100)),
+        hours_learned=Sum('course__duration_hours', filter=Q(progress_percent=100)),
+        avg_progress=Avg('progress_percent')
+    )
+    enrolled_count = enrollment_stats['enrolled']
+    in_progress_count = enrollment_stats['in_progress']
+    completed_count = enrollment_stats['completed']
+    hours_learned = enrollment_stats['hours_learned'] or 0
+    avg_progress = round(float(enrollment_stats['avg_progress'] or 0.0), 2)
 
     # 1. Continue Learning
     # Find the most recent lesson progress but ignore entries for soft-deleted courses
@@ -200,7 +251,7 @@ def get_student_dashboard(user, request) -> dict:
         LessonProgress.objects.filter(student=user)
         .filter(Q(course__is_deleted=False) | Q(lesson__module__course__is_deleted=False))
         .order_by('-last_accessed')
-        .select_related('lesson', 'course')
+        .select_related('lesson__module__course', 'course')
         .first()
     )
     continue_learning = None
@@ -232,13 +283,18 @@ def get_student_dashboard(user, request) -> dict:
                 })
 
     # 3. Learning streak (consecutive days of lesson progress updates)
-    # Only consider progress history for non-deleted courses
-    progress_history = (
-        LessonProgress.objects.filter(student=user)
+    # Only consider progress history for non-deleted courses, look back max 60 days, and group in SQL
+    from django.db.models.functions import TruncDate
+    recent_cutoff = timezone.now() - datetime.timedelta(days=60)
+    days = list(
+        LessonProgress.objects.filter(student=user, last_accessed__gte=recent_cutoff)
         .filter(Q(course__is_deleted=False) | Q(lesson__module__course__is_deleted=False))
-        .values_list('last_accessed', flat=True)
+        .annotate(day=TruncDate('last_accessed'))
+        .values_list('day', flat=True)
+        .distinct()
+        .order_by('-day')
     )
-    days = sorted(list(set([d.date() for d in progress_history])), reverse=True)
+    
     streak = 0
     current_date = timezone.now().date()
     if days:
@@ -253,9 +309,8 @@ def get_student_dashboard(user, request) -> dict:
     # 4. Certificates earned
     certificates_count = Certificate.objects.filter(student=user).count()
 
-    # 5. Average progress
-    avg_progress = active_enrollments.aggregate(avg=Avg('progress_percent'))['avg'] or 0.0
-    avg_progress = round(float(avg_progress), 2)
+    # 5. Average progress (already computed via single aggregate query above)
+    pass
 
     # 6. Recent notifications
     recent_notifications_qs = Notification.objects.filter(recipient=user).order_by('-created_at')[:5]
@@ -269,6 +324,23 @@ def get_student_dashboard(user, request) -> dict:
             "created_at": n.created_at,
             "is_read": n.is_read
         })
+
+    # Calculate daily study activity for calendar heatmap (group by date)
+    activity_qs = (
+        LessonProgress.objects.filter(student=user)
+        .filter(Q(course__is_deleted=False) | Q(lesson__module__course__is_deleted=False))
+        .annotate(date_val=TruncDate('last_accessed'))
+        .values('date_val')
+        .annotate(lessons_completed=Count('id'))
+        .order_by('date_val')
+    )
+    activity = []
+    for a in activity_qs:
+        if a['date_val']:
+            activity.append({
+                "date": a['date_val'].strftime('%Y-%m-%d'),
+                "lessons_completed": a['lessons_completed']
+            })
 
     enrollment_data = EnrollmentSerializer(
         active_enrollments.order_by('-enrolled_at'),
@@ -290,5 +362,6 @@ def get_student_dashboard(user, request) -> dict:
         "continue_learning": continue_learning,
         "upcoming_lessons": upcoming_lessons,
         "recent_notifications": recent_notifications,
-        "enrollments": enrollment_data
+        "enrollments": enrollment_data,
+        "activity": activity
     }

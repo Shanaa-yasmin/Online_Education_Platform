@@ -60,11 +60,12 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = Enrollment.objects.all().select_related('student', 'course', 'course__mentor')
         if user.is_staff or user.role == 'ADMIN':
-            return Enrollment.objects.all()
+            return queryset
         if user.role == 'MENTOR':
-            return Enrollment.objects.filter(course__mentor=user, course__is_deleted=False)
-        return Enrollment.objects.filter(student=user, course__is_deleted=False)
+            return queryset.filter(course__mentor=user, course__is_deleted=False)
+        return queryset.filter(student=user, course__is_deleted=False)
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -458,13 +459,14 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = Payment.objects.all().select_related('student', 'enrollment__course')
         if user.is_staff or user.role == 'ADMIN':
-            return Payment.objects.all().order_by('-created_at')
+            return queryset.order_by('-created_at')
         if user.role == 'MENTOR':
-            return Payment.objects.filter(
+            return queryset.filter(
                 enrollment__course__mentor=user
             ).order_by('-created_at')
-        return Payment.objects.filter(student=user).order_by('-created_at')
+        return queryset.filter(student=user).order_by('-created_at')
 
     @action(detail=True, methods=['post'], url_path='refund')
     def refund(self, request, pk=None):

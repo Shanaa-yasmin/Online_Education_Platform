@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import AuthLeftPanel from '../components/AuthLeftPanel.jsx';
 import './AuthPages.css';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm]     = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setError('');
@@ -30,23 +31,11 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      {/* Left brand panel */}
-      <div className="auth-panel-left">
-        <div className="auth-brand">
-          <div className="auth-brand-mark"><i className="ti ti-trending-up" /></div>
-          <span className="auth-brand-name">EduPath</span>
-        </div>
-        <div className="auth-hero">
-          <p className="auth-hero-eyebrow">Learning platform</p>
-          <h1 className="auth-hero-h">Learn without<br /><em>limits.</em></h1>
-          <p className="auth-hero-p">Expert-led courses, hands-on projects, and mentors who've done it — all in one place.</p>
-        </div>
-        <div className="auth-stats">
-          <div><span className="auth-stat-val">12k+</span><span className="auth-stat-lbl">Learners</span></div>
-          <div><span className="auth-stat-val">840</span><span className="auth-stat-lbl">Mentors</span></div>
-          <div><span className="auth-stat-val">98%</span><span className="auth-stat-lbl">Satisfaction</span></div>
-        </div>
-      </div>
+      <AuthLeftPanel 
+        eyebrow="Learning Platform"
+        title={<>Learn without<br /><em>limits.</em></>}
+        description="Expert-led courses, hands-on projects, and mentors who've done it — all in one place."
+      />
 
       {/* Right form panel */}
       <div className="auth-panel-right">
@@ -56,7 +45,7 @@ export default function LoginPage() {
             <p className="auth-form-sub">Welcome back — pick up where you left off.</p>
           </div>
 
-          {error && <div className="alert alert-error" style={{marginBottom:16}}>{error}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             <div className="form-group">

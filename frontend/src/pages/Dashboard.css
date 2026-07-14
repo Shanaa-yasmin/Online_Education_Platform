@@ -8,20 +8,7 @@
    or heavy box-shadow, update its radius to 4px and swap its shadow for
    `1px solid var(--border)` to match this file's direction site-wide.
 */
-
-.dashboard-page {
-  display: flex;
-  min-height: 100svh;
-  background: var(--bg);
-}
-
-.dashboard-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+/* Layout styles are defined globally in index.css */
 
 /* ── Topbar ──────────────────────────────────────────────── */
 .avatar-initials-sm {

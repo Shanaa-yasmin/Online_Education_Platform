@@ -50,11 +50,29 @@ const QuizIcon = () => (
     <circle cx="12" cy="12" r="10" /><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" x2="12.01" y1="17" y2="17" />
   </svg>
 );
-const HelpCircleIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" /><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" x2="12.01" y1="17" y2="17" />
-  </svg>
-);
+
+const EMPTY_OPTIONS = () => ([
+  { text: '', is_correct: true },
+  { text: '', is_correct: false },
+]);
+
+const EMPTY_QUIZ = () => ({
+  question_text: '',
+  question_type: 'SINGLE_CHOICE',
+  difficulty: 'MEDIUM',
+  points: 1,
+  explanation: '',
+  options: EMPTY_OPTIONS(),
+  correct_text_answer: '',
+  case_sensitive: false,
+});
+
+const QUESTION_TYPE_LABELS = {
+  SINGLE_CHOICE: 'Single Choice',
+  MULTIPLE_CHOICE: 'Multiple Choice',
+  TRUE_FALSE: 'True / False',
+  FILL_BLANK: 'Fill in the Blank',
+};
 
 export default function CourseBuilder() {
   const { courseId } = useParams();
@@ -64,11 +82,6 @@ export default function CourseBuilder() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState(false);
-
-  const CATEGORY_OPTIONS = [
-    'Development', 'Design', 'Business', 'Marketing',
-    'IT & Software', 'Personal Development', 'Data Science'
-  ];
 
   // Accordion active modules
   const [expandedModules, setExpandedModules] = useState({});
@@ -84,21 +97,17 @@ export default function CourseBuilder() {
     content_type: 'VIDEO',
     video_url: '',
     body_text: '',
-    file: null
+    file: null,
+    max_quiz_attempts: 0,
+    passing_score_percent: 70,
+    quiz_time_limit_minutes: 0,
   });
-  const [quizData, setQuizData] = useState({
-    question_text: '',
-    option_a: '',
-    option_b: '',
-    option_c: '',
-    option_d: '',
-    correct_option: 'A'
-  });
+  const [quizData, setQuizData] = useState(EMPTY_QUIZ());
 
   // Edit Course Details modal
   const [showEditCourseModal, setShowEditCourseModal] = useState(false);
   const [editCourseForm, setEditCourseForm] = useState({
-    title: '', description: '', level: 'BEGINNER', price: '0.00', language: 'English', duration_hours: 0, category: 'Development'
+    title: '', description: '', level: 'BEGINNER', price: '0.00', language: 'English', duration_hours: 0
   });
   const [editThumbnailFile, setEditThumbnailFile] = useState(null);
   const [editThumbnailPreview, setEditThumbnailPreview] = useState(null);
@@ -138,6 +147,9 @@ export default function CourseBuilder() {
     setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // =========================================================
+  // Delete Course
+  // =========================================================
   const canDelete = user && course && (
     user.is_staff || user.role === 'ADMIN' ||
     (course.mentor && user.id === course.mentor.id)
@@ -203,7 +215,6 @@ export default function CourseBuilder() {
     }
   };
 
-
   // =========================================================
   // Edit Course Details
   // =========================================================
@@ -214,8 +225,7 @@ export default function CourseBuilder() {
       level: course.level,
       price: course.price,
       language: course.language,
-      duration_hours: course.duration_hours,
-      category: course.category
+      duration_hours: course.duration_hours
     });
     setEditThumbnailFile(null);
     setEditThumbnailPreview(course.thumbnail || null);
@@ -266,7 +276,6 @@ export default function CourseBuilder() {
       fd.append('price', parseFloat(editCourseForm.price) || 0);
       fd.append('language', editCourseForm.language);
       fd.append('duration_hours', parseInt(editCourseForm.duration_hours) || 0);
-      fd.append('category', editCourseForm.category);
       if (editThumbnailFile) {
         fd.append('thumbnail', editThumbnailFile);
       }
@@ -274,6 +283,8 @@ export default function CourseBuilder() {
       const response = await api.patch(`/api/courses/${courseId}/`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      // Editing a course resets approval/publish status server-side (moderation
+      // re-review), so we trust the fresh response rather than merging blindly.
       setCourse(prev => ({ ...prev, ...response.data }));
       setShowEditCourseModal(false);
     } catch (err) {
@@ -300,14 +311,12 @@ export default function CourseBuilder() {
     setActionError('');
     try {
       if (editTarget) {
-        // Edit module
         await api.put(`/api/modules/${editTarget.id}/`, {
           course: courseId,
           title: moduleTitle,
           order: editTarget.order
         });
       } else {
-        // Create module
         const nextOrder = (course.modules?.length || 0) + 1;
         await api.post('/api/modules/', {
           course: courseId,
@@ -349,7 +358,10 @@ export default function CourseBuilder() {
         content_type: lessonObj.content_type,
         video_url: lessonObj.video_url || '',
         body_text: lessonObj.body_text || '',
-        file: null
+        file: null,
+        max_quiz_attempts: lessonObj.max_quiz_attempts ?? 0,
+        passing_score_percent: lessonObj.passing_score_percent ?? 70,
+        quiz_time_limit_minutes: lessonObj.quiz_time_limit_minutes ?? 0,
       });
     } else {
       setLessonData({
@@ -357,7 +369,10 @@ export default function CourseBuilder() {
         content_type: 'VIDEO',
         video_url: '',
         body_text: '',
-        file: null
+        file: null,
+        max_quiz_attempts: 0,
+        passing_score_percent: 70,
+        quiz_time_limit_minutes: 0,
       });
     }
     setActiveModal('lesson');
@@ -368,7 +383,6 @@ export default function CourseBuilder() {
     setActionLoading(true);
     setActionError('');
     try {
-      // Build Form Data for file upload if needed
       const formPayload = new FormData();
       formPayload.append('module', editTarget ? editTarget.module : modalParentId);
       formPayload.append('title', lessonData.title);
@@ -380,24 +394,23 @@ export default function CourseBuilder() {
         formPayload.append('body_text', lessonData.body_text);
       } else if (lessonData.content_type === 'PDF' && lessonData.file) {
         formPayload.append('file_attachment', lessonData.file);
+      } else if (lessonData.content_type === 'QUIZ') {
+        formPayload.append('max_quiz_attempts', parseInt(lessonData.max_quiz_attempts) || 0);
+        formPayload.append('passing_score_percent', parseInt(lessonData.passing_score_percent) || 70);
+        formPayload.append('quiz_time_limit_minutes', parseInt(lessonData.quiz_time_limit_minutes) || 0);
       }
 
       if (editTarget) {
         formPayload.append('order', editTarget.order);
-        // Use multipart header if there's a file
         await api.put(`/api/lessons/${editTarget.id}/`, formPayload, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else {
         const parentModule = course.modules.find(m => m.id === modalParentId);
         const nextOrder = (parentModule?.lessons?.length || 0) + 1;
         formPayload.append('order', nextOrder);
         await api.post('/api/lessons/', formPayload, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
       }
       setActiveModal(null);
@@ -431,23 +444,63 @@ export default function CourseBuilder() {
     if (questionObj) {
       setQuizData({
         question_text: questionObj.question_text,
-        option_a: questionObj.option_a,
-        option_b: questionObj.option_b,
-        option_c: questionObj.option_c,
-        option_d: questionObj.option_d,
-        correct_option: questionObj.correct_option
+        question_type: questionObj.question_type,
+        difficulty: questionObj.difficulty,
+        points: questionObj.points,
+        explanation: questionObj.explanation || '',
+        options: questionObj.options?.length
+          ? questionObj.options.map(o => ({ text: o.text, is_correct: !!o.is_correct }))
+          : EMPTY_OPTIONS(),
+        correct_text_answer: questionObj.correct_text_answer || '',
+        case_sensitive: !!questionObj.case_sensitive,
       });
     } else {
-      setQuizData({
-        question_text: '',
-        option_a: '',
-        option_b: '',
-        option_c: '',
-        option_d: '',
-        correct_option: 'A'
-      });
+      setQuizData(EMPTY_QUIZ());
     }
     setActiveModal('quiz');
+  };
+
+  const handleQuestionTypeChange = (type) => {
+    setQuizData(prev => {
+      if (type === 'TRUE_FALSE') {
+        return { ...prev, question_type: type, options: [{ text: 'True', is_correct: true }, { text: 'False', is_correct: false }] };
+      }
+      if (type === 'FILL_BLANK') {
+        return { ...prev, question_type: type };
+      }
+      // SINGLE_CHOICE / MULTIPLE_CHOICE
+      const needsFreshOptions = prev.question_type === 'TRUE_FALSE' || prev.question_type === 'FILL_BLANK' || prev.options.length < 2;
+      return { ...prev, question_type: type, options: needsFreshOptions ? EMPTY_OPTIONS() : prev.options };
+    });
+  };
+
+  const updateOptionText = (idx, text) => {
+    setQuizData(prev => {
+      const options = [...prev.options];
+      options[idx] = { ...options[idx], text };
+      return { ...prev, options };
+    });
+  };
+
+  const toggleOptionCorrect = (idx) => {
+    setQuizData(prev => {
+      let options;
+      if (prev.question_type === 'MULTIPLE_CHOICE') {
+        options = prev.options.map((o, i) => (i === idx ? { ...o, is_correct: !o.is_correct } : o));
+      } else {
+        // SINGLE_CHOICE / TRUE_FALSE — only one correct option at a time
+        options = prev.options.map((o, i) => ({ ...o, is_correct: i === idx }));
+      }
+      return { ...prev, options };
+    });
+  };
+
+  const addOption = () => {
+    setQuizData(prev => ({ ...prev, options: [...prev.options, { text: '', is_correct: false }] }));
+  };
+
+  const removeOption = (idx) => {
+    setQuizData(prev => ({ ...prev, options: prev.options.filter((_, i) => i !== idx) }));
   };
 
   const handleQuizSubmit = async (e) => {
@@ -457,8 +510,20 @@ export default function CourseBuilder() {
     try {
       const payload = {
         lesson: editTarget ? editTarget.lesson : modalParentId,
-        ...quizData
+        question_text: quizData.question_text,
+        question_type: quizData.question_type,
+        difficulty: quizData.difficulty,
+        points: parseInt(quizData.points) || 1,
+        explanation: quizData.explanation,
       };
+
+      if (quizData.question_type === 'FILL_BLANK') {
+        payload.correct_text_answer = quizData.correct_text_answer;
+        payload.case_sensitive = quizData.case_sensitive;
+      } else {
+        payload.options = quizData.options.map((o, i) => ({ text: o.text, is_correct: o.is_correct, order: i }));
+      }
+
       if (editTarget) {
         await api.put(`/api/quiz-questions/${editTarget.id}/`, payload);
       } else {
@@ -468,7 +533,9 @@ export default function CourseBuilder() {
       await fetchCourseData();
     } catch (err) {
       console.error(err);
-      setActionError(err.response?.data?.detail || 'Failed to save question.');
+      const data = err.response?.data;
+      const message = data?.detail || (data && Object.values(data)[0]?.[0]) || 'Failed to save question.';
+      setActionError(message);
     } finally {
       setActionLoading(false);
     }
@@ -518,9 +585,9 @@ export default function CourseBuilder() {
       {/* Top Header Row */}
       <header className="builder-header">
         <div className="header-left">
-          <button onClick={() => navigate(-1)} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
-            <ArrowLeftIcon /> Back
-          </button>
+          <Link to="/mentor/dashboard" className="back-link">
+            <ArrowLeftIcon /> Dashboard
+          </Link>
           <div className="header-title-row">
             <h1 className="course-title">{course.title}</h1>
             <span className={`status-badge-inline ${course.is_published ? 'live' : 'draft'}`}>
@@ -542,19 +609,11 @@ export default function CourseBuilder() {
           </button>
 
           {course.is_published ? (
-            <button
-              className="btn btn-secondary btn-publish"
-              onClick={handlePublishToggle}
-              disabled={publishing}
-            >
+            <button className="btn btn-secondary btn-publish" onClick={handlePublishToggle} disabled={publishing}>
               {publishing ? 'Updating...' : 'Unpublish Course'}
             </button>
           ) : course.is_approved ? (
-            <button
-              className="btn btn-primary btn-publish"
-              onClick={handlePublishToggle}
-              disabled={publishing}
-            >
+            <button className="btn btn-primary btn-publish" onClick={handlePublishToggle} disabled={publishing}>
               {publishing ? 'Updating...' : 'Publish Course'}
             </button>
           ) : (
@@ -574,11 +633,7 @@ export default function CourseBuilder() {
             </button>
           )}
           {canDelete && (
-            <button
-              className="btn btn-danger"
-              onClick={handleDeleteCourse}
-              disabled={deleting}
-            >
+            <button className="btn btn-danger" onClick={handleDeleteCourse} disabled={deleting}>
               <TrashIcon /> {deleting ? 'Deleting...' : 'Delete Course'}
             </button>
           )}
@@ -598,7 +653,7 @@ export default function CourseBuilder() {
           <div className="builder-empty-state">
             <div className="icon">🧱</div>
             <h3>No curriculum modules yet</h3>
-            <p>Divide your course into logical sections/modules, then populate them with summaries, files, or MCQ quizzes.</p>
+            <p>Divide your course into logical sections/modules, then populate them with summaries, files, or quizzes.</p>
             <button className="btn btn-secondary" onClick={() => openModuleModal(null)}>
               Create First Module
             </button>
@@ -609,7 +664,6 @@ export default function CourseBuilder() {
               const isExpanded = !!expandedModules[module.id];
               return (
                 <div key={module.id} className={`module-accordion-item ${isExpanded ? 'expanded' : ''}`}>
-                  {/* Module Header Bar */}
                   <div className="module-header-bar" onClick={() => toggleModule(module.id)}>
                     <div className="module-title-side">
                       <span className="accordion-arrow">
@@ -632,32 +686,38 @@ export default function CourseBuilder() {
                     </div>
                   </div>
 
-                  {/* Module Lessons Content Area */}
                   {isExpanded && (
                     <div className="module-lessons-list">
                       {module.lessons?.length === 0 ? (
                         <div className="lessons-empty-text">No lessons in this module. Add text summaries, video links, or quizzes.</div>
                       ) : (
                         module.lessons.map((lesson) => (
-                          <div key={lesson.id} className="lesson-row-item">
+                          <div
+                            key={lesson.id}
+                            className="lesson-row-item"
+                            onClick={() => openLessonModal(module.id, lesson)}
+                          >
                             <div className="lesson-info-left">
                               <span className={`lesson-type-icon ${lesson.content_type.toLowerCase()}`}>
                                 {getLessonIcon(lesson.content_type)}
                               </span>
                               <div>
-                                <h4 className="lesson-title">
-                                  <Link to={`/courses/${courseId}/learn?lesson=${lesson.id}`} style={{ color: 'inherit', textDecoration: 'none' }} className="lesson-preview-link">
-                                    {lesson.title}
-                                  </Link>
-                                </h4>
+                                <h4 className="lesson-title">{lesson.title}</h4>
                                 <span className="lesson-meta-tag">{lesson.content_type}</span>
                                 {lesson.content_type === 'VIDEO' && lesson.video_url && (
                                   <span className="meta-sub">URL: {lesson.video_url}</span>
                                 )}
+                                {lesson.content_type === 'QUIZ' && (
+                                  <span className="meta-sub">
+                                    Pass: {lesson.passing_score_percent}%
+                                    {lesson.max_quiz_attempts ? ` · Max ${lesson.max_quiz_attempts} attempts` : ' · Unlimited attempts'}
+                                    {lesson.quiz_time_limit_minutes ? ` · ${lesson.quiz_time_limit_minutes} min limit` : ''}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
-                            <div className="lesson-actions-right">
+                            <div className="lesson-actions-right" onClick={(e) => e.stopPropagation()}>
                               <button className="btn-icon-link" onClick={() => openLessonModal(module.id, lesson)} title="Edit Lesson">
                                 <EditIcon />
                               </button>
@@ -666,11 +726,10 @@ export default function CourseBuilder() {
                               </button>
                             </div>
 
-                            {/* Special display for QUIZ type lessons (Quiz Questions list) */}
                             {lesson.content_type === 'QUIZ' && (
-                              <div className="quiz-questions-block">
+                              <div className="quiz-questions-block" onClick={(e) => e.stopPropagation()}>
                                 <div className="quiz-block-header">
-                                  <h5>MCQ Quiz Questions</h5>
+                                  <h5>Quiz Questions</h5>
                                   <button className="btn btn-secondary btn-xs" onClick={() => openQuizModal(lesson.id, null)}>
                                     <PlusIcon /> Add Question
                                   </button>
@@ -684,7 +743,14 @@ export default function CourseBuilder() {
                                       <div key={q.id} className="quiz-question-item">
                                         <div className="question-text-row">
                                           <span className="q-number">Q{idx + 1}.</span>
-                                          <p className="q-text">{q.question_text}</p>
+                                          <div style={{ flex: 1 }}>
+                                            <p className="q-text">{q.question_text}</p>
+                                            <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                                              <span className="badge badge-beginner">{QUESTION_TYPE_LABELS[q.question_type] || q.question_type}</span>
+                                              <span className="badge">{q.difficulty}</span>
+                                              <span className="badge">{q.points} pt{q.points === 1 ? '' : 's'}</span>
+                                            </div>
+                                          </div>
                                           <div className="q-actions">
                                             <button className="btn-icon-link" onClick={() => openQuizModal(lesson.id, q)}>
                                               <EditIcon />
@@ -695,12 +761,21 @@ export default function CourseBuilder() {
                                           </div>
                                         </div>
 
-                                        <div className="options-grid-display">
-                                          <span className={`opt ${q.correct_option === 'A' ? 'correct' : ''}`}><strong>A:</strong> {q.option_a}</span>
-                                          <span className={`opt ${q.correct_option === 'B' ? 'correct' : ''}`}><strong>B:</strong> {q.option_b}</span>
-                                          <span className={`opt ${q.correct_option === 'C' ? 'correct' : ''}`}><strong>C:</strong> {q.option_c}</span>
-                                          <span className={`opt ${q.correct_option === 'D' ? 'correct' : ''}`}><strong>D:</strong> {q.option_d}</span>
-                                        </div>
+                                        {q.question_type === 'FILL_BLANK' ? (
+                                          <div className="options-grid-display">
+                                            <span className="opt correct"><strong>Answer:</strong> {q.correct_text_answer}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="options-grid-display">
+                                            {q.options?.map(opt => (
+                                              <span key={opt.id} className={`opt ${opt.is_correct ? 'correct' : ''}`}>{opt.text}</span>
+                                            ))}
+                                          </div>
+                                        )}
+
+                                        {q.explanation && (
+                                          <p className="meta-sub" style={{ marginTop: 6 }}>💡 {q.explanation}</p>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
@@ -788,7 +863,7 @@ export default function CourseBuilder() {
                   <option value="VIDEO">Video</option>
                   <option value="PDF">PDF Document</option>
                   <option value="DOCUMENT">Rich Text Summary</option>
-                  <option value="QUIZ">MCQ Quiz</option>
+                  <option value="QUIZ">Quiz</option>
                 </select>
               </div>
 
@@ -834,6 +909,39 @@ export default function CourseBuilder() {
                 </div>
               )}
 
+              {lessonData.content_type === 'QUIZ' && (
+                <>
+                  <div className="form-row-grid">
+                    <div className="form-group">
+                      <label htmlFor="les-max-attempts">Max Attempts</label>
+                      <input
+                        type="number" id="les-max-attempts" min="0"
+                        value={lessonData.max_quiz_attempts}
+                        onChange={(e) => setLessonData(prev => ({ ...prev, max_quiz_attempts: e.target.value }))}
+                      />
+                      <small className="meta-sub">0 = unlimited attempts</small>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="les-pass-score">Passing Score (%)</label>
+                      <input
+                        type="number" id="les-pass-score" min="0" max="100"
+                        value={lessonData.passing_score_percent}
+                        onChange={(e) => setLessonData(prev => ({ ...prev, passing_score_percent: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="les-time-limit">Time Limit (minutes)</label>
+                    <input
+                      type="number" id="les-time-limit" min="0"
+                      value={lessonData.quiz_time_limit_minutes}
+                      onChange={(e) => setLessonData(prev => ({ ...prev, quiz_time_limit_minutes: e.target.value }))}
+                    />
+                    <small className="meta-sub">0 = no time limit</small>
+                  </div>
+                </>
+              )}
+
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setActiveModal(null)} disabled={actionLoading}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={actionLoading}>
@@ -860,26 +968,12 @@ export default function CourseBuilder() {
 
               <div className="form-group">
                 <label htmlFor="edit-title">Course Title</label>
-                <input
-                  type="text"
-                  id="edit-title"
-                  name="title"
-                  value={editCourseForm.title}
-                  onChange={handleEditCourseInput}
-                  required
-                />
+                <input type="text" id="edit-title" name="title" value={editCourseForm.title} onChange={handleEditCourseInput} required />
               </div>
 
               <div className="form-group">
                 <label htmlFor="edit-desc">Description</label>
-                <textarea
-                  id="edit-desc"
-                  name="description"
-                  value={editCourseForm.description}
-                  onChange={handleEditCourseInput}
-                  rows="4"
-                  required
-                />
+                <textarea id="edit-desc" name="description" value={editCourseForm.description} onChange={handleEditCourseInput} rows="4" required />
               </div>
 
               <div className="form-group">
@@ -911,45 +1005,18 @@ export default function CourseBuilder() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="edit-price">Price ($)</label>
-                  <input
-                    type="number" id="edit-price" name="price"
-                    value={editCourseForm.price} onChange={handleEditCourseInput}
-                    step="0.01" min="0" required
-                  />
+                  <input type="number" id="edit-price" name="price" value={editCourseForm.price} onChange={handleEditCourseInput} step="0.01" min="0" required />
                 </div>
               </div>
 
               <div className="form-row-grid">
                 <div className="form-group">
                   <label htmlFor="edit-lang">Language</label>
-                  <input
-                    type="text" id="edit-lang" name="language"
-                    value={editCourseForm.language} onChange={handleEditCourseInput} required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="edit-category">Category</label>
-                  <select
-                    id="edit-category"
-                    name="category"
-                    value={editCourseForm.category}
-                    onChange={handleEditCourseInput}
-                  >
-                    <option value="Development">Development</option>
-                    <option value="Design">Design</option>
-                    <option value="Business">Business</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="IT & Software">IT & Software</option>
-                    <option value="Personal Development">Personal Development</option>
-                    <option value="Data Science">Data Science</option>
-                  </select>
+                  <input type="text" id="edit-lang" name="language" value={editCourseForm.language} onChange={handleEditCourseInput} required />
                 </div>
                 <div className="form-group">
                   <label htmlFor="edit-hours">Estimated Hours</label>
-                  <input
-                    type="number" id="edit-hours" name="duration_hours"
-                    value={editCourseForm.duration_hours} onChange={handleEditCourseInput} min="0" required
-                  />
+                  <input type="number" id="edit-hours" name="duration_hours" value={editCourseForm.duration_hours} onChange={handleEditCourseInput} min="0" required />
                 </div>
               </div>
 
@@ -965,13 +1032,13 @@ export default function CourseBuilder() {
       )}
 
       {/* =========================================================
-         QUIZ MODAL
+         QUIZ QUESTION MODAL
          ========================================================= */}
       {activeModal === 'quiz' && (
         <div className="modal-overlay" onClick={() => setActiveModal(null)}>
           <div className="modal-content animate-scaleIn" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editTarget ? 'Edit MCQ Question' : 'Add MCQ Question'}</h2>
+              <h2>{editTarget ? 'Edit Quiz Question' : 'Add Quiz Question'}</h2>
               <button className="modal-close-btn" onClick={() => setActiveModal(null)}>&times;</button>
             </div>
             <form onSubmit={handleQuizSubmit} className="modal-form">
@@ -991,62 +1058,108 @@ export default function CourseBuilder() {
 
               <div className="form-row-grid">
                 <div className="form-group">
-                  <label htmlFor="opt-a">Option A</label>
-                  <input
-                    type="text"
-                    id="opt-a"
-                    value={quizData.option_a}
-                    onChange={(e) => setQuizData(prev => ({ ...prev, option_a: e.target.value }))}
-                    required
-                  />
+                  <label htmlFor="q-type">Question Type</label>
+                  <select id="q-type" value={quizData.question_type} onChange={(e) => handleQuestionTypeChange(e.target.value)}>
+                    <option value="SINGLE_CHOICE">Single Choice</option>
+                    <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+                    <option value="TRUE_FALSE">True / False</option>
+                    <option value="FILL_BLANK">Fill in the Blank</option>
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label htmlFor="opt-b">Option B</label>
-                  <input
-                    type="text"
-                    id="opt-b"
-                    value={quizData.option_b}
-                    onChange={(e) => setQuizData(prev => ({ ...prev, option_b: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row-grid">
-                <div className="form-group">
-                  <label htmlFor="opt-c">Option C</label>
-                  <input
-                    type="text"
-                    id="opt-c"
-                    value={quizData.option_c}
-                    onChange={(e) => setQuizData(prev => ({ ...prev, option_c: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="opt-d">Option D</label>
-                  <input
-                    type="text"
-                    id="opt-d"
-                    value={quizData.option_d}
-                    onChange={(e) => setQuizData(prev => ({ ...prev, option_d: e.target.value }))}
-                    required
-                  />
+                  <label htmlFor="q-difficulty">Difficulty</label>
+                  <select
+                    id="q-difficulty"
+                    value={quizData.difficulty}
+                    onChange={(e) => setQuizData(prev => ({ ...prev, difficulty: e.target.value }))}
+                  >
+                    <option value="EASY">Easy</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HARD">Hard</option>
+                  </select>
                 </div>
               </div>
 
               <div className="form-group">
-                <label htmlFor="correct-opt">Correct Answer</label>
-                <select
-                  id="correct-opt"
-                  value={quizData.correct_option}
-                  onChange={(e) => setQuizData(prev => ({ ...prev, correct_option: e.target.value }))}
-                >
-                  <option value="A">Option A</option>
-                  <option value="B">Option B</option>
-                  <option value="C">Option C</option>
-                  <option value="D">Option D</option>
-                </select>
+                <label htmlFor="q-points">Points</label>
+                <input
+                  type="number" id="q-points" min="1"
+                  value={quizData.points}
+                  onChange={(e) => setQuizData(prev => ({ ...prev, points: e.target.value }))}
+                  required
+                />
+              </div>
+
+              {quizData.question_type === 'FILL_BLANK' ? (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="q-answer">Correct Answer</label>
+                    <input
+                      type="text" id="q-answer"
+                      value={quizData.correct_text_answer}
+                      onChange={(e) => setQuizData(prev => ({ ...prev, correct_text_answer: e.target.value }))}
+                      placeholder="e.g. Merge Sort"
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="checkbox" id="q-case-sensitive"
+                      checked={quizData.case_sensitive}
+                      onChange={(e) => setQuizData(prev => ({ ...prev, case_sensitive: e.target.checked }))}
+                    />
+                    <label htmlFor="q-case-sensitive" style={{ margin: 0 }}>Case-sensitive match</label>
+                  </div>
+                </>
+              ) : (
+                <div className="form-group">
+                  <label>
+                    Answer Options
+                    {quizData.question_type === 'MULTIPLE_CHOICE'
+                      ? ' (check all correct answers)'
+                      : ' (select the one correct answer)'}
+                  </label>
+                  {quizData.options.map((opt, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <input
+                        type={quizData.question_type === 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}
+                        name="correct-option"
+                        checked={opt.is_correct}
+                        onChange={() => toggleOptionCorrect(idx)}
+                      />
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => updateOptionText(idx, e.target.value)}
+                        placeholder={`Option ${idx + 1}`}
+                        disabled={quizData.question_type === 'TRUE_FALSE'}
+                        style={{ flex: 1 }}
+                        required
+                      />
+                      {quizData.question_type !== 'TRUE_FALSE' && quizData.options.length > 2 && (
+                        <button type="button" className="btn-icon-link delete" onClick={() => removeOption(idx)} title="Remove option">
+                          <TrashIcon />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {quizData.question_type !== 'TRUE_FALSE' && (
+                    <button type="button" className="btn btn-secondary btn-xs" onClick={addOption}>
+                      <PlusIcon /> Add Option
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="q-explanation">Explanation (optional)</label>
+                <textarea
+                  id="q-explanation"
+                  value={quizData.explanation}
+                  onChange={(e) => setQuizData(prev => ({ ...prev, explanation: e.target.value }))}
+                  placeholder="Shown to students after they answer, to reinforce the concept."
+                  rows="2"
+                />
               </div>
 
               <div className="modal-actions">

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
  * @param {React.ReactNode} props.children - The protected page component.
  * @param {string[]} [props.allowedRoles] - Optional list of roles allowed to access this route.
  */
-export function ProtectedRoute({ children, allowedRoles }) {
+export function ProtectedRoute({ children, allowedRoles, requireProfileComplete = true }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -21,6 +21,10 @@ export function ProtectedRoute({ children, allowedRoles }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requireProfileComplete && !user.profile_complete) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {

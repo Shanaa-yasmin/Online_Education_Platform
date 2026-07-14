@@ -15,6 +15,8 @@ class User(AbstractUser):
         default=Role.STUDENT
     )
     email = models.EmailField(unique=True)
+    is_email_verified = models.BooleanField(default=False)
+    profile_complete = models.BooleanField(default=False)
 
     # Make email unique and required, username remains the login key for now, 
     # but we will support email login as well.
@@ -43,9 +45,17 @@ class Profile(models.Model):
     website = models.URLField(blank=True, default='')
     location = models.CharField(max_length=150, blank=True, default='')
 
+    # Student specific fields
+    date_of_birth = models.DateField(null=True, blank=True)
+    education_level = models.CharField(max_length=50, blank=True, default='')
+    areas_of_interest = models.JSONField(default=list)
+
     # Mentor specific fields
     title = models.CharField(max_length=100, blank=True, default='')
     skills = models.CharField(max_length=255, blank=True, default='')
+    years_of_experience = models.PositiveIntegerField(default=0)
+    areas_of_expertise = models.JSONField(default=list)
+    resume = models.FileField(upload_to='resumes/', null=True, blank=True)
     is_approved = models.BooleanField(default=False)  # Admins approve Mentors
     is_suspended = models.BooleanField(default=False)  # Admins can suspend users
 

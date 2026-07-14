@@ -41,7 +41,7 @@ class Notification(models.Model):
     )
     related_object_id = models.PositiveIntegerField(null=True, blank=True)
     related_object_type = models.CharField(max_length=100, null=True, blank=True)
-    is_read = models.BooleanField(default=False)
+    is_read = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

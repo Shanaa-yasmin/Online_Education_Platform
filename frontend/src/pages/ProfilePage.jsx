@@ -48,12 +48,14 @@ export default function ProfilePage() {
   const { logout } = useAuth();
 
   // ── Load full profile and stats on mount ────────────────────────────
-  const loadProfile = async () => {
+  const loadProfile = async (active) => {
     try {
       setLoading(true);
       setErrorMsg('');
       const res = await api.get('/api/profile/');
       const data = res.data;
+
+      if (!active.current) return;
 
       setFormData({
         username: data.username || '',
@@ -75,16 +77,18 @@ export default function ProfilePage() {
       updateUser(data);
     } catch (err) {
       console.error(err);
-      setErrorMsg('Failed to load profile details.');
+      if (active.current) setErrorMsg('Failed to load profile details.');
     } finally {
-      setLoading(false);
+      if (active.current) setLoading(false);
     }
   };
 
   useEffect(() => {
+    const active = { current: true };
     if (user) {
-      loadProfile();
+      loadProfile(active);
     }
+    return () => { active.current = false; };
   }, []);
 
   // ── Handlers ───────────────────────────────────────────────────────
@@ -316,7 +320,7 @@ export default function ProfilePage() {
                               {stats.recent_learning.map(log => (
                                 <div key={log.id} className="learning-log-item">
                                   {log.thumbnail ? (
-                                    <img src={log.thumbnail} alt={log.title} className="log-img" />
+                                    <img src={log.thumbnail} alt={log.title} className="log-img" loading="lazy" />
                                   ) : (
                                     <div className="log-img-fallback"><i className="ti ti-book" /></div>
                                   )}
@@ -398,7 +402,7 @@ export default function ProfilePage() {
                               {stats.latest_courses.map(course => (
                                 <div key={course.id} className="learning-log-item">
                                   {course.thumbnail ? (
-                                    <img src={course.thumbnail} alt={course.title} className="log-img" />
+                                    <img src={course.thumbnail} alt={course.title} className="log-img" loading="lazy" />
                                   ) : (
                                     <div className="log-img-fallback"><i className="ti ti-book" /></div>
                                   )}

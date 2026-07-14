@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import AuthLeftPanel from '../components/AuthLeftPanel.jsx';
 import './AuthPages.css';
 
 const INITIAL = { username: '', email: '', password: '', password_confirm: '', role: 'STUDENT' };
@@ -41,6 +42,7 @@ export default function RegisterPage() {
   const [showPwC, setShowPwC] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => {
     setErrors(p => ({ ...p, [e.target.name]: '' }));
@@ -66,7 +68,7 @@ export default function RegisterPage() {
     setLoading(true); setErrors({});
     try {
       await register(form);
-      navigate('/dashboard');
+      setSuccess(true);
     } catch (err) {
       if (err?.response?.data) {
         const mapped = {};
@@ -78,31 +80,30 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      {/* Left panel */}
-      <div className="auth-panel-left">
-        <div className="auth-brand">
-          <div className="auth-brand-mark"><i className="ti ti-trending-up" /></div>
-          <span className="auth-brand-name">EduPath</span>
-        </div>
-        <div className="auth-hero">
-          <p className="auth-hero-eyebrow">Join EduPath</p>
-          <h1 className="auth-hero-h">Your career,<br /><em>accelerated.</em></h1>
-          <p className="auth-hero-p">Access 320+ courses, connect with industry mentors, and build skills that employers actually want.</p>
-        </div>
-        <div className="auth-stats">
-          <div><span className="auth-stat-val">320+</span><span className="auth-stat-lbl">Courses</span></div>
-          <div><span className="auth-stat-val">4.9★</span><span className="auth-stat-lbl">Rating</span></div>
-          <div><span className="auth-stat-val">Free</span><span className="auth-stat-lbl">To start</span></div>
-        </div>
-      </div>
+      <AuthLeftPanel />
 
       {/* Right panel */}
       <div className="auth-panel-right">
         <div className="auth-form-box wide">
-          <div className="auth-form-header">
-            <h2 className="auth-form-title">Create your account</h2>
-            <p className="auth-form-sub">Start your learning journey today — it's free.</p>
-          </div>
+          {success ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: '48px', color: 'var(--brand)', marginBottom: '16px' }}>
+                <i className="ti ti-mail-opened" />
+              </div>
+              <h2 className="auth-form-title" style={{ marginBottom: '12px' }}>Check your email</h2>
+              <p className="auth-form-sub" style={{ marginBottom: '24px' }}>
+                We've sent a verification link to <strong>{form.email}</strong>. Please click the link to activate your account.
+              </p>
+              <Link to="/login" className="btn btn-primary w-full" style={{ justifyContent: 'center' }}>
+                Go to Login
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="auth-form-header">
+                <h2 className="auth-form-title">Create your account</h2>
+                <p className="auth-form-sub">Start your learning journey today — it's free.</p>
+              </div>
 
           {errors.non_field_errors && <div className="alert alert-error" style={{marginBottom:16}}>{errors.non_field_errors}</div>}
 
@@ -193,6 +194,8 @@ export default function RegisterPage() {
           <p className="auth-footer-txt">
             Already have an account? <Link to="/login">Sign in</Link>
           </p>
+            </>
+          )}
         </div>
       </div>
     </div>

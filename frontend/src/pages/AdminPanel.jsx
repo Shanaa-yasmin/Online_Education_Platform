@@ -45,11 +45,11 @@ export default function AdminPanel() {
     }
   }, [searchParams]);
 
-  const fetchCourses = async () => { try { setLC(true); const r = await api.get('/api/courses/'); setPendingCourses((r.data.results || r.data).filter(c => !c.is_approved)); setCE(''); } catch { setCE('Failed to fetch pending courses.'); } finally { setLC(false); } };
-  const fetchMentors = async () => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); setPendingMentors(r.data.results || r.data); setME(''); } catch { setME('Failed to fetch pending mentors.'); } finally { setLM(false); } };
-  const fetchPayments = async () => { try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data.results || r.data); setPE(''); } catch { setPE('Failed to fetch payments logs.'); } finally { setLP(false); } };
+  const fetchCourses = async (active) => { try { setLC(true); const r = await api.get('/api/courses/'); if (active.current) { setPendingCourses((r.data.results || r.data).filter(c => !c.is_approved)); setCE(''); } } catch { if (active.current) setCE('Failed to fetch pending courses.'); } finally { if (active.current) setLC(false); } };
+  const fetchMentors = async (active) => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); if (active.current) { setPendingMentors(r.data.results || r.data); setME(''); } } catch { if (active.current) setME('Failed to fetch pending mentors.'); } finally { if (active.current) setLM(false); } };
+  const fetchPayments = async (active) => { try { setLP(true); const r = await api.get('/api/payments/payments/'); if (active.current) { setPayments(r.data.results || r.data); setPE(''); } } catch { if (active.current) setPE('Failed to fetch payments logs.'); } finally { if (active.current) setLP(false); } };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (active) => {
     try {
       setLU(true);
       let url = '/api/auth/admin/users/';
@@ -63,25 +63,28 @@ export default function AdminPanel() {
         url += '?' + params.join('&');
       }
       const r = await api.get(url);
-      setUsers(r.data.results || r.data);
-      setUE('');
+      if (active.current) { setUsers(r.data.results || r.data); setUE(''); }
     } catch {
-      setUE('Failed to fetch users list.');
+      if (active.current) setUE('Failed to fetch users list.');
     } finally {
-      setLU(false);
+      if (active.current) setLU(false);
     }
   };
 
   useEffect(() => {
-    fetchCourses();
-    fetchMentors();
-    fetchPayments();
+    const active = { current: true };
+    fetchCourses(active);
+    fetchMentors(active);
+    fetchPayments(active);
+    return () => { active.current = false; };
   }, []);
 
   useEffect(() => {
+    const active = { current: true };
     if (activeTab === 'users') {
-      fetchUsers();
+      fetchUsers(active);
     }
+    return () => { active.current = false; };
   }, [activeTab, userRoleFilter, userStatusFilter]);
 
   const actCourse = async (id, action) => {

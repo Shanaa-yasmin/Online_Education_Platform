@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status, permissions, generics
 from rest_framework.decorators import action
+from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import get_object_or_404
@@ -26,6 +27,8 @@ from .serializers import (
 )
 from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
 from .filters import CourseFilter
+from .admin_reports_views import ADMIN_REPORTS_BASE_KEY
+from payments.dashboard_service import ADMIN_DASHBOARD_CACHE_KEY
 
 
 def _revoke_course_approval(course, user):
@@ -54,19 +57,26 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = Course.objects.all().select_related('mentor')
+
+        # Prefetch complete nested curriculum only for detail operations
+        if self.action in ['retrieve', 'update', 'partial_update']:
+            queryset = queryset.prefetch_related(
+                'modules__lessons__quiz_questions__options'
+            )
 
         # Admins see all courses
         if user.is_staff or user.role == 'ADMIN':
-            return Course.objects.all().order_by('-created_at')
+            return queryset.order_by('-created_at')
 
         # Mentors see approved/published courses OR their own created courses
         if user.role == 'MENTOR':
-            return Course.objects.filter(
+            return queryset.filter(
                 Q(mentor=user) | Q(is_approved=True, is_published=True)
             ).distinct().order_by('-created_at')
 
         # Students see only approved & published courses
-        return Course.objects.filter(is_approved=True, is_published=True).order_by('-created_at')
+        return queryset.filter(is_approved=True, is_published=True).order_by('-created_at')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -116,6 +126,11 @@ class CourseViewSet(viewsets.ModelViewSet):
         course.is_rejected = False
         course.save()
 
+        # Invalidate admin caches so the pending queues and stats reflect this
+        # action immediately rather than waiting for TTL expiry.
+        cache.delete(ADMIN_DASHBOARD_CACHE_KEY)
+        cache.delete(ADMIN_REPORTS_BASE_KEY)
+
         from notifications.models import Notification
         Notification.objects.create(
             recipient=course.mentor,
@@ -142,6 +157,11 @@ class CourseViewSet(viewsets.ModelViewSet):
         course.is_submitted_for_review = False
         course.is_rejected = True
         course.save()
+
+        # Invalidate admin caches — rejected course must leave the pending queue
+        # immediately on the admin dashboard and reports pages.
+        cache.delete(ADMIN_DASHBOARD_CACHE_KEY)
+        cache.delete(ADMIN_REPORTS_BASE_KEY)
 
         from notifications.models import Notification
         Notification.objects.create(
@@ -595,7 +615,7 @@ class CourseSearchView(generics.ListAPIView):
     def get_queryset(self):
         # We only want published and approved courses for the public catalog search.
         # Annotate them with avg_rating and enrollment_count so the serializer and filter can use it.
-        return Course.objects.filter(is_approved=True, is_published=True).annotate(
+        return Course.objects.filter(is_approved=True, is_published=True).select_related('mentor').annotate(
             avg_rating=Coalesce(Avg('reviews__rating'), 0.0),
             enrollment_count=Count('enrollments', distinct=True)
         ).order_by('-created_at')
@@ -603,24 +623,25 @@ class CourseSearchView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Calculate facets based on all approved & published courses (the entire search space context)
-        base_queryset = Course.objects.filter(is_approved=True, is_published=True)
+        # Cache catalog facets (levels, languages, price range) for 5 minutes
+        def _compute_facets():
+            base_queryset = Course.objects.filter(is_approved=True, is_published=True)
+            levels = list(base_queryset.values_list('level', flat=True).distinct())
+            languages = list(base_queryset.values_list('language', flat=True).distinct())
+            languages = [lang for lang in languages if lang]  # Clean empty values
 
-        levels = list(base_queryset.values_list('level', flat=True).distinct())
-        languages = list(base_queryset.values_list('language', flat=True).distinct())
-        languages = [lang for lang in languages if lang]  # Clean empty values
+            prices = base_queryset.aggregate(min_p=Min('price'), max_p=Max('price'))
+            price_range = {
+                'min': float(prices['min_p']) if prices['min_p'] is not None else 0.0,
+                'max': float(prices['max_p']) if prices['max_p'] is not None else 1000.0
+            }
+            return {
+                'levels': levels,
+                'languages': languages,
+                'price_range': price_range
+            }
 
-        prices = base_queryset.aggregate(min_p=Min('price'), max_p=Max('price'))
-        price_range = {
-            'min': float(prices['min_p']) if prices['min_p'] is not None else 0.0,
-            'max': float(prices['max_p']) if prices['max_p'] is not None else 1000.0
-        }
-
-        facets = {
-            'levels': levels,
-            'languages': languages,
-            'price_range': price_range
-        }
+        facets = cache.get_or_set('catalog_facets', _compute_facets, timeout=300)
 
         page = self.paginate_queryset(queryset)
         if page is not None:

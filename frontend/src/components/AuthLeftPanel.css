@@ -1,0 +1,234 @@
+.auth-panel-left {
+  background: var(--brand);
+  padding: 48px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+
+.auth-panel-left::before {
+  content: '';
+  position: absolute;
+  top: -90px;
+  right: -90px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-panel-left::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  position: relative;
+  z-index: 10;
+}
+
+.auth-brand-mark {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-brand-mark i {
+  color: #fff;
+  font-size: 16px;
+}
+
+.auth-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.auth-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 0 24px;
+  position: relative;
+  z-index: 10;
+}
+
+.auth-hero-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 14px;
+}
+
+.auth-hero-h {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #fff;
+  margin: 0 0 20px;
+  letter-spacing: -0.03em;
+}
+
+.auth-hero-h em {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.auth-hero-p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 360px;
+  margin-bottom: 30px;
+}
+
+.auth-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.auth-feature-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+.auth-testimonial {
+  position: relative;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  margin: 20px 0 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.auth-testimonial-quote {
+  color: #fff;
+  font-size: 15px;
+  line-height: 1.5;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+.auth-testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-testimonial-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.auth-testimonial-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.auth-testimonial-title {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.auth-testimonial-stars {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 2px;
+  color: #ffd700;
+  font-size: 12px;
+}
+
+.auth-stats-container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 24px;
+}
+
+.auth-stats {
+  display: flex;
+  gap: 32px;
+}
+
+.auth-stat-val {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  display: block;
+}
+
+.auth-stat-lbl {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+  margin-top: 2px;
+}
+
+.auth-trusted {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.auth-trusted-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.auth-trusted-logos {
+  display: flex;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 20px;
+}
+
+

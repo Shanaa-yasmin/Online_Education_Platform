@@ -16,22 +16,24 @@ export function NotificationProvider({ children, user }) {
   const reconnectTimer = useRef(null);
 
   // ── Fetch notifications ──────────────────────────────────────────
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (active = { current: true }) => {
     if (!user) return;
     try {
       setLoading(true);
       const res = await api.get('/api/notifications/');
-      const data = Array.isArray(res.data) ? res.data : res.data.results || [];
-      setNotifications(data);
+      if (active.current) {
+        const data = Array.isArray(res.data) ? res.data : res.data.results || [];
+        setNotifications(data);
 
-      const count = res.data.unread_count !== undefined
-        ? res.data.unread_count
-        : data.filter(n => !n.is_read).length;
-      setUnreadCount(count);
+        const count = res.data.unread_count !== undefined
+          ? res.data.unread_count
+          : data.filter(n => !n.is_read).length;
+        setUnreadCount(count);
+      }
     } catch (err) {
       console.error('[Notifications] Fetch failed:', err);
     } finally {
-      setLoading(false);
+      if (active.current) setLoading(false);
     }
   }, [user]);
 
@@ -104,8 +106,9 @@ export function NotificationProvider({ children, user }) {
 
   // ── Initialize & Clean up WebSocket ──────────────────────────────
   useEffect(() => {
+    const active = { current: true };
     if (user) {
-      fetchNotifications();
+      fetchNotifications(active);
       connectWS();
     } else {
       // Clean up on logout
@@ -119,7 +122,12 @@ export function NotificationProvider({ children, user }) {
     }
 
     return () => {
+      active.current = false;
       clearTimeout(reconnectTimer.current);
+      if (wsRef.current) {
+        wsRef.current.close(1000);
+        wsRef.current = null;
+      }
     };
   }, [userId]);
 

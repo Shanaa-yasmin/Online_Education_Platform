@@ -54,17 +54,31 @@ export default function MentorDashboard() {
     }
   }, [searchParams]);
 
-  const fetchCourses = async () => {
-    try { setLoading(true); const r = await api.get('/api/courses/'); setCourses((r.data.results || r.data).filter(c => String(c.mentor?.id || c.mentor) === String(user?.id))); setError(''); }
-    catch { setError('Failed to load courses.'); }
-
-    finally { setLoading(false); }
+  const fetchCourses = async (active) => {
+    try {
+      setLoading(true);
+      const r = await api.get('/api/courses/');
+      if (active.current) {
+        setCourses((r.data.results || r.data).filter(c => String(c.mentor?.id || c.mentor) === String(user?.id)));
+        setError('');
+      }
+    } catch {
+      if (active.current) setError('Failed to load courses.');
+    } finally {
+      if (active.current) setLoading(false);
+    }
   };
 
-  const fetchPayments = async () => {
-    try { setLP(true); const r = await api.get('/api/payments/payments/'); setPayments(r.data.results || r.data); setPE(''); }
-    catch { setPE('Failed to load payments logs.'); }
-    finally { setLP(false); }
+  const fetchPayments = async (active) => {
+    try {
+      setLP(true);
+      const r = await api.get('/api/payments/payments/');
+      if (active.current) { setPayments(r.data.results || r.data); setPE(''); }
+    } catch {
+      if (active.current) setPE('Failed to load payments logs.');
+    } finally {
+      if (active.current) setLP(false);
+    }
   };
 
   const actRefund = async (id) => {
@@ -81,7 +95,14 @@ export default function MentorDashboard() {
     }
   };
 
-  useEffect(() => { if (user) { fetchCourses(); fetchPayments(); } }, [user]);
+  useEffect(() => {
+    const active = { current: true };
+    if (user) {
+      fetchCourses(active);
+      fetchPayments(active);
+    }
+    return () => { active.current = false; };
+  }, [user]);
 
   const handleInput = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -215,7 +236,7 @@ export default function MentorDashboard() {
                         <div>
                           {course.thumbnail && (
                             <div className="mc-thumb">
-                              <img src={course.thumbnail} alt={course.title} />
+                              <img src={course.thumbnail} alt={course.title} loading="lazy" />
                             </div>
                           )}
                           <div className="mc-header">

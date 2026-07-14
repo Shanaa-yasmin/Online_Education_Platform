@@ -118,13 +118,21 @@ _DEFAULT_PORT = '6543' if _USE_PGBOUNCER else '5432'
 _DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 _PARSED_DB = None
 
+# When running in Docker, the local Postgres container does not use SSL.
+# Set DOCKER_ENV=true in docker-compose to skip SSL for local dev.
+_DOCKER_ENV = os.environ.get('DOCKER_ENV', 'false').lower() == 'true'
+_SSL_REQUIRE = not _DOCKER_ENV
+
 if _DATABASE_URL:
     try:
         _PARSED_DB = dj_database_url.parse(
             _DATABASE_URL,
             conn_max_age=int(os.environ.get('CONN_MAX_AGE', 600)),
-            ssl_require=True,
+            ssl_require=_SSL_REQUIRE,
         )
+        # Remove sslmode from OPTIONS when running local Docker DB
+        if _DOCKER_ENV and _PARSED_DB.get('OPTIONS'):
+            _PARSED_DB['OPTIONS'].pop('sslmode', None)
     except Exception:
         # Placeholder / malformed URL — fall through to individual env vars
         _PARSED_DB = None
@@ -132,6 +140,7 @@ if _DATABASE_URL:
 if _PARSED_DB:
     DATABASES = {'default': _PARSED_DB}
 else:
+    _db_options = {} if _DOCKER_ENV else {'sslmode': 'require'}
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -141,9 +150,7 @@ else:
             'HOST':     os.environ.get('DB_HOST', 'localhost'),
             'PORT':     os.environ.get('DB_PORT', _DEFAULT_PORT),
             'CONN_MAX_AGE': int(os.environ.get('CONN_MAX_AGE', 600)),
-            'OPTIONS': {
-                'sslmode': 'require',
-            },
+            'OPTIONS': _db_options,
         }
     }
 
@@ -232,9 +239,46 @@ SIMPLE_JWT = {
 
 # WebSockets Channels Config
 ASGI_APPLICATION = 'core.asgi.application'
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+# REDIS_URL drives both the cache backend and the Channel Layer broker so there
+# is a single place to change for prod (set REDIS_URL in your .env or platform
+# environment variables to point at Upstash / Redis Cloud / Railway Redis etc.).
+# DB index 1 is used for the cache; channels_redis defaults to DB 0 internally
+# via its own key-space management, so the two subsystems never collide.
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
+
+# Django cache backend — django-redis wraps redis-py with Django's cache API.
+# KEY_PREFIX namespaces every key so this instance can safely share a Redis
+# server with other apps without key collisions.
+# TIMEOUT of 300 s is the global default; individual cache.set() calls in
+# dashboard_service.py and admin_reports_views.py override it per use-case.
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'edupath',
+        'TIMEOUT': 300,  # seconds — default for keys that don't set their own TTL
+    }
+}
+
+# Channel Layers — Redis broker so Django Channels WebSocket messages are
+# routed correctly across all Daphne workers (InMemoryChannelLayer only works
+# for a single process and silently drops cross-process messages).
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [
+                {
+                    'address': REDIS_URL,
+                    'socket_timeout': None,
+                }
+            ],
+        },
     },
 }
 

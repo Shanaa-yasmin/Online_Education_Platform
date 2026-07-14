@@ -1,13 +1,16 @@
 import csv
+import hashlib
 import io
 import datetime
+from django.core.cache import cache
 from django.db.models.functions import TruncMonth, TruncDay
 from django.http import HttpResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from django.contrib.auth import get_user_model
-from django.db.models import Sum, Avg, Count, Q
+from django.db.models import Sum, Avg, Count, Q, DecimalField
+from django.db.models.functions import Coalesce, TruncMonth, TruncDay
 from django.utils import timezone
 
 from courses.models import Course, Lesson
@@ -16,6 +19,30 @@ from certificates.models import Certificate
 from notifications.models import Notification
 
 User = get_user_model()
+
+# ── Cache constants ────────────────────────────────────────────────────────────
+# ADMIN_REPORTS_BASE_KEY is the stable cache key for the unfiltered reports
+# response.  Invalidation callers (course approve/reject) delete this key so
+# admins see fresh stats immediately.  Filtered variants (with query params)
+# use per-fingerprint keys and expire naturally at ADMIN_REPORTS_CACHE_TTL.
+ADMIN_REPORTS_BASE_KEY = "admin_reports:nofilter"
+ADMIN_REPORTS_CACHE_TTL = 300  # 5 minutes — reports are analytical/historical;
+                                # users don't expect real-time freshness here.
+
+
+def _make_reports_cache_key(request) -> str:
+    """Return a stable cache key for the current set of query-param filters.
+
+    When there are no filters, returns ADMIN_REPORTS_BASE_KEY so invalidation
+    callers have a predictable key to delete.  When filters are present, builds
+    a short MD5 fingerprint of the sorted params so each unique combination gets
+    its own cache slot without creating unbounded key sprawl.
+    """
+    params = dict(sorted(request.query_params.items()))
+    if not params:
+        return ADMIN_REPORTS_BASE_KEY
+    fingerprint = hashlib.md5(str(params).encode(), usedforsecurity=False).hexdigest()[:12]
+    return f"admin_reports:{fingerprint}"
 
 try:
     import openpyxl
@@ -69,23 +96,37 @@ def get_admin_reports_data(request):
         enrollments = enrollments.filter(progress_percent__lt=100.0)
 
     # Aggregations
-    total_users = User.objects.count()
-    students_count = User.objects.filter(role='STUDENT').count()
-    mentors_count = User.objects.filter(role='MENTOR').count()
-    admins_count = User.objects.filter(Q(role='ADMIN') | Q(is_staff=True)).distinct().count()
+    user_stats = User.objects.aggregate(
+        total=Count('id'),
+        students=Count('id', filter=Q(role='STUDENT')),
+        mentors=Count('id', filter=Q(role='MENTOR')),
+        admins=Count('id', filter=Q(role='ADMIN') | Q(is_staff=True))
+    )
+    total_users = user_stats['total']
+    students_count = user_stats['students']
+    mentors_count = user_stats['mentors']
+    admins_count = user_stats['admins']
 
-    total_courses = Course.objects.count()
-    published_courses = Course.objects.filter(is_published=True).count()
-    pending_courses = Course.objects.filter(is_submitted_for_review=True, is_approved=False).count()
-    rejected_courses = Course.objects.filter(is_rejected=True).count()
+    course_stats = Course.objects.aggregate(
+        total=Count('id'),
+        published=Count('id', filter=Q(is_published=True)),
+        pending=Count('id', filter=Q(is_submitted_for_review=True, is_approved=False)),
+        rejected=Count('id', filter=Q(is_rejected=True))
+    )
+    total_courses = course_stats['total']
+    published_courses = course_stats['published']
+    pending_courses = course_stats['pending']
+    rejected_courses = course_stats['rejected']
 
     total_enrollments = enrollments.count()
 
-    revenue_sum = payments.filter(status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
-    revenue = float(revenue_sum)
-
-    refunds_sum = payments.filter(status=Payment.StatusChoices.REFUNDED).aggregate(total=Sum('amount'))['total'] or 0.00
-    refunds = float(refunds_sum)
+    # Combine revenue + refunds into a single grouped query
+    payment_sums = payments.filter(
+        status__in=[Payment.StatusChoices.COMPLETED, Payment.StatusChoices.REFUNDED]
+    ).values('status').annotate(total=Sum('amount'))
+    payment_sums_dict = {item['status']: float(item['total'] or 0.0) for item in payment_sums}
+    revenue = payment_sums_dict.get(Payment.StatusChoices.COMPLETED, 0.0)
+    refunds = payment_sums_dict.get(Payment.StatusChoices.REFUNDED, 0.0)
 
     avg_rating = Course.objects.aggregate(avg=Avg('rating_average'))['avg'] or 0.0
     avg_rating = round(float(avg_rating), 2)
@@ -112,8 +153,8 @@ def get_admin_reports_data(request):
             "enrollments": md['count']
         })
 
-    # Top courses
-    top_courses_qs = Course.objects.annotate(
+    # Top courses — select_related('mentor') avoids N+1 user lookups
+    top_courses_qs = Course.objects.select_related('mentor').annotate(
         active_students=Count('enrollments', filter=Q(enrollments__is_active=True))
     ).order_by('-active_students')[:5]
     top_courses = []
@@ -125,20 +166,21 @@ def get_admin_reports_data(request):
             "mentor": tc.mentor.username
         })
 
-    # Top Mentors
+    # Top Mentors — single annotated query replaces in-Python sort of all mentors
     top_mentors_qs = User.objects.filter(role='MENTOR').annotate(
-        total_rev=Sum(
-            'created_courses__enrollments__payments__amount',
-            filter=Q(created_courses__enrollments__payments__status=Payment.StatusChoices.COMPLETED)
+        revenue=Coalesce(
+            Sum(
+                'created_courses__enrollments__payments__amount',
+                filter=Q(created_courses__enrollments__payments__status=Payment.StatusChoices.COMPLETED)
+            ),
+            0.0,
+            output_field=DecimalField()
         )
-    ).order_by('-total_rev')[:5]
-    top_mentors = []
-    for tm in top_mentors_qs:
-        top_mentors.append({
-            "id": tm.id,
-            "username": tm.username,
-            "revenue": float(tm.total_rev) if tm.total_rev else 0.00
-        })
+    ).order_by('-revenue')[:5]
+    top_mentors = [
+        {"id": tm.id, "username": tm.username, "revenue": float(tm.revenue)}
+        for tm in top_mentors_qs
+    ]
 
     # Most Active Students
     most_active_qs = User.objects.filter(role='STUDENT').annotate(
@@ -196,16 +238,23 @@ class AdminReportsView(APIView):
         if request.user.role != 'ADMIN':
             return Response({"detail": "Only administrators can view admin reports."}, status=status.HTTP_403_FORBIDDEN)
 
+        cache_key = _make_reports_cache_key(request)
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            return Response(cached_response, status=status.HTTP_200_OK)
+
         data = get_admin_reports_data(request)
 
-        return Response({
+        response_data = {
             "stats": data["stats"],
             "monthly_enrollments": data["monthly_enrollments"],
             "top_courses": data["top_courses"],
             "top_mentors": data["top_mentors"],
             "most_active_students": data["most_active_students"],
             "most_popular_categories": data["most_popular_categories"]
-        }, status=status.HTTP_200_OK)
+        }
+        cache.set(cache_key, response_data, ADMIN_REPORTS_CACHE_TTL)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class AdminReportFilterOptionsView(APIView):
@@ -250,6 +299,14 @@ class AdminReportsExportView(APIView):
         enrollments = data["enrollments"]
         stats = data["stats"]
 
+        # Pre-fetch matching completed payments to avoid N+1 query loops
+        payments_by_enrollment = {
+            p.enrollment_id: p
+            for p in Payment.objects.filter(
+                enrollment__in=enrollments, status=Payment.StatusChoices.COMPLETED
+            )
+        }
+
         if format_type == 'csv':
             response = HttpResponse(content_type='text/csv')
             response['Content-Disposition'] = f'attachment; filename="admin_report_{datetime.datetime.now().strftime("%Y%m%d")}.csv"'
@@ -258,7 +315,7 @@ class AdminReportsExportView(APIView):
             writer.writerow(['Date Enrolled', 'Student Username', 'Student Email', 'Course Title', 'Category', 'Progress %', 'Revenue Amount'])
 
             for enroll in enrollments:
-                pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
+                pay = payments_by_enrollment.get(enroll.id)
                 amt = float(pay.amount) if pay else 0.00
                 writer.writerow([
                     enroll.enrolled_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -289,7 +346,7 @@ class AdminReportsExportView(APIView):
                     cell.fill = header_fill
 
                 for enroll in enrollments:
-                    pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
+                    pay = payments_by_enrollment.get(enroll.id)
                     amt = float(pay.amount) if pay else 0.00
                     ws.append([
                         enroll.enrolled_at.strftime('%Y-%m-%d'),
@@ -312,7 +369,7 @@ class AdminReportsExportView(APIView):
                 writer = csv.writer(response, delimiter='\t')
                 writer.writerow(['Date Enrolled', 'Student Username', 'Student Email', 'Course Title', 'Category', 'Progress %', 'Revenue Amount'])
                 for enroll in enrollments:
-                    pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
+                    pay = payments_by_enrollment.get(enroll.id)
                     amt = float(pay.amount) if pay else 0.00
                     writer.writerow([
                         enroll.enrolled_at.strftime('%Y-%m-%d'),
@@ -326,7 +383,7 @@ class AdminReportsExportView(APIView):
                 return response
 
         elif format_type == 'pdf':
-            pdf_bytes = generate_pdf_report(enrollments, stats)
+            pdf_bytes = generate_pdf_report(enrollments, stats, payments_by_enrollment)
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="admin_report_{datetime.datetime.now().strftime("%Y%m%d")}.pdf"'
             return response
@@ -334,7 +391,7 @@ class AdminReportsExportView(APIView):
         return HttpResponse("Invalid format type.", status=400)
 
 
-def generate_pdf_report(enrollments, stats):
+def generate_pdf_report(enrollments, stats, payments_by_enrollment=None):
     import os
     from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
@@ -403,7 +460,10 @@ def generate_pdf_report(enrollments, stats):
     story.append(Paragraph(f"Filtered Transactions (Top 30 shown)", section_style))
     tx_data = [["Date", "Student", "Course", "Progress", "Amount"]]
     for enroll in enrollments[:30]:
-        pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
+        if payments_by_enrollment is not None:
+            pay = payments_by_enrollment.get(enroll.id)
+        else:
+            pay = Payment.objects.filter(enrollment=enroll, status=Payment.StatusChoices.COMPLETED).first()
         amt = f"${pay.amount:.2f}" if pay else "$0.00"
         tx_data.append([
             enroll.enrolled_at.strftime('%Y-%m-%d'),
