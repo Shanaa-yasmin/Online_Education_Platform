@@ -360,10 +360,11 @@ class ReviewViewSet(viewsets.GenericViewSet):
         if serializer.is_valid():
             serializer.save(review=review, reported_by=request.user)
             
-            # Check Threshold for Admin notification
+            # Check Threshold for Admin notification (notifies on 1+ reports for immediate action)
             report_count = review.reports.count()
-            if report_count >= 3:
+            if report_count >= 1:
                 _notify_admins_of_reported_review(review, report_count)
+
                 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

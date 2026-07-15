@@ -48,6 +48,8 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
         return '📝';
       case 'NEW_ANNOUNCEMENT':
         return '📢';
+      case 'REVIEW_REPORTED':
+        return '⚠️';
       default:
         return '🔔';
     }
@@ -68,6 +70,9 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
         break;
       case 'COURSE_PENDING_APPROVAL':
         path = '/admin/portal?tab=courses';
+        break;
+      case 'REVIEW_REPORTED':
+        path = '/admin/portal?tab=reports';
         break;
       case 'QUESTION_REPLY':
       case 'QNA_REPLY':
