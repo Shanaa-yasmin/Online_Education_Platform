@@ -58,7 +58,13 @@ const TrashIcon = () => (
   </svg>
 );
 
-export default function ReviewCard({ review, isOwner, isAdmin, onEdit, onDelete }) {
+const FlagIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" />
+  </svg>
+);
+
+export default function ReviewCard({ review, isOwner, isAdmin, onEdit, onDelete, onReport }) {
   const wasEdited = review.updated_at && review.created_at !== review.updated_at;
 
   return (
@@ -81,26 +87,40 @@ export default function ReviewCard({ review, isOwner, isAdmin, onEdit, onDelete 
         <p className="review-card__comment">{review.comment}</p>
       )}
 
-      {(isOwner || isAdmin) && (
-        <div className="review-card__actions">
-          {isOwner && (
+      <div className="review-card__actions" style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+        {(isOwner || isAdmin) && (
+          <div style={{ display: 'flex', gap: 12 }}>
+            {isOwner && (
+              <button
+                className="review-action-btn review-action-btn--edit"
+                onClick={() => onEdit?.(review)}
+                aria-label="Edit review"
+              >
+                <EditIcon /> Edit
+              </button>
+            )}
             <button
-              className="review-action-btn review-action-btn--edit"
-              onClick={() => onEdit?.(review)}
-              aria-label="Edit review"
+              className="review-action-btn review-action-btn--delete"
+              onClick={() => onDelete?.(review.id)}
+              aria-label="Delete review"
             >
-              <EditIcon /> Edit
+              <TrashIcon /> Delete
             </button>
-          )}
+          </div>
+        )}
+
+        {!isOwner && !isAdmin && (
           <button
-            className="review-action-btn review-action-btn--delete"
-            onClick={() => onDelete?.(review.id)}
-            aria-label="Delete review"
+            className={`review-card__report-btn ${review.has_reported ? 'review-card__report-btn--reported' : ''}`}
+            onClick={() => !review.has_reported && onReport?.(review)}
+            disabled={review.has_reported}
+            aria-label={review.has_reported ? "Review reported" : "Report review for abuse"}
           >
-            <TrashIcon /> Delete
+            <FlagIcon /> {review.has_reported ? 'Reported' : 'Report'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </article>
   );
 }
+

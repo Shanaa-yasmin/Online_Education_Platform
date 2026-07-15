@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from .models import (
     Course, Module, Lesson,
     QuizQuestion, QuizOption, QuizAttempt, QuizAnswer,
-    Review
+    Review, ReviewReport
 )
 
 User = get_user_model()
@@ -206,16 +206,23 @@ class CourseSearchSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     student = UserMiniSerializer(read_only=True)
     is_owner = serializers.SerializerMethodField()
+    has_reported = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ['id', 'course', 'student', 'rating', 'comment', 'created_at', 'updated_at', 'is_owner']
+        fields = ['id', 'course', 'student', 'rating', 'comment', 'created_at', 'updated_at', 'is_owner', 'has_reported']
         read_only_fields = ['id', 'course', 'student', 'created_at', 'updated_at']
 
     def get_is_owner(self, obj):
         request = self.context.get('request')
         if request and hasattr(request, 'user') and request.user.is_authenticated:
             return obj.student_id == request.user.id
+        return False
+
+    def get_has_reported(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return obj.reports.filter(reported_by=request.user).exists()
         return False
 
     def validate(self, attrs):
@@ -301,3 +308,25 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
             'attempt_number', 'answers',
         ]
         read_only_fields = fields
+
+
+class ReviewReportSerializer(serializers.ModelSerializer):
+    reported_by_name = serializers.CharField(source='reported_by.username', read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.username', read_only=True)
+    review_comment = serializers.CharField(source='review.comment', read_only=True)
+    review_rating = serializers.IntegerField(source='review.rating', read_only=True)
+    review_student_name = serializers.CharField(source='review.student.username', read_only=True)
+    course_title = serializers.CharField(source='review.course.title', read_only=True)
+
+    class Meta:
+        model = ReviewReport
+        fields = [
+            'id', 'review', 'reported_by', 'reported_by_name', 'reason', 
+            'details', 'status', 'created_at', 'reviewed_by', 
+            'reviewed_by_name', 'reviewed_at', 'review_comment',
+            'review_rating', 'review_student_name', 'course_title'
+        ]
+        read_only_fields = [
+            'id', 'reported_by', 'status', 'created_at', 
+            'reviewed_by', 'reviewed_at'
+        ]

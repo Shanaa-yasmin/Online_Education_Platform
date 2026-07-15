@@ -4,15 +4,11 @@ import RatingDistribution from './RatingDistribution';
 import ReviewCard from './ReviewCard';
 import ReviewForm from './ReviewForm';
 import ReviewSkeleton from './ReviewSkeleton';
+import ReportModal from './ReportModal';
 import './Reviews.css';
 
 /**
  * ReviewsList — Orchestrator for the entire reviews section.
- *
- * Props:
- *   courseId    – the course ID
- *   isEnrolled – whether the current user is enrolled
- *   user       – current user object (from AuthContext)
  */
 export default function ReviewsList({ courseId, isEnrolled, user }) {
   const [data, setData] = useState(null);
@@ -20,9 +16,12 @@ export default function ReviewsList({ courseId, isEnrolled, user }) {
   const [editingReview, setEditingReview] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [reportingReview, setReportingReview] = useState(null);
+  const [reportSuccessText, setReportSuccessText] = useState('');
 
   const isStudent = user?.role === 'STUDENT';
   const isAdmin = user?.role === 'ADMIN' || user?.is_staff;
+
 
   const fetchReviews = useCallback(async () => {
     try {
@@ -74,13 +73,31 @@ export default function ReviewsList({ courseId, isEnrolled, user }) {
     setShowForm(false);
   };
 
+  const handleReportSuccess = (reviewId) => {
+    setReportSuccessText('Review has been reported to administrators.');
+    setTimeout(() => setReportSuccessText(''), 4500);
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        results: (prev.results || []).map(r => r.id === reviewId ? { ...r, has_reported: true } : r)
+      };
+    });
+  };
+
   // Determine if the current user already has a review
   const userReview = data?.user_review;
   const canReview = isStudent && isEnrolled && !userReview && !editingReview;
 
   return (
     <section className="reviews-section" id="reviews">
+      {reportSuccessText && (
+        <div className="alert alert-success animate-fadeIn" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>{reportSuccessText}</span>
+        </div>
+      )}
       <div className="reviews-section__header">
+
         <h3 className="reviews-section__title">Student Reviews</h3>
         {canReview && !showForm && (
           <button
@@ -139,6 +156,7 @@ export default function ReviewsList({ courseId, isEnrolled, user }) {
                   isAdmin={isAdmin}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onReport={setReportingReview}
                 />
               ))}
             </div>
@@ -159,6 +177,15 @@ export default function ReviewsList({ courseId, isEnrolled, user }) {
           )}
         </>
       )}
+
+      {reportingReview && (
+        <ReportModal
+          review={reportingReview}
+          onClose={() => setReportingReview(null)}
+          onReportSuccess={handleReportSuccess}
+        />
+      )}
     </section>
   );
 }
+

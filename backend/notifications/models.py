@@ -20,6 +20,7 @@ class Notification(models.Model):
         REFUND = 'REFUND', 'Refund Event'
         ANNOUNCEMENT = 'ANNOUNCEMENT', 'Mentor Announcement'
         NEW_ANNOUNCEMENT = 'NEW_ANNOUNCEMENT', 'New Announcement'
+        REVIEW_REPORTED = 'REVIEW_REPORTED', 'Review Reported'
 
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,

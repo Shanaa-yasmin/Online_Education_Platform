@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Course, Module, Lesson,
     QuizQuestion, QuizOption, QuizAttempt, QuizAnswer,
-    Review,
+    Review, ReviewReport,
 )
 
 
@@ -100,3 +100,11 @@ class ReviewAdmin(admin.ModelAdmin):
     list_display = ('course', 'student', 'rating', 'is_flagged', 'created_at')
     list_filter = ('rating', 'is_flagged')
     search_fields = ('comment', 'course__title', 'student__username')
+
+
+@admin.register(ReviewReport)
+class ReviewReportAdmin(admin.ModelAdmin):
+    list_display = ('review', 'reported_by', 'reason', 'status', 'created_at', 'reviewed_by')
+    list_filter = ('status', 'reason', 'created_at')
+    search_fields = ('review__comment', 'reported_by__username', 'details')
+    raw_id_fields = ('review', 'reported_by', 'reviewed_by')

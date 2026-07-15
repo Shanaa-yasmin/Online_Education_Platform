@@ -11,7 +11,7 @@ from django.utils import timezone
 from .models import (
     Course, Module, Lesson,
     QuizQuestion, QuizAttempt, QuizAnswer,
-    Review
+    Review, ReviewReport
 )
 from .serializers import (
     CourseSerializer,
@@ -22,8 +22,9 @@ from .serializers import (
     QuizAnswerInputSerializer,
     QuizAttemptSerializer,
 
-    ReviewSerializer
+    ReviewSerializer, ReviewReportSerializer
 )
+
 from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
 
 from .admin_reports_views import ADMIN_REPORTS_BASE_KEY
@@ -275,7 +276,8 @@ class CourseViewSet(viewsets.ModelViewSet):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         # ── GET method ────────────────────────────────────────────────
-        reviews_qs = course.reviews.select_related('student').order_by('-created_at')
+        reviews_qs = course.reviews.filter(is_flagged=False).select_related('student').order_by('-created_at')
+
 
         # Rating distribution (5 → 1)
         distribution_raw = reviews_qs.values('rating').annotate(count=Count('id'))
@@ -335,6 +337,37 @@ class ReviewViewSet(viewsets.GenericViewSet):
             )
         review.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def report(self, request, pk=None):
+        review = self.get_object()
+        
+        # Prevent self reporting
+        if review.student == request.user:
+            return Response(
+                {"detail": "You cannot report your own review."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Check duplicate
+        if ReviewReport.objects.filter(review=review, reported_by=request.user).exists():
+            return Response(
+                {"detail": "You have already reported this review."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        serializer = ReviewReportSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(review=review, reported_by=request.user)
+            
+            # Check Threshold for Admin notification
+            report_count = review.reports.count()
+            if report_count >= 3:
+                _notify_admins_of_reported_review(review, report_count)
+                
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class ModuleViewSet(viewsets.ModelViewSet):
@@ -455,4 +488,108 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         lesson = quiz_service.get_quiz_lesson(lesson_pk)
         attempts = quiz_service.get_history(lesson, request.user)
         serializer = QuizAttemptSerializer(attempts, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+def _notify_admins_of_reported_review(review, report_count):
+    from notifications.models import Notification
+    from notifications.serializers import NotificationSerializer
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    import threading
+
+    def notify():
+        try:
+            admins = User.objects.filter(role='ADMIN', is_active=True)
+            notifications = [
+                Notification(
+                    recipient=admin,
+                    sender=review.student,
+                    title="⚠️ Review Flagged",
+                    message=f"Review by {review.student.username} for course '{review.course.title}' has received {report_count} reports.",
+                    notification_type=Notification.NotificationType.REVIEW_REPORTED,
+                    related_object_id=review.id,
+                    related_object_type="review"
+                )
+                for admin in admins
+            ]
+            created = Notification.objects.bulk_create(notifications)
+            
+            # WebSocket pushes
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                for notif in created:
+                    group_name = f"user_{notif.recipient_id}"
+                    serializer = NotificationSerializer(notif)
+                    try:
+                        async_to_sync(channel_layer.group_send)(
+                            group_name,
+                            {
+                                "type": "send_notification",
+                                "payload": serializer.data
+                            }
+                        )
+                    except Exception as ws_err:
+                        print(f"[WS ERROR] Failed to send WS notification: {ws_err}")
+        except Exception as e:
+            print(f"Error in notifying admins of reported review: {e}")
+            
+    threading.Thread(target=notify, daemon=True).start()
+
+
+class AdminReviewReportViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrStaff]
+    serializer_class = ReviewReportSerializer
+
+    def get_queryset(self):
+        queryset = ReviewReport.objects.select_related(
+            'review', 'review__student', 'review__course', 'reported_by', 'reviewed_by'
+        ).annotate(
+            review_report_count=Count('review__reports')
+        ).order_by('-review_report_count', '-created_at')
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param.upper())
+        return queryset
+
+    def partial_update(self, request, pk=None):
+        report = self.get_object()
+        action_val = request.data.get('action')
+
+        if action_val not in ['dismiss', 'remove_review']:
+            return Response(
+                {"detail": "Invalid action. Must be 'dismiss' or 'remove_review'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if action_val == 'dismiss':
+            report.status = ReviewReport.StatusChoices.DISMISSED
+        elif action_val == 'remove_review':
+            report.status = ReviewReport.StatusChoices.REVIEWED
+            # Hide the review!
+            review = report.review
+            review.is_flagged = True
+            review.save()
+
+        report.reviewed_by = request.user
+        report.reviewed_at = timezone.now()
+        report.save()
+
+        # Update other reports for the same review to keep status synced!
+        if action_val == 'remove_review':
+            ReviewReport.objects.filter(review=report.review, status=ReviewReport.StatusChoices.PENDING).update(
+                status=ReviewReport.StatusChoices.REVIEWED,
+                reviewed_by=request.user,
+                reviewed_at=timezone.now()
+            )
+        elif action_val == 'dismiss':
+            ReviewReport.objects.filter(review=report.review, status=ReviewReport.StatusChoices.PENDING).update(
+                status=ReviewReport.StatusChoices.DISMISSED,
+                reviewed_by=request.user,
+                reviewed_at=timezone.now()
+            )
+
+        # Force recalculation of serializer to include updated fields
+        serializer = self.get_serializer(report)
         return Response(serializer.data)

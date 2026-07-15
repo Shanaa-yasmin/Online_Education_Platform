@@ -11,12 +11,15 @@ from .views import (
     QuizAttemptViewSet,
     QuizQuestionViewSet,
     ReviewViewSet,
+    AdminReviewReportViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'courses', CourseViewSet, basename='course')
 router.register(r'reviews', ReviewViewSet, basename='review')
+router.register(r'admin/review-reports', AdminReviewReportViewSet, basename='admin-review-report')
 router.register(r'modules', ModuleViewSet, basename='module')
+
 router.register(r'lessons', LessonViewSet, basename='lesson')
 router.register(r'quiz-questions', QuizQuestionViewSet, basename='quizquestion')
 router.register(r'quiz-attempts', QuizAttemptViewSet, basename='quizattempt')

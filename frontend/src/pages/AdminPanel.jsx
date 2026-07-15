@@ -24,6 +24,12 @@ export default function AdminPanel() {
   const [stats, setStats] = useState(null);
   const [loadingStats, setLS] = useState(true);
 
+  // Review Reporting states
+  const [reports, setReports] = useState([]);
+  const [loadingReports, setLR] = useState(true);
+  const [reportsError, setRE] = useState('');
+  const [reportsStatusFilter, setReportsStatusFilter] = useState('PENDING');
+
   // User Management Filters & Details state
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
@@ -38,10 +44,11 @@ export default function AdminPanel() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['courses', 'mentors', 'users'].includes(tabParam) && tabParam !== activeTab) {
+    if (tabParam && ['courses', 'mentors', 'users', 'reports'].includes(tabParam) && tabParam !== activeTab) {
       setTabState(tabParam);
     }
   }, [searchParams]);
+
 
   const fetchCourses = async (active) => { try { setLC(true); const r = await api.get('/api/courses/'); if (active.current) { setPendingCourses((r.data.results || r.data).filter(c => !c.is_approved)); setCE(''); } } catch { if (active.current) setCE('Failed to fetch pending courses.'); } finally { if (active.current) setLC(false); } };
   const fetchMentors = async (active) => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); if (active.current) { setPendingMentors(r.data.results || r.data); setME(''); } } catch { if (active.current) setME('Failed to fetch pending mentors.'); } finally { if (active.current) setLM(false); } };
@@ -89,10 +96,39 @@ export default function AdminPanel() {
     }
   };
 
+  const fetchReports = async (active = { current: true }) => {
+    try {
+      setLR(true);
+      let url = '/api/courses/admin/review-reports/';
+      if (reportsStatusFilter && reportsStatusFilter !== 'ALL') {
+        url += `?status=${reportsStatusFilter}`;
+      }
+      const r = await api.get(url);
+      if (active.current) {
+        setReports(r.data.results || r.data);
+        setRE('');
+      }
+    } catch {
+      if (active.current) setRE('Failed to fetch reported reviews.');
+    } finally {
+      if (active.current) setLR(false);
+    }
+  };
+
+  const resolveReport = async (reportId, action) => {
+    try {
+      await api.patch(`/api/courses/admin/review-reports/${reportId}/`, { action });
+      fetchReports();
+    } catch {
+      alert(`Failed to resolve report.`);
+    }
+  };
+
   useEffect(() => {
     const active = { current: true };
     fetchCourses(active);
     fetchMentors(active);
+    fetchReports(active);
     return () => { active.current = false; };
   }, []);
 
@@ -103,6 +139,15 @@ export default function AdminPanel() {
     }
     return () => { active.current = false; };
   }, [activeTab, userRoleFilter, userStatusFilter]);
+
+  useEffect(() => {
+    const active = { current: true };
+    if (activeTab === 'reports') {
+      fetchReports(active);
+    }
+    return () => { active.current = false; };
+  }, [activeTab, reportsStatusFilter]);
+
 
   const actCourse = async (id, action) => {
     setActioningId(id);
@@ -246,7 +291,11 @@ export default function AdminPanel() {
             <button className={`tab-btn${activeTab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
               User Management
             </button>
+            <button className={`tab-btn${activeTab === 'reports' ? ' active' : ''}`} onClick={() => setTab('reports')}>
+              Reported Reviews {reports.filter(r => r.status === 'PENDING').length > 0 ? `(${reports.filter(r => r.status === 'PENDING').length})` : ''}
+            </button>
           </div>
+
 
           {activeTab === 'courses' && (
             <div>
@@ -601,8 +650,162 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
+
+          {activeTab === 'reports' && (
+            <div className="admin-reports-section animate-fadeIn" style={{ marginTop: 20 }}>
+              {/* Filter controls */}
+              <div className="users-filter-bar" style={{ marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--txt-2)' }}>Filter Status:</span>
+                <select
+                  value={reportsStatusFilter}
+                  onChange={e => setReportsStatusFilter(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1.5px solid var(--border)',
+                    borderRadius: 8,
+                    fontSize: 13.5,
+                    background: 'var(--surface)',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    color: 'var(--txt-1)'
+                  }}
+                >
+                  <option value="PENDING">Pending Reports</option>
+                  <option value="DISMISSED">Dismissed Reports</option>
+                  <option value="REVIEWED">Removed Reviews</option>
+                  <option value="ALL">All Reports</option>
+                </select>
+              </div>
+
+              {reportsError && <div className="alert alert-error" style={{ marginBottom: 20 }}>{reportsError}</div>}
+
+              {loadingReports ? (
+                <div className="loading-container"><div className="loading-spinner" /><p>Loading reported reviews…</p></div>
+              ) : reports.length === 0 ? (
+                <div className="admin-empty">
+                  <i className="ti ti-shield-check" />
+                  <h3>Queue is clear</h3>
+                  <p>No reported reviews found matching this filter.</p>
+                </div>
+              ) : (
+                <div className="mod-list" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {reports.map((report) => (
+                    <article key={report.id} className="mod-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+                      <div className="mod-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                          <div>
+                            <span style={{
+                              textTransform: 'uppercase',
+                              fontSize: 10.5,
+                              background: 'rgba(220, 38, 38, 0.1)',
+                              color: '#dc2626',
+                              padding: '3px 8px',
+                              borderRadius: 4,
+                              fontWeight: 700,
+                              letterSpacing: '0.05em'
+                            }}>
+                              {report.reason.replace('_', ' ')}
+                            </span>
+                            {report.review_report_count > 1 && (
+                              <span style={{
+                                marginLeft: 8,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                color: 'var(--warning-text, #b45309)',
+                                background: 'var(--warning-bg)',
+                                padding: '3px 8px',
+                                borderRadius: 4
+                              }}>
+                                ⚠️ {report.review_report_count} Reports
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 12.5, color: 'var(--txt-3)' }}>
+                            Reported by <strong>{report.reported_by_name}</strong> &middot; {new Date(report.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {/* Review Detail */}
+                        <div style={{
+                          background: 'var(--background)',
+                          padding: '14px 18px',
+                          borderRadius: 8,
+                          borderLeft: '4px solid var(--brand)',
+                          margin: 0
+                        }}>
+                          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: 'var(--txt-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Review Comment (by {report.review_student_name} on {report.course_title}):
+                          </p>
+                          <p style={{ margin: '6px 0 0 0', fontSize: 14, color: 'var(--txt-1)', fontStyle: 'italic', lineHeight: 1.5 }}>
+                            "{report.review_comment}" ({report.review_rating}⭐)
+                          </p>
+                        </div>
+
+                        {/* Report description */}
+                        {report.details && (
+                          <div style={{ fontSize: 13.5, color: 'var(--txt-2)' }}>
+                            <strong>Report details:</strong> {report.details}
+                          </div>
+                        )}
+
+                        {/* If resolved info */}
+                        {report.status !== 'PENDING' && (
+                          <div style={{
+                            fontSize: 12.5,
+                            color: 'var(--txt-3)',
+                            borderTop: '1px solid var(--border)',
+                            paddingTop: 10,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 8
+                          }}>
+                            <span>
+                              Resolved by <strong>{report.reviewed_by_name || 'Admin'}</strong> on {new Date(report.reviewed_at).toLocaleDateString()}
+                            </span>
+                            <span>
+                              Status: <strong style={{ textTransform: 'uppercase', color: report.status === 'DISMISSED' ? 'var(--brand)' : '#dc2626' }}>{report.status}</strong>
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Pending action buttons */}
+                        {report.status === 'PENDING' && (
+                          <div style={{
+                            display: 'flex',
+                            gap: 12,
+                            marginTop: 6,
+                            borderTop: '1px solid var(--border)',
+                            paddingTop: 14
+                          }}>
+                            <button
+                              className="btn btn-sm btn-secondary"
+                              onClick={() => resolveReport(report.id, 'dismiss')}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              <i className="ti ti-check" /> Dismiss Report
+                            </button>
+                            <button
+                              className="btn btn-sm btn-danger"
+                              onClick={() => resolveReport(report.id, 'remove_review')}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                            >
+                              <i className="ti ti-trash" /> Remove Review
+                            </button>
+                          </div>
+                        )}
+
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
     </div>
   );
 }

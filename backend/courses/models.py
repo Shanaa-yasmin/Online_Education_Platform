@@ -330,7 +330,43 @@ from django.db.models import Avg, Count
 @receiver([post_save, post_delete], sender=Review)
 def update_course_rating_stats(sender, instance, **kwargs):
     course = instance.course
-    stats = course.reviews.aggregate(avg=Avg('rating'), total=Count('id'))
+    stats = course.reviews.filter(is_flagged=False).aggregate(avg=Avg('rating'), total=Count('id'))
     course.rating_average = round(stats['avg'], 2) if stats['avg'] is not None else 0.00
     course.total_reviews = stats['total']
     course.save(update_fields=['rating_average', 'total_reviews'])
+
+
+class ReviewReport(models.Model):
+    class ReasonChoices(models.TextChoices):
+        SPAM = 'SPAM', 'Spam'
+        HARASSMENT = 'HARASSMENT', 'Harassment'
+        OFFENSIVE_LANGUAGE = 'OFFENSIVE_LANGUAGE', 'Offensive Language'
+        FAKE_REVIEW = 'FAKE_REVIEW', 'Fake Review'
+        OTHER = 'OTHER', 'Other'
+
+    class StatusChoices(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        REVIEWED = 'REVIEWED', 'Reviewed'
+        DISMISSED = 'DISMISSED', 'Dismissed'
+
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name='reports')
+    reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reported_reviews')
+    reason = models.CharField(max_length=30, choices=ReasonChoices.choices, default=ReasonChoices.SPAM)
+    details = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=StatusChoices.choices, default=StatusChoices.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='actioned_reports',
+        null=True,
+        blank=True
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('review', 'reported_by')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report on Review {self.review_id} by {self.reported_by.username} ({self.status})"
