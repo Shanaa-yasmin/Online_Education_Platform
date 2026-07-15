@@ -509,6 +509,8 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
 
 
 def _notify_admins_of_reported_review(review, report_count):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
     from notifications.models import Notification
     from notifications.serializers import NotificationSerializer
     from channels.layers import get_channel_layer
@@ -518,6 +520,7 @@ def _notify_admins_of_reported_review(review, report_count):
     def notify():
         try:
             admins = User.objects.filter(role='ADMIN', is_active=True)
+
             notifications = [
                 Notification(
                     recipient=admin,
