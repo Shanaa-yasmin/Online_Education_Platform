@@ -154,10 +154,13 @@ export default function ReviewsList({ courseId, isEnrolled, user }) {
                   review={review}
                   isOwner={review.is_owner}
                   isAdmin={isAdmin}
+                  isEnrolled={isEnrolled}
+                  userRole={user?.role}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onReport={setReportingReview}
                 />
+
               ))}
             </div>
           ) : (

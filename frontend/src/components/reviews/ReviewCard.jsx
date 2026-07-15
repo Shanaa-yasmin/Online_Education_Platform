@@ -64,8 +64,10 @@ const FlagIcon = () => (
   </svg>
 );
 
-export default function ReviewCard({ review, isOwner, isAdmin, onEdit, onDelete, onReport }) {
+export default function ReviewCard({ review, isOwner, isAdmin, isEnrolled, userRole, onEdit, onDelete, onReport }) {
   const wasEdited = review.updated_at && review.created_at !== review.updated_at;
+  const isStudent = userRole === 'STUDENT';
+  const canReport = isStudent && isEnrolled;
 
   return (
     <article className="review-card">
@@ -109,7 +111,7 @@ export default function ReviewCard({ review, isOwner, isAdmin, onEdit, onDelete,
           </div>
         )}
 
-        {!isOwner && !isAdmin && (
+        {!isOwner && !isAdmin && canReport && (
           <button
             className={`review-card__report-btn ${review.has_reported ? 'review-card__report-btn--reported' : ''}`}
             onClick={() => !review.has_reported && onReport?.(review)}
@@ -120,6 +122,7 @@ export default function ReviewCard({ review, isOwner, isAdmin, onEdit, onDelete,
           </button>
         )}
       </div>
+
     </article>
   );
 }

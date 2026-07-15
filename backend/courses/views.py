@@ -342,12 +342,28 @@ class ReviewViewSet(viewsets.GenericViewSet):
     def report(self, request, pk=None):
         review = self.get_object()
         
+        # Enforce that only students can report reviews
+        if request.user.role != 'STUDENT':
+            return Response(
+                {"detail": "Only students can report reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Enforce that only enrolled students can report reviews
+        from payments.models import Enrollment
+        if not Enrollment.objects.filter(student=request.user, course=review.course, course__is_deleted=False).exists():
+            return Response(
+                {"detail": "You must be enrolled in this course to report its reviews."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Prevent self reporting
         if review.student == request.user:
             return Response(
                 {"detail": "You cannot report your own review."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
             
         # Check duplicate
         if ReviewReport.objects.filter(review=review, reported_by=request.user).exists():
