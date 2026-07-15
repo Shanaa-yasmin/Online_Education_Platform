@@ -99,7 +99,7 @@ export default function AdminPanel() {
   const fetchReports = async (active = { current: true }) => {
     try {
       setLR(true);
-      let url = '/api/courses/admin/review-reports/';
+      let url = '/api/admin/review-reports/';
       if (reportsStatusFilter && reportsStatusFilter !== 'ALL') {
         url += `?status=${reportsStatusFilter}`;
       }
@@ -117,7 +117,7 @@ export default function AdminPanel() {
 
   const resolveReport = async (reportId, action) => {
     try {
-      await api.patch(`/api/courses/admin/review-reports/${reportId}/`, { action });
+      await api.patch(`/api/admin/review-reports/${reportId}/`, { action });
       fetchReports();
     } catch {
       alert(`Failed to resolve report.`);
