@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
+    'django_elasticsearch_dsl',
     'channels',
     
     # Custom apps
@@ -324,3 +325,35 @@ AUTH_COOKIE_NAME = 'refresh_token'
 AUTH_COOKIE_SECURE = not DEBUG          # True in production (HTTPS only)
 AUTH_COOKIE_SAMESITE = 'Lax'            # 'None' + Secure=True if frontend/backend end up on different domains
 AUTH_COOKIE_PATH = '/api/auth/'         # cookie only sent to auth endpoints, not every request
+
+# ── Elasticsearch ─────────────────────────────────────────────────────────────
+# Toggle ES on/off — set ES_ENABLED=true in .env when you have an ES instance.
+# When disabled the search endpoints still work but fall back to ORM queries so
+# the app is fully functional even without a running Elasticsearch cluster.
+ES_ENABLED = os.environ.get('ES_ENABLED', 'true').lower() == 'true'
+
+_ES_HOST = os.environ.get('ES_HOST', 'localhost')
+_ES_PORT = os.environ.get('ES_PORT', '9200')
+_ES_SCHEME = os.environ.get('ES_SCHEME', 'http')
+_ES_URL = f"{_ES_SCHEME}://{_ES_HOST}:{_ES_PORT}"
+
+_es_conn = {'hosts': _ES_URL}
+
+# Optional auth — supports API key (Elastic Cloud) or basic auth (self-hosted)
+_ES_API_KEY = os.environ.get('ES_API_KEY', '')
+_ES_USER = os.environ.get('ES_USER', '')
+_ES_PASSWORD = os.environ.get('ES_PASSWORD', '')
+
+if _ES_API_KEY:
+    _es_conn['api_key'] = _ES_API_KEY
+elif _ES_USER and _ES_PASSWORD:
+    _es_conn['http_auth'] = (_ES_USER, _ES_PASSWORD)
+
+ELASTICSEARCH_DSL = {
+    'default': _es_conn,
+}
+
+# Disable auto-sync signals when ES is not available so post_save / post_delete
+# don't raise ConnectionError on every model save.
+ELASTICSEARCH_DSL_AUTOSYNC = ES_ENABLED
+ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = 'django_elasticsearch_dsl.signals.RealTimeSignalProcessor'

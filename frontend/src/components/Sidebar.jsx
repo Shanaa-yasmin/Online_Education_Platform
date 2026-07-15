@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import NotificationBell from './NotificationBell.jsx';
+import SearchAutocomplete from './SearchAutocomplete.jsx';
 
 const NAV_ITEMS = [
   { key: 'dashboard',       to: '/dashboard',        icon: 'ti ti-layout-dashboard', label: 'Dashboard',    roles: 'all' },
@@ -52,8 +53,8 @@ export default function Sidebar({ user, onLogout, loggingOut, active }) {
       <aside className="sidebar">
         {/* Clickable Logo that triggers Sidebar Drawer */}
         <div className="sidebar-logo-area">
-          <button 
-            className="nav-logo-trigger" 
+          <button
+            className="nav-logo-trigger"
             onClick={() => setDrawerOpen(v => !v)}
             aria-expanded={drawerOpen}
             aria-label="Toggle navigation drawer"
@@ -64,8 +65,9 @@ export default function Sidebar({ user, onLogout, loggingOut, active }) {
           </button>
         </div>
 
-        {/* Right actions (Bell & Profile) */}
+        {/* Right actions (Search, Bell & Profile) */}
         <div className="sidebar-right-actions">
+          <SearchAutocomplete variant="topbar" placeholder="Search courses…" />
           {user && <NotificationBell user={user} />}
 
           {user && (
@@ -81,15 +83,15 @@ export default function Sidebar({ user, onLogout, loggingOut, active }) {
 
       {/* Backdrop overlay */}
       {drawerOpen && (
-        <div 
-          className="sidebar-backdrop-overlay" 
+        <div
+          className="sidebar-backdrop-overlay"
           onClick={() => setDrawerOpen(false)}
         />
       )}
 
       {/* Slide-out Sidebar Drawer */}
-      <div 
-        className={`sidebar-drawer${drawerOpen ? ' open' : ''}`} 
+      <div
+        className={`sidebar-drawer${drawerOpen ? ' open' : ''}`}
         ref={drawerRef}
       >
         <div className="drawer-header">
@@ -97,8 +99,8 @@ export default function Sidebar({ user, onLogout, loggingOut, active }) {
             <img src="/favicon.jpeg" alt="EduPath Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
             <span className="nav-logo-text">Edu<span>Path</span></span>
           </div>
-          <button 
-            className="drawer-close-btn" 
+          <button
+            className="drawer-close-btn"
             onClick={() => setDrawerOpen(false)}
             aria-label="Close drawer"
           >
@@ -125,9 +127,9 @@ export default function Sidebar({ user, onLogout, loggingOut, active }) {
         </nav>
 
         <div className="drawer-footer">
-          <button 
-            className="drawer-logout-btn" 
-            onClick={() => { setDrawerOpen(false); onLogout(); }} 
+          <button
+            className="drawer-logout-btn"
+            onClick={() => { setDrawerOpen(false); onLogout(); }}
             disabled={loggingOut}
           >
             {loggingOut ? (

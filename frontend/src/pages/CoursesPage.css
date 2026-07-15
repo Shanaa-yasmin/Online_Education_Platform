@@ -381,6 +381,42 @@
   color: var(--brand);
 }
 
+/* ── "Did you mean" suggestion banner ─────────────────────── */
+.did-you-mean {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(48, 157, 142, 0.06);
+  border: 1px solid rgba(48, 157, 142, 0.18);
+  border-radius: var(--r-md, 10px);
+  font-size: 13.5px;
+  color: var(--txt-2, #4b5563);
+  margin-bottom: 16px;
+}
+
+.did-you-mean i {
+  font-size: 16px;
+  color: var(--brand, #309d8e);
+}
+
+.did-you-mean-link {
+  background: none;
+  border: none;
+  color: var(--brand, #309d8e);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+
+.did-you-mean-link:hover {
+  color: var(--brand-dark, #267d72);
+}
+
 .catalog-empty {
   align-items: center;
   gap: 12px;

@@ -42,6 +42,7 @@ export default function CoursesPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [suggestion, setSuggestion] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Debounce search query parameter
@@ -100,6 +101,9 @@ export default function CoursesPage() {
       if (res.data.facets) {
         setFacets(res.data.facets);
       }
+
+      // "Did you mean" suggestion from Elasticsearch
+      setSuggestion(res.data.suggestion || null);
     } catch (err) {
       console.error(err);
       if (active.current) setError('Failed to load courses. Please try again.');
@@ -307,6 +311,24 @@ export default function CoursesPage() {
           {error && (
             <div className="alert alert-error">
               {error} <button className="btn btn-sm btn-secondary" onClick={fetchCourses}>Retry</button>
+            </div>
+          )}
+
+          {/* "Did you mean" suggestion banner */}
+          {suggestion && (
+            <div className="did-you-mean">
+              <i className="ti ti-bulb" />
+              Did you mean{' '}
+              <button
+                className="did-you-mean-link"
+                onClick={() => {
+                  setSearchInput(suggestion);
+                  setSuggestion(null);
+                }}
+              >
+                "{suggestion}"
+              </button>
+              ?
             </div>
           )}
 

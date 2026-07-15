@@ -3,9 +3,8 @@ from rest_framework.routers import DefaultRouter
 
 from .analytics_views import CourseAnalyticsView, MentorOverviewView
 from .admin_reports_views import AdminReportsView, AdminReportsExportView, AdminReportFilterOptionsView
+from .search_views import CourseSearchView, CourseAutocompleteView
 from .views import (
-    CourseAutocompleteView,
-    CourseSearchView,
     CourseViewSet,
     LessonViewSet,
     ModuleViewSet,

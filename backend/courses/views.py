@@ -1,13 +1,12 @@
-from rest_framework import viewsets, status, permissions, generics
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from django.core.cache import cache
 from rest_framework.response import Response
-from rest_framework.filters import OrderingFilter
+
 from rest_framework.generics import get_object_or_404
-from django.db.models import Q, Avg, Count, Min, Max, Sum
-from django.db.models.functions import Coalesce
+from django.db.models import Q, Avg, Count, Sum
 from django.utils import timezone
-from django_filters.rest_framework import DjangoFilterBackend
+
 
 from .models import (
     Course, Module, Lesson,
@@ -22,11 +21,11 @@ from .serializers import (
     QuizQuestionSerializer,
     QuizAnswerInputSerializer,
     QuizAttemptSerializer,
-    CourseSearchSerializer,
+
     ReviewSerializer
 )
 from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
-from .filters import CourseFilter
+
 from .admin_reports_views import ADMIN_REPORTS_BASE_KEY
 from payments.dashboard_service import ADMIN_DASHBOARD_CACHE_KEY
 from . import quiz_service
@@ -457,89 +456,3 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
         attempts = quiz_service.get_history(lesson, request.user)
         serializer = QuizAttemptSerializer(attempts, many=True, context={'request': request})
         return Response(serializer.data)
-
-
-class CourseSearchView(generics.ListAPIView):
-    """
-    API endpoint for public course search and faceted filtering.
-    """
-    serializer_class = CourseSearchSerializer
-    permission_classes = [permissions.AllowAny]
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_class = CourseFilter
-    ordering_fields = ['price', 'created_at', 'avg_rating']
-    ordering = ['-created_at']
-
-    def get_queryset(self):
-        # We only want published and approved courses for the public catalog search.
-        # Annotate them with avg_rating and enrollment_count so the serializer and filter can use it.
-        return Course.objects.filter(is_approved=True, is_published=True).select_related('mentor').annotate(
-            avg_rating=Coalesce(Avg('reviews__rating'), 0.0),
-            enrollment_count=Count('enrollments', distinct=True)
-        ).order_by('-created_at')
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Cache catalog facets (levels, languages, price range) for 5 minutes
-        def _compute_facets():
-            base_queryset = Course.objects.filter(is_approved=True, is_published=True)
-            levels = list(base_queryset.values_list('level', flat=True).distinct())
-            languages = list(base_queryset.values_list('language', flat=True).distinct())
-            languages = [lang for lang in languages if lang]  # Clean empty values
-
-            prices = base_queryset.aggregate(min_p=Min('price'), max_p=Max('price'))
-            price_range = {
-                'min': float(prices['min_p']) if prices['min_p'] is not None else 0.0,
-                'max': float(prices['max_p']) if prices['max_p'] is not None else 1000.0
-            }
-            return {
-                'levels': levels,
-                'languages': languages,
-                'price_range': price_range
-            }
-
-        facets = cache.get_or_set('catalog_facets', _compute_facets, timeout=300)
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            response = self.get_paginated_response(serializer.data)
-            response.data['facets'] = facets
-            return response
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'results': serializer.data,
-            'facets': facets
-        })
-
-
-class CourseAutocompleteView(generics.GenericAPIView):
-    """
-    Lightweight autocomplete endpoint for course title suggestions.
-    GET /api/courses/autocomplete/?q=<query>
-    - Minimum 2 characters required
-    - Returns up to 8 approved & published courses
-    - Uses .values() for minimal DB overhead
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request, *args, **kwargs):
-        q = request.query_params.get('q', '').strip()
-
-        if len(q) < 2:
-            return Response([])
-
-        suggestions = (
-            Course.objects.filter(
-                is_approved=True,
-                is_published=True,
-                title__icontains=q
-            )
-            .only('id', 'title', 'slug')
-            .values('id', 'title', 'slug')
-            .order_by('title')[:8]
-        )
-
-        return Response(list(suggestions))

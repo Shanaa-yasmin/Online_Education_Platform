@@ -127,6 +127,25 @@
   text-align: center;
 }
 
+/* Section labels (Courses / Mentors) */
+.sac-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--txt-4, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  list-style: none;
+  user-select: none;
+}
+
+.sac-section-label i {
+  font-size: 12px;
+}
+
 /* Individual suggestion row */
 .sac-item {
   display: flex;
@@ -184,3 +203,140 @@
 /* Scrollbar inside dropdown */
 .sac-dropdown::-webkit-scrollbar { width: 4px; }
 .sac-dropdown::-webkit-scrollbar-thumb { background: var(--border, #e5e7eb); border-radius: 4px; }
+
+/* ── Topbar variant ─────────────────────────────────────────── */
+/* Collapsed: just a frosted icon button */
+.sac-wrap--topbar {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  flex: 0 0 auto;
+  max-width: none;
+  padding: 0;
+}
+
+.sac-wrap--topbar:focus-within {
+  border: none;
+  box-shadow: none;
+}
+
+/* Expanded state pill */
+.sac-wrap--topbar.sac-topbar-expanded {
+  flex: 1 1 320px;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 8px !important;
+  padding: 0 10px;
+  height: 38px;
+  gap: 6px;
+  transition: flex 0.22s ease, max-width 0.22s ease;
+}
+
+.sac-wrap--topbar.sac-topbar-expanded:focus-within {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow: none;
+}
+
+/* Collapsed icon button */
+.sac-topbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  width: 38px;
+  height: 38px;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sac-topbar-toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Inside expanded topbar: icon + input + controls are inline */
+.sac-wrap--topbar.sac-topbar-expanded .sac-icon {
+  position: static;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+}
+
+.sac-wrap--topbar.sac-topbar-expanded .sac-input {
+  height: 38px;
+  padding: 0;
+  font-size: 13.5px;
+  color: #fff;
+  caret-color: var(--blush-mid, #e8a0a0);
+}
+
+.sac-wrap--topbar.sac-topbar-expanded .sac-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Spinner in topbar */
+.sac-wrap--topbar.sac-topbar-expanded .sac-spinner {
+  position: static;
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.7);
+  width: 14px;
+  height: 14px;
+}
+
+/* Clear button in topbar */
+.sac-wrap--topbar.sac-topbar-expanded .sac-clear-btn {
+  position: static;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+.sac-wrap--topbar.sac-topbar-expanded .sac-clear-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Topbar dropdown — reuse sac-dropdown but elevate z-index */
+.sac-wrap--topbar .sac-dropdown {
+  z-index: 2000;
+  border-radius: 10px;
+  top: calc(100% + 8px);
+  min-width: 280px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* "Search all" footer row in topbar dropdown */
+.sac-topbar-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--brand);
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  transition: background 0.13s;
+  list-style: none;
+  user-select: none;
+}
+
+.sac-topbar-footer:hover {
+  background: var(--brand-pale, rgba(107, 26, 26, 0.06));
+}
+
+.sac-topbar-footer strong {
+  font-weight: 600;
+}
+
+/* Mobile: cap expanded width */
+@media (max-width: 768px) {
+  .sac-wrap--topbar.sac-topbar-expanded {
+    flex: 1 1 160px !important;
+    max-width: 200px !important;
+  }
+}
