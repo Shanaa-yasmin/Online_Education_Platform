@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'notifications',
     'progress',
     'certificates',
+    'announcements',
 ]
 
 MIDDLEWARE = [

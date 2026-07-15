@@ -24,6 +24,7 @@ const CoursePage = lazy(() => import('./pages/CoursePage.jsx'));
 const LearningPlayer = lazy(() => import('./pages/LearningPlayer.jsx'));
 const MyCourses = lazy(() => import('./pages/MyCourses.jsx'));
 const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess.jsx'));
+const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage.jsx'));
 
 const Fallback = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100svh', background: '#FDF9F9' }}>
@@ -54,6 +55,8 @@ function AppContent() {
             <Route path="/courses/:courseId" element={<ProtectedRoute><CoursePage /></ProtectedRoute>} />
             <Route path="/courses/:courseId/learn" element={<ProtectedRoute><LearningPlayer /></ProtectedRoute>} />
             <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+            <Route path="/announcements" element={<ProtectedRoute><AnnouncementsPage /></ProtectedRoute>} />
+            <Route path="/announcements/:announcementId" element={<ProtectedRoute><AnnouncementsPage /></ProtectedRoute>} />
 
             {/* Mentor */}
             <Route path="/mentor/courses/:courseId/builder" element={<ProtectedRoute allowedRoles={['MENTOR', 'ADMIN']}><CourseBuilder /></ProtectedRoute>} />

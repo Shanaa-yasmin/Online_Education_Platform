@@ -186,10 +186,19 @@ export default function AdminPanel() {
       <div className="inner-page">
 
         <div className="admin-page-wrap">
-          <div>
-            <Link to="/dashboard" className="back-link"><i className="ti ti-arrow-left" /> Back to Dashboard</Link>
-            <h1 style={{ fontFamily: 'Fraunces,serif', fontSize: 'clamp(1.4rem,2.5vw,1.9rem)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--txt-1)' }}>Admin Moderation Portal</h1>
-            <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 3 }}>Review course submissions and mentor credentials.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+            <div>
+              <Link to="/dashboard" className="back-link"><i className="ti ti-arrow-left" /> Back to Dashboard</Link>
+              <h1 style={{ fontFamily: 'Fraunces,serif', fontSize: 'clamp(1.4rem,2.5vw,1.9rem)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--txt-1)', margin: 0 }}>Admin Moderation Portal</h1>
+              <p style={{ fontSize: 13.5, color: 'var(--txt-3)', marginTop: 3, margin: 0 }}>Review course submissions and mentor credentials.</p>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/announcements?create=true')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 'fit-content' }}
+            >
+              <i className="ti ti-speakerphone" /> Create Announcement
+            </button>
           </div>
 
           {/* Stats */}

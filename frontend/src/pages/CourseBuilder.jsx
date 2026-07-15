@@ -604,6 +604,10 @@ export default function CourseBuilder() {
         </div>
 
         <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => navigate(`/announcements?create=true&courseId=${course.id}`)}>
+            <i className="ti ti-speakerphone" style={{ marginRight: 6 }} /> Add Announcement
+          </button>
+
           <button className="btn btn-secondary" onClick={openEditCourseModal}>
             <EditIcon /> Edit Course Details
           </button>

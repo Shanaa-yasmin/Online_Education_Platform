@@ -46,6 +46,8 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
         return '📚';
       case 'COURSE_UPDATED':
         return '📝';
+      case 'NEW_ANNOUNCEMENT':
+        return '📢';
       default:
         return '🔔';
     }
@@ -93,6 +95,9 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
         break;
       case 'MENTOR_APPROVED':
         path = '/my-courses';
+        break;
+      case 'NEW_ANNOUNCEMENT':
+        path = id ? `/announcements/${id}` : '/announcements';
         break;
       default:
         path = '/notifications';

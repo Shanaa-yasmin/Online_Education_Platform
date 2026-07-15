@@ -191,9 +191,14 @@ export default function MyCourses() {
                 <p>{user?.role === 'MENTOR' ? 'Manage your course catalog, publication status, and curriculum.' : 'Keep track of your studies, review progress, and access class materials.'}</p>
               </div>
               {user?.role === 'MENTOR' && (
-                <button className="btn btn-primary" style={{ height: 42 }} onClick={() => setShowModal(true)}>
-                  <i className="ti ti-plus" /> Create Course
-                </button>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button className="btn btn-secondary" style={{ height: 42, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => navigate('/announcements?create=true')}>
+                    <i className="ti ti-speakerphone" /> Add Announcement
+                  </button>
+                  <button className="btn btn-primary" style={{ height: 42 }} onClick={() => setShowModal(true)}>
+                    <i className="ti ti-plus" /> Create Course
+                  </button>
+                </div>
               )}
             </div>
 

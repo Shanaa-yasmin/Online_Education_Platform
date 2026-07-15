@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { key: 'mentor-qa',       to: '/mentor/qa',        icon: 'ti ti-messages',         label: 'Q&A',          roles: ['MENTOR'] },
   { key: 'mentor-payments', to: '/mentor/payments',  icon: 'ti ti-wallet',           label: 'Payment Logs', roles: ['MENTOR', 'ADMIN'] },
   { key: 'mentor-analytics',to: '/mentor/analytics', icon: 'ti ti-chart-pie',        label: 'Analytics',    roles: ['MENTOR'] },
+  { key: 'announcements',   to: '/announcements',    icon: 'ti ti-speakerphone',     label: 'Announcements',roles: 'all' },
   { key: 'courses',         to: '/courses',          icon: 'ti ti-book',             label: 'Courses',      roles: 'all' },
   { key: 'profile',         to: '/profile',          icon: 'ti ti-user',             label: 'Profile',      roles: 'all' },
 ];
