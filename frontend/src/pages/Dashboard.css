@@ -876,3 +876,30 @@
   display: flex;
   flex-direction: column;
 }
+
+@media (max-width: 768px) {
+  .my-learning-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .my-learning-card {
+    padding: 12px !important;
+  }
+  .my-learning-thumb {
+    height: 100px !important;
+    margin-bottom: 8px !important;
+  }
+  .my-learning-title {
+    font-size: 13px !important;
+  }
+  .my-learning-mentor {
+    font-size: 11px !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .my-learning-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

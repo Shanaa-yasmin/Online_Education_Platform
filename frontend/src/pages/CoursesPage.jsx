@@ -44,6 +44,19 @@ export default function CoursesPage() {
   const [error, setError] = useState('');
   const [suggestion, setSuggestion] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Active filters count for mobile display badge
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (level !== 'ALL') count++;
+    if (language !== 'ALL') count++;
+    if (isFree !== 'ALL') count++;
+    if (minRating !== 'ALL') count++;
+    if (minPrice || maxPrice) count++;
+    return count;
+  }, [level, language, isFree, minRating, minPrice, maxPrice]);
+
 
   // Debounce search query parameter
   useEffect(() => {
@@ -215,12 +228,22 @@ export default function CoursesPage() {
                   <option value="-avg_rating">Highest Rated</option>
                 </select>
               </div>
+
+              <button
+                type="button"
+                className={`mobile-filters-toggle-btn ${showMobileFilters ? 'active' : ''}`}
+                onClick={() => setShowMobileFilters(prev => !prev)}
+              >
+                <i className="ti ti-filter" />
+                <span>Filters {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}</span>
+              </button>
             </div>
 
-            <div className="controls-row-filters">
+            <div className={`controls-row-filters ${showMobileFilters ? 'mobile-show' : ''}`}>
               <div className="filter-select-wrap">
                 <label>Difficulty:</label>
                 <select value={level} onChange={e => updateFilter('level', e.target.value)}>
+
                   <option value="ALL">All Levels</option>
                   {(facets?.levels || ['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).map(lvl => (
                     <option key={lvl} value={lvl}>{lvl.charAt(0) + lvl.slice(1).toLowerCase()}</option>

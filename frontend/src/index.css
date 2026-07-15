@@ -1294,10 +1294,12 @@ h6 {
   .reports-wrap,
   .nce-container,
   .learning-player-wrap {
-    padding-left: 24px !important;
-    padding-right: 24px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-top: 20px !important;
   }
 }
+
 
 /* Compact content wrapper padding to fit every page's width correctly to the screen */
 .inner-content,
@@ -1319,19 +1321,32 @@ h6 {
 
 
 
-/* Collapse flex layout rows into columns */
-.welcome-banner {
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  padding: 20px 24px !important;
+@media (max-width: 768px) {
+  /* Collapse flex layout rows into columns */
+  .welcome-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 20px !important;
+  }
+
+  .stats-grid-4,
+  .stats-grid-3,
+  .stats-grid-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .modal-overlay {
+    padding: 12px !important;
+    align-items: flex-end !important;
+  }
+
+  .modal-content {
+    max-height: 90vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
 }
 
-.stats-grid-4,
-.stats-grid-3,
-.stats-grid-2 {
-  grid-template-columns: 1fr !important;
-  gap: 12px !important;
-}
 
 /* ── Extra Narrow Mobile Screen Adjustments (max-width: 480px) ── */
 @media (max-width: 480px) {

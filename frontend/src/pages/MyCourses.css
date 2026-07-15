@@ -89,6 +89,7 @@
   margin-top: 8px;
 }
 
+
 .my-courses-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -296,5 +297,41 @@
   .my-courses-tabs {
     width: 100% !important;
     justify-content: center !important;
+  }
+
+  /* Two courses side by side on mobile */
+  .my-courses-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .my-courses-card-content {
+    padding: 14px !important;
+  }
+
+  .my-courses-card-title {
+    font-size: 13px !important;
+    height: auto !important;
+    -webkit-line-clamp: 2;
+  }
+
+  .my-courses-card-subtitle {
+    font-size: 11.5px !important;
+  }
+
+  .my-courses-card-badge-row .badge {
+    font-size: 9.5px !important;
+    padding: 2px 7px !important;
+  }
+
+  .my-courses-progress-lbl {
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  /* Single column on very narrow screens */
+  .my-courses-grid {
+    grid-template-columns: 1fr !important;
   }
 }

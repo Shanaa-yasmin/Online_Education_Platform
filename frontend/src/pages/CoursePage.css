@@ -722,4 +722,27 @@
   .student-course-page {
     padding: 20px 16px 40px !important;
   }
+
+  .course-detail-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .course-enrollment-card {
+    position: static !important;
+  }
+
+  .course-detail-title {
+    font-size: clamp(1.4rem, 6vw, 2rem) !important;
+  }
+
+  .curriculum-section-hd {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .course-title-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
 }

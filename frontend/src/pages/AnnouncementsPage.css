@@ -445,3 +445,38 @@
   margin: 0;
   font-size: 15px;
 }
+
+/* ── Mobile Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .announcements-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .new-announcement-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .announcement-card {
+    padding: 16px !important;
+  }
+
+  .announcement-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .announcement-meta-row {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .announcement-actions {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+}
+

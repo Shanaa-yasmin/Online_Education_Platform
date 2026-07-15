@@ -6,6 +6,7 @@
   gap: 24px;
 }
 
+
 /* Rich Catalog Controls */
 .rich-catalog-controls {
   gap: 16px;
@@ -265,6 +266,10 @@
 
 .clear-text-btn:hover {
   color: var(--txt-1);
+}
+
+.mobile-filters-toggle-btn {
+  display: none;
 }
 
 /* Grid */
@@ -605,10 +610,56 @@
 }
 
 @media (max-width: 768px) {
+  .controls-row-top {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+
+  .courses-sac {
+    grid-column: span 2 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .mobile-filters-toggle-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    height: 38px !important;
+    padding: 0 16px !important;
+    border-radius: var(--r-full) !important;
+    border: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    color: var(--txt-2) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all var(--t) !important;
+  }
+
+  .mobile-filters-toggle-btn:hover,
+  .mobile-filters-toggle-btn.active {
+    border-color: var(--brand) !important;
+    color: var(--brand) !important;
+    background: rgba(107, 26, 26, 0.05) !important;
+  }
+
+  /* By default hide rich filters on mobile */
   .controls-row-filters {
+    display: none !important;
+  }
+
+  /* Show rich filters when class is toggled */
+  .controls-row-filters.mobile-show {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 12px !important;
+    border-top: 1px solid var(--border) !important;
+    padding-top: 16px !important;
+    margin-top: 8px !important;
   }
 
   .filter-select-wrap {
@@ -627,10 +678,64 @@
     width: 100% !important;
     justify-content: center !important;
   }
+
+  /* Two courses side by side on mobile */
+  .courses-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .skeletons-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .cc-thumb {
+    height: 110px !important;
+  }
+
+  .cc-body {
+    padding: 12px 14px !important;
+  }
+
+  .cc-title {
+    font-size: 12.5px !important;
+  }
+
+  .cc-footer {
+    padding: 10px 14px !important;
+  }
+
+  .course-title-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .rich-catalog-controls {
+    padding: 14px !important;
+    gap: 12px !important;
+  }
 }
 
 @media (max-width: 480px) {
-  .controls-row-filters {
+  .controls-row-top {
+    grid-template-columns: 1fr !important;
+  }
+
+  .courses-sac {
+    grid-column: span 1 !important;
+  }
+
+  .filter-select-wrap {
+    width: 100% !important;
+  }
+
+  .mobile-filters-toggle-btn {
+    width: 100% !important;
+  }
+
+  .controls-row-filters.mobile-show {
     grid-template-columns: 1fr !important;
   }
 
@@ -647,4 +752,25 @@
     flex-direction: column !important;
     align-items: stretch !important;
   }
+
+  /* KEEP 2 columns on mobile screen views (<=480px) */
+  .courses-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .skeletons-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
+
+@media (max-width: 350px) {
+  /* Only go single column on extremely narrow viewports */
+  .courses-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .skeletons-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
