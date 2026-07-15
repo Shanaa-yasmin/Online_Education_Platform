@@ -327,6 +327,6 @@ class ReviewReportSerializer(serializers.ModelSerializer):
             'review_rating', 'review_student_name', 'course_title'
         ]
         read_only_fields = [
-            'id', 'reported_by', 'status', 'created_at', 
+            'id', 'review', 'reported_by', 'status', 'created_at', 
             'reviewed_by', 'reviewed_at'
         ]
