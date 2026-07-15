@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
-import NotificationBell from '../components/NotificationBell.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import './CoursesPage.css';
 
@@ -169,21 +168,6 @@ export default function CoursesPage() {
       <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="courses" />
 
       <div className="inner-page">
-        <header className="topbar">
-          <div className="topbar-left">
-            <h1>Course Catalog</h1>
-            <p>Discover expert-led courses for your career</p>
-          </div>
-          <div className="topbar-right">
-            <NotificationBell user={user} />
-            <Link to="/profile" className="topbar-user">
-              <div className="avatar-initials" style={{ width: 30, height: 30, fontSize: 12 }}>
-                {(user?.username || 'U').slice(0, 2).toUpperCase()}
-              </div>
-              <span className="topbar-user-name">{user?.username}</span>
-            </Link>
-          </div>
-        </header>
 
         <div className="courses-page-wrap">
           <div className="page-header">

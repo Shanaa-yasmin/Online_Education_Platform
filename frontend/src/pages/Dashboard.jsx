@@ -2,15 +2,9 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import api from '../utils/api.js';
-import NotificationBell from '../components/NotificationBell.jsx';
 import ActivityCalendar from '../components/ActivityCalendar.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import './Dashboard.css';
-
-function getInitials(user) {
-  if (!user) return '?';
-  return (user.username || user.email || '?').slice(0, 2).toUpperCase();
-}
 
 // Mirrors the fallback treatment used on CoursesPage.jsx when a course has no thumbnail
 const LEVEL_ICON = { BEGINNER: 'ti-leaf', INTERMEDIATE: 'ti-flame', ADVANCED: 'ti-bolt' };
@@ -65,9 +59,13 @@ export default function Dashboard() {
   const stats = isAdmin
     ? [
       { icon: 'ti-book', label: 'Total Courses', value: data?.stats?.total_courses ?? 0, color: 'var(--brand)', bg: 'var(--brand-light)' },
+      { icon: 'ti-circle-check', label: 'Published Courses', value: data?.stats?.published_count ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
       { icon: 'ti-alert-circle', label: 'Pending Approvals', value: data?.stats?.pending_courses ?? 0, color: 'var(--warning)', bg: 'var(--warning-bg)' },
       { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
       { icon: 'ti-award', label: 'Total Mentors', value: data?.stats?.total_mentors ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
+      { icon: 'ti-wallet', label: 'Total Revenue', value: data?.stats?.revenue !== undefined ? `$${data.stats.revenue.toFixed(2)}` : '—', color: '#16a34a', bg: '#dcfce7' },
+      { icon: 'ti-clipboard-list', label: 'Total Enrollments', value: data?.stats?.total_enrollments ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
+      { icon: 'ti-star', label: 'Total Reviews', value: data?.stats?.total_reviews ?? 0, color: 'var(--warning)', bg: 'var(--warning-bg)' },
     ]
     : isMentor
       ? [
@@ -75,12 +73,18 @@ export default function Dashboard() {
         { icon: 'ti-users', label: 'Total Students', value: data?.stats?.total_students ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
         { icon: 'ti-circle-check', label: 'Published', value: data?.stats?.published_count ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
         { icon: 'ti-star', label: 'Avg. Rating', value: data?.stats?.avg_rating !== undefined && data.stats.avg_rating > 0 ? data.stats.avg_rating.toFixed(1) : '—', color: 'var(--warning)', bg: 'var(--warning-bg)' },
+        { icon: 'ti-wallet', label: 'Total Earnings', value: data?.stats?.revenue !== undefined ? `$${data.stats.revenue.toFixed(2)}` : '—', color: '#16a34a', bg: '#dcfce7' },
+        { icon: 'ti-message-circle', label: 'Pending Q&A', value: data?.stats?.pending_questions_count ?? 0, color: 'var(--warning)', bg: 'var(--warning-bg)' },
+        { icon: 'ti-message-2', label: 'Total Reviews', value: data?.stats?.total_reviews ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
+        { icon: 'ti-file-off', label: 'Draft Courses', value: data?.stats?.unpublished_count ?? 0, color: 'var(--brand)', bg: 'var(--brand-light)' },
       ]
       : [
         { icon: 'ti-book', label: 'Enrolled', value: data?.stats?.enrolled_count ?? 0, color: 'var(--brand)', bg: 'var(--brand-light)' },
         { icon: 'ti-player-play', label: 'In Progress', value: data?.stats?.in_progress_count ?? 0, color: 'var(--info)', bg: 'var(--info-bg)' },
         { icon: 'ti-award', label: 'Completed', value: data?.stats?.completed_count ?? 0, color: 'var(--success)', bg: 'var(--success-bg)' },
         { icon: 'ti-certificate', label: 'Certificates', value: data?.stats?.certificates_count ?? 0, color: '#9333ea', bg: '#f3e8ff' },
+        { icon: 'ti-flame', label: 'Streaks', value: `${data?.stats?.streak ?? 0} days`, color: 'var(--warning)', bg: 'var(--warning-bg)' },
+        { icon: 'ti-clock', label: 'Hours Learned', value: `${data?.stats?.hours_learned ?? 0} hrs`, color: 'var(--brand)', bg: 'var(--brand-light)' },
       ];
 
   const hasCourses = isMentor ? (data?.courses && data.courses.length > 0) : (data?.enrollments && data.enrollments.length > 0);
@@ -88,12 +92,14 @@ export default function Dashboard() {
   const roleIcon = isAdmin ? 'ti-settings' : isMentor ? 'ti-award' : 'ti-books';
   const roleCtaIcon = isAdmin ? 'ti-settings' : isMentor ? 'ti-plus' : 'ti-compass';
   const roleCtaLabel = isAdmin ? 'Admin Panel' : isMentor ? 'Create Course' : 'Explore Courses';
-  const roleCtaTarget = isAdmin ? '/admin/portal' : isMentor ? '/mentor/dashboard' : '/courses';
+  const roleCtaTarget = isAdmin ? '/admin/portal' : isMentor ? '/my-courses' : '/courses';
+
+  const gridClass = stats.length === 6 ? 'stats-grid-6' : 'stats-grid-8';
 
   const statsGrid = (
-    <div className="stats-grid stats-grid-4">
+    <div className={`stats-grid ${gridClass}`}>
       {loading
-        ? Array.from({ length: 4 }).map((_, i) => (
+        ? Array.from({ length: stats.length }).map((_, i) => (
           <div key={i} className="stat-card stat-card-skeleton">
             <div className="skeleton-block skeleton-icon" />
             <div className="skeleton-block skeleton-num" />
@@ -119,22 +125,6 @@ export default function Dashboard() {
       {/* Main */}
       <div className="dashboard-main">
         {/* Topbar */}
-        <header className="topbar">
-          <div className="topbar-left">
-            <h1>{isAdmin ? 'Admin Dashboard' : isMentor ? 'Mentor Dashboard' : 'My Learning'}</h1>
-            <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-          </div>
-          <div className="topbar-right">
-            <NotificationBell user={user} />
-            <Link to="/profile" className="topbar-user">
-              <div className="avatar-initials avatar-initials-sm">
-                {getInitials(user)}
-              </div>
-              <span className="topbar-user-name">{user?.username}</span>
-              <span className={`badge badge-${(user?.role || 'student').toLowerCase()}`}>{user?.role}</span>
-            </Link>
-          </div>
-        </header>
 
         {/* Content */}
         <div className="inner-content">
@@ -174,7 +164,7 @@ export default function Dashboard() {
           </div>
 
           {/* Mentor pending notice */}
-          {isMentor && !user?.is_approved && (
+          {isMentor && !user?.profile?.is_approved && (
             <div className="alert alert-warning animate-fadeIn">
               <i className="ti ti-alert-triangle" />
               <div><strong>Account pending approval.</strong> Your mentor account is under review. You'll be notified once approved.</div>

@@ -98,11 +98,22 @@ def get_mentor_dashboard(user) -> dict:
     for pq in pending_questions_qs:
         pending_questions.append({
             "id": pq.id,
+            "course_id": pq.room.course_id,
             "course_title": pq.room.course.title,
             "student_username": pq.sender.username,
             "message_text": pq.message_text[:80],
             "created_at": pq.created_at
         })
+
+    total_reviews = Review.objects.filter(course__mentor=user).count()
+    from chat.models import ChatMessage
+    pending_questions_count = ChatMessage.objects.filter(
+        room__course__mentor=user,
+        parent=None
+    ).exclude(
+        replies__sender__role__in=['MENTOR', 'ADMIN']
+    ).distinct().count()
+    unpublished_count = my_courses.filter(is_published=False).count()
 
     return {
         "role": "MENTOR",
@@ -111,7 +122,10 @@ def get_mentor_dashboard(user) -> dict:
             "total_students": total_students,
             "published_count": published_count,
             "avg_rating": avg_rating,
-            "revenue": revenue
+            "revenue": revenue,
+            "total_reviews": total_reviews,
+            "pending_questions_count": pending_questions_count,
+            "unpublished_count": unpublished_count
         },
         "course_performance": course_performance,
         "recent_enrollments": recent_enrollments,
@@ -133,8 +147,6 @@ def get_admin_dashboard() -> dict:
     if cached is not None:
         return cached
 
-    from django.db.models import Count
-    
     course_stats = Course.objects.aggregate(
         total=Count('id'),
         published=Count('id', filter=Q(is_published=True)),
@@ -154,6 +166,9 @@ def get_admin_dashboard() -> dict:
     # Revenue Overview
     revenue_sum = Payment.objects.filter(status=Payment.StatusChoices.COMPLETED).aggregate(total=Sum('amount'))['total'] or 0.00
     revenue = float(revenue_sum)
+
+    total_enrollments = Enrollment.objects.filter(is_active=True, course__is_deleted=False).count()
+    total_reviews = Review.objects.count()
 
     # Recent registrations
     recent_registrations_qs = User.objects.order_by('-date_joined')[:5].values('id', 'username', 'email', 'role', 'date_joined')
@@ -213,7 +228,9 @@ def get_admin_dashboard() -> dict:
             "pending_courses": pending_courses,
             "total_students": total_students,
             "total_mentors": total_mentors,
-            "revenue": revenue
+            "revenue": revenue,
+            "total_enrollments": total_enrollments,
+            "total_reviews": total_reviews
         },
         "recent_registrations": recent_registrations,
         "pending_mentor_approvals": pending_mentor_approvals,
@@ -229,9 +246,8 @@ def get_admin_dashboard() -> dict:
 def get_student_dashboard(user, request) -> dict:
     # Exclude enrollments that point to soft-deleted courses. Prefetch course and course__mentor.
     active_enrollments = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False).select_related('course', 'course__mentor')
-    
+
     # Collapse student stats into a single aggregate query
-    from django.db.models import Count, Avg, Sum
     enrollment_stats = active_enrollments.aggregate(
         enrolled=Count('id'),
         in_progress=Count('id', filter=Q(progress_percent__gt=0, progress_percent__lt=100)),
@@ -294,7 +310,7 @@ def get_student_dashboard(user, request) -> dict:
         .distinct()
         .order_by('-day')
     )
-    
+
     streak = 0
     current_date = timezone.now().date()
     if days:
@@ -309,10 +325,7 @@ def get_student_dashboard(user, request) -> dict:
     # 4. Certificates earned
     certificates_count = Certificate.objects.filter(student=user).count()
 
-    # 5. Average progress (already computed via single aggregate query above)
-    pass
-
-    # 6. Recent notifications
+    # 5. Recent notifications
     recent_notifications_qs = Notification.objects.filter(recipient=user).order_by('-created_at')[:5]
     recent_notifications = []
     for n in recent_notifications_qs:

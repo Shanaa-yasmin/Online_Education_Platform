@@ -4,15 +4,15 @@
 
 /* ── TOKENS ──────────────────────────────────────────────────────────── */
 :root {
-  --maroon: #6B1A1A;
-  --maroon-dark: #4A1010;
+  --maroon: var(--brand);
+  --maroon-dark: var(--brand-dark);
   --maroon-mid: #7E2222;
-  --blush: #FBF0F0;
+  --blush: var(--brand-subtle);
   --blush-mid: #F5E4E4;
   --blush-dark: #EDD5D5;
-  --ink: #2A1010;
-  --muted: #7A5C5C;
-  --border: #E8D5D5;
+  --ink: var(--txt-1);
+  --muted: var(--txt-3);
+  --border: var(--border);
   --white: #FFFFFF;
 }
 
@@ -103,7 +103,7 @@
   background: none;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -123,7 +123,7 @@
   border: none;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -274,7 +274,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .cta-primary:hover {
@@ -292,7 +292,7 @@
   border: 1.5px solid var(--maroon-dark);
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .cta-secondary:hover {
@@ -468,8 +468,6 @@
   height: 110px;
   background: linear-gradient(135deg, var(--maroon-dark), var(--maroon));
   border-radius: 6px;
-  display: flex;
-  flex-direction: column;
   gap: 8px;
   padding: 16px;
 }
@@ -655,7 +653,7 @@
   padding: 32px 28px;
   border: 1px solid var(--border);
   position: relative;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .step-card:hover {
@@ -747,7 +745,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
   cursor: pointer;
 }
 
@@ -767,7 +765,7 @@
 }
 
 .cc-t1 {
-  background: linear-gradient(135deg, #FBF0F0, #F0D5D5);
+  background: linear-gradient(135deg, var(--brand-subtle), #F0D5D5);
 }
 
 .cc-t2 {
@@ -872,7 +870,7 @@
   border: none;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .cc-enroll:hover {
@@ -922,7 +920,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .impact-cta:hover {
@@ -993,7 +991,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 28px 24px;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .test-card:hover {
@@ -1086,7 +1084,7 @@
   border-radius: 16px;
   padding: 24px 20px;
   text-align: center;
-  transition: all 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .mentor-card:hover {
@@ -1202,8 +1200,6 @@
 }
 
 .cta-right {
-  display: flex;
-  flex-direction: column;
   gap: 12px;
   flex-shrink: 0;
 }
@@ -1219,7 +1215,7 @@
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .cta-btn1:hover {
@@ -1238,7 +1234,7 @@
   font-family: 'Inter', sans-serif;
   white-space: nowrap;
   text-align: center;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .cta-btn2:hover {
@@ -1318,7 +1314,7 @@
   justify-content: center;
   cursor: pointer;
   color: rgba(255, 255, 255, 0.4);
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .sc-btn:hover {
@@ -1332,8 +1328,6 @@
 }
 
 .f-cert {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
@@ -1365,8 +1359,6 @@
 }
 
 .f-links {
-  display: flex;
-  flex-direction: column;
   gap: 11px;
 }
 
@@ -1517,8 +1509,6 @@
   }
 
   .nav-mobile-panel.open {
-    display: flex;
-    flex-direction: column;
     position: absolute;
     top: 60px;
     left: 0;
@@ -1674,6 +1664,13 @@
     align-items: flex-start;
     gap: 14px;
   }
+
+
+  /* Shared Flex Column Layout */
+  .nav-mobile-panel.open {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 /* ── Small phones (≤560px) ── */
@@ -1761,4 +1758,13 @@
   .sec-title {
     font-size: 1.6rem;
   }
+}
+
+/* Shared Flex Column Layout */
+.visual-screen,
+.cta-right,
+.f-cert,
+.f-links {
+  display: flex;
+  flex-direction: column;
 }

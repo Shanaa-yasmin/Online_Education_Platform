@@ -87,7 +87,7 @@ export default function CompleteProfilePage() {
       });
       await refreshProfile();
       // Redirect based on role
-      navigate(isMentor ? '/mentor/dashboard' : '/dashboard');
+      navigate(isMentor ? '/my-courses' : '/dashboard');
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || 'Failed to update profile. Please try again.');

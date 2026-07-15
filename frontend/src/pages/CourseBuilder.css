@@ -1,14 +1,14 @@
 /* CourseBuilder.css — Miranda theme (premium pass) */
 
 :root {
-    --maroon: #6B1A1A;
-    --maroon-dark: #4A1010;
+    --maroon: var(--brand);
+    --maroon-dark: var(--brand-dark);
     --maroon-light: #8A2A2A;
-    --blush: #FBF0F0;
+    --blush: var(--brand-subtle);
     --blush-mid: #F5E4E4;
-    --border-c: #E8D5D5;
-    --ink: #2A1010;
-    --muted: #7A5C5C;
+    --border-c: var(--border);
+    --ink: var(--txt-1);
+    --muted: var(--txt-3);
     --muted-2: #A08080;
     --surface: #FFFFFF;
 
@@ -36,8 +36,6 @@
     width: 100%;
     padding: 0 44px 72px;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
     animation: fadeInPage 0.35s var(--ease);
 }
 
@@ -91,8 +89,6 @@
 }
 
 .header-left {
-    display: flex;
-    flex-direction: column;
     gap: 7px;
     flex: 1;
     min-width: 240px;
@@ -179,8 +175,6 @@
 
 /* CONTENT */
 .builder-content {
-    display: flex;
-    flex-direction: column;
     gap: 18px;
 }
 
@@ -215,8 +209,6 @@
 
 /* ACCORDION */
 .modules-list-accordion {
-    display: flex;
-    flex-direction: column;
     gap: 12px;
 }
 
@@ -319,7 +311,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.18s var(--ease);
+    transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
 }
 
 .btn-icon-link:hover {
@@ -341,8 +333,6 @@
 .module-lessons-list {
     border-top: 1px solid var(--border-c);
     padding: 16px 22px 22px;
-    display: flex;
-    flex-direction: column;
     gap: 10px;
     background: var(--blush);
 }
@@ -482,8 +472,6 @@
 }
 
 .quiz-questions-list {
-    display: flex;
-    flex-direction: column;
     gap: 9px;
 }
 
@@ -558,8 +546,6 @@
 
 /* EMPTY STATE */
 .builder-empty-state {
-    display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 16px;
     padding: 68px 28px;
@@ -600,8 +586,6 @@
 .builder-loading-page,
 .builder-error-page {
     min-height: 55vh;
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 18px;
@@ -785,7 +769,7 @@
     justify-content: center;
     cursor: pointer;
     color: var(--muted);
-    transition: all 0.18s var(--ease);
+    transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
 }
 
 .modal-close-btn:hover {
@@ -795,14 +779,10 @@
 }
 
 .modal-form {
-    display: flex;
-    flex-direction: column;
     gap: 17px;
 }
 
 .form-group {
-    display: flex;
-    flex-direction: column;
     gap: 7px;
 }
 
@@ -894,8 +874,6 @@
 
 /* Thumbnail dropzone / preview (used across builder & mentor modals) */
 .thumbnail-dropzone {
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 6px;
@@ -908,7 +886,7 @@
     font-size: 13px;
     font-weight: 600;
     background: var(--blush);
-    transition: all 0.2s var(--ease);
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .thumbnail-dropzone:hover {
@@ -985,4 +963,22 @@
     .options-grid-display {
         grid-template-columns: 1fr;
     }
+}
+
+
+/* Shared Flex Column Layout */
+.course-builder-page,
+.header-left,
+.builder-content,
+.modules-list-accordion,
+.module-lessons-list,
+.quiz-questions-list,
+.builder-empty-state,
+.builder-loading-page,
+.builder-error-page,
+.modal-form,
+.form-group,
+.thumbnail-dropzone {
+  display: flex;
+  flex-direction: column;
 }

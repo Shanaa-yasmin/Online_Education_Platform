@@ -5,14 +5,8 @@ import api from '../utils/api.js';
 import useNotifications from '../hooks/useNotifications.js';
 import NotificationCard from '../components/NotificationCard.jsx';
 import NotificationSkeleton from '../components/NotificationSkeleton.jsx';
-import NotificationBell from '../components/NotificationBell.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import './NotificationCenter.css';
-
-function getInitials(user) {
-  if (!user) return '?';
-  return (user.username || user.email || '?').slice(0, 2).toUpperCase();
-}
 
 export default function NotificationCenter() {
   const { user, logout } = useAuth();
@@ -166,22 +160,6 @@ export default function NotificationCenter() {
       {/* Main Container */}
       <div className="dashboard-main">
         {/* Topbar */}
-        <header className="topbar">
-          <div className="topbar-left">
-            <h1>Notification Center</h1>
-            <p>Manage and browse your real-time alerts</p>
-          </div>
-          <div className="topbar-right">
-            <NotificationBell user={user} />
-            <Link to="/profile" className="topbar-user">
-              <div className="avatar-initials" style={{ width: 30, height: 30, fontSize: 12 }}>
-                {getInitials(user)}
-              </div>
-              <span className="topbar-user-name">{user?.username}</span>
-              <span className={`badge badge-${(user?.role || 'student').toLowerCase()}`}>{user?.role}</span>
-            </Link>
-          </div>
-        </header>
 
         {/* Dedicated Page Content */}
         <div className="inner-content">

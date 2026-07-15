@@ -1,13 +1,13 @@
 /* CoursePage.css — Miranda theme */
 
 :root {
-    --maroon: #6B1A1A;
-    --maroon-dark: #4A1010;
-    --blush: #FBF0F0;
+    --maroon: var(--brand);
+    --maroon-dark: var(--brand-dark);
+    --blush: var(--brand-subtle);
     --blush-mid: #F5E4E4;
-    --border-c: #E8D5D5;
-    --ink: #2A1010;
-    --muted: #7A5C5C;
+    --border-c: var(--border);
+    --ink: var(--txt-1);
+    --muted: var(--txt-3);
     --muted-2: #A08080;
     --surface: #FFFFFF;
 }
@@ -51,8 +51,6 @@
 
 /* LEFT SIDE */
 .course-info-side {
-    display: flex;
-    flex-direction: column;
     gap: 22px;
 }
 
@@ -148,8 +146,6 @@
 }
 
 .curriculum-modules-list {
-    display: flex;
-    flex-direction: column;
     gap: 10px;
 }
 
@@ -246,14 +242,10 @@
     position: sticky;
     top: 80px;
     box-shadow: 0 8px 32px rgba(107, 26, 26, 0.08);
-    display: flex;
-    flex-direction: column;
     gap: 20px;
 }
 
 .price-tag-row {
-    display: flex;
-    flex-direction: column;
     gap: 4px;
     padding-bottom: 18px;
     border-bottom: 1px solid var(--blush-mid);
@@ -280,8 +272,6 @@
 }
 
 .card-specs {
-    display: flex;
-    flex-direction: column;
     gap: 12px;
 }
 
@@ -304,14 +294,10 @@
 }
 
 .cta-action-block {
-    display: flex;
-    flex-direction: column;
     gap: 10px;
 }
 
 .enrolled-status-box {
-    display: flex;
-    flex-direction: column;
     gap: 12px;
 }
 
@@ -343,8 +329,6 @@
     border: 1px solid var(--border-c);
     border-radius: 12px;
     padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
     gap: 6px;
 }
 
@@ -411,7 +395,7 @@
     justify-content: center;
     cursor: pointer;
     color: var(--muted);
-    transition: all 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .modal-close-btn:hover {
@@ -420,14 +404,10 @@
 }
 
 .modal-form {
-    display: flex;
-    flex-direction: column;
     gap: 14px;
 }
 
 .form-group {
-    display: flex;
-    flex-direction: column;
     gap: 5px;
 }
 
@@ -476,8 +456,6 @@
 .course-detail-loading,
 .course-detail-error {
     min-height: 55vh;
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 16px;
@@ -519,7 +497,7 @@
     border-radius: 100px;
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
     padding: 10px 22px;
     white-space: nowrap;
 }
@@ -628,10 +606,8 @@
     border-radius: 12px;
     padding: 16px;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
     position: relative;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     background: #FFFFFF;
 }
 
@@ -654,7 +630,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .gateway-option.selected .gateway-radio {
@@ -666,7 +642,7 @@
     height: 8px;
     border-radius: 50%;
     background: transparent;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .gateway-option.selected .radio-circle {
@@ -699,8 +675,6 @@
     max-width: 400px;
     width: 90%;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    display: flex;
-    flex-direction: column;
     align-items: center;
 }
 
@@ -724,3 +698,28 @@
 }
 .lesson-preview-link:hover { text-decoration: underline !important; color: var(--primary-color) !important; }
 
+
+/* Shared Flex Column Layout */
+.course-info-side,
+.curriculum-modules-list,
+.course-enrollment-card,
+.price-tag-row,
+.card-specs,
+.cta-action-block,
+.enrolled-status-box,
+.order-summary-box,
+.modal-form,
+.form-group,
+.course-detail-loading,
+.course-detail-error,
+.gateway-option,
+.verification-card {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .student-course-page {
+    padding: 20px 16px 40px !important;
+  }
+}

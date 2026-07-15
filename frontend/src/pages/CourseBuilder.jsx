@@ -166,7 +166,7 @@ export default function CourseBuilder() {
     setDeleting(true);
     try {
       await api.delete(`/api/courses/${courseId}/`);
-      navigate('/mentor/dashboard');
+      navigate('/my-courses');
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.detail || 'Failed to delete course.');
@@ -575,7 +575,7 @@ export default function CourseBuilder() {
       <div className="builder-error-page">
         <h2>Error loading Course</h2>
         <p className="alert alert-error">{error || 'Course not found'}</p>
-        <Link to="/mentor/dashboard" className="btn btn-primary">Return to Dashboard</Link>
+        <Link to="/my-courses" className="btn btn-primary">Return to Dashboard</Link>
       </div>
     );
   }
@@ -585,7 +585,7 @@ export default function CourseBuilder() {
       {/* Top Header Row */}
       <header className="builder-header">
         <div className="header-left">
-          <Link to="/mentor/dashboard" className="back-link">
+          <Link to="/my-courses" className="back-link">
             <ArrowLeftIcon /> Dashboard
           </Link>
           <div className="header-title-row">

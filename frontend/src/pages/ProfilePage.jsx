@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Link, useNavigate } from 'react-router-dom';
-import NotificationBell from '../components/NotificationBell.jsx';
 import api from '../utils/api.js';
 import Sidebar from '../components/Sidebar.jsx';
 import './ProfilePage.css';
@@ -203,18 +202,6 @@ export default function ProfilePage() {
       <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="profile" />
 
       <div className="inner-page">
-        <header className="topbar">
-          <div className="topbar-left">
-            <h1>Account Settings</h1>
-            <p>Manage your profile, analytics and security preferences</p>
-          </div>
-          <div className="topbar-right">
-            <NotificationBell user={user} />
-            <div className="avatar-initials" style={{ width: 32, height: 32, fontSize: 13 }}>
-              {getInitials()}
-            </div>
-          </div>
-        </header>
 
         <div className="profile-page-wrap">
           <Link to="/dashboard" className="back-link"><i className="ti ti-arrow-left" /> Back to Dashboard</Link>

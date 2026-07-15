@@ -29,23 +29,7 @@ from .permissions import IsCourseMentorOrAdmin, IsAdminOrStaff
 from .filters import CourseFilter
 from .admin_reports_views import ADMIN_REPORTS_BASE_KEY
 from payments.dashboard_service import ADMIN_DASHBOARD_CACHE_KEY
-
-
-def _revoke_course_approval(course, user):
-    """
-    If a mentor edits a course, module, or lesson, the course needs to be reviewed again.
-    This revokes published and approved statuses.
-    """
-    if user.role == 'MENTOR':
-        changed = False
-        if course.is_approved or course.is_published or course.is_submitted_for_review:
-            course.is_approved = False
-            course.is_published = False
-            course.is_submitted_for_review = False
-            changed = True
-        
-        if changed:
-            course.save(update_fields=['is_approved', 'is_published', 'is_submitted_for_review'])
+from . import quiz_service
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -71,6 +55,8 @@ class CourseViewSet(viewsets.ModelViewSet):
 
         # Mentors see approved/published courses OR their own created courses
         if user.role == 'MENTOR':
+            if self.request.query_params.get('created_by_me') == 'true':
+                return queryset.filter(mentor=user).order_by('-created_at')
             return queryset.filter(
                 Q(mentor=user) | Q(is_approved=True, is_published=True)
             ).distinct().order_by('-created_at')
@@ -112,8 +98,6 @@ class CourseViewSet(viewsets.ModelViewSet):
                     related_object_id=instance.id,
                     related_object_type="Course"
                 )
-        
-        _revoke_course_approval(instance, self.request.user)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsAdminOrStaff])
     def approve(self, request, pk=None):
@@ -368,17 +352,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
         if course.mentor != self.request.user and not (self.request.user.is_staff or self.request.user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add modules to this course.")
-        instance = serializer.save()
-        _revoke_course_approval(instance.course, self.request.user)
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        _revoke_course_approval(instance.course, self.request.user)
-
-    def perform_destroy(self, instance):
-        course = instance.course
-        instance.delete()
-        _revoke_course_approval(course, self.request.user)
+        serializer.save()
 
 
 class LessonViewSet(viewsets.ModelViewSet):
@@ -395,17 +369,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         if module.course.mentor != self.request.user and not (self.request.user.is_staff or self.request.user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add lessons to this course module.")
-        instance = serializer.save()
-        _revoke_course_approval(instance.module.course, self.request.user)
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        _revoke_course_approval(instance.module.course, self.request.user)
-
-    def perform_destroy(self, instance):
-        course = instance.module.course
-        instance.delete()
-        _revoke_course_approval(course, self.request.user)
+        serializer.save()
 
 
 class QuizQuestionViewSet(viewsets.ModelViewSet):
@@ -423,17 +387,7 @@ class QuizQuestionViewSet(viewsets.ModelViewSet):
         if lesson.module.course.mentor != self.request.user and not (self.request.user.is_staff or self.request.user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to add quiz questions to this lesson.")
-        instance = serializer.save()
-        _revoke_course_approval(instance.lesson.module.course, self.request.user)
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        _revoke_course_approval(instance.lesson.module.course, self.request.user)
-
-    def perform_destroy(self, instance):
-        course = instance.lesson.module.course
-        instance.delete()
-        _revoke_course_approval(course, self.request.user)
+        serializer.save()
 
 
 class QuizAttemptViewSet(viewsets.GenericViewSet):
@@ -444,10 +398,8 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
       POST /api/quiz/attempts/{attempt_pk}/submit/ -> submit answers, get a graded result
       GET  /api/quiz/lessons/{lesson_pk}/history/   -> the current student's past attempts
 
-    Grading supports SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE (all matched
-    against QuizOption.is_correct) and FILL_BLANK (matched via
-    QuizQuestion.check_text_answer). Each question is worth `points`
-    weight, and the attempt is scored as a percentage of total points.
+    Business logic (grading, enrollment checks, attempt lifecycle) lives in
+    quiz_service.py; this viewset only handles request/response plumbing.
     """
     queryset = QuizAttempt.objects.select_related('student', 'lesson').prefetch_related(
         'answers__question__options', 'answers__selected_options'
@@ -455,49 +407,15 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
     serializer_class = QuizAttemptSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    @staticmethod
-    def _get_quiz_lesson(lesson_pk):
-        return get_object_or_404(Lesson, pk=lesson_pk, content_type=Lesson.ContentType.QUIZ)
-
-    def _check_enrollment(self, request, lesson):
-        # Admins/mentors can preview; only enrolled students are graded/tracked.
-        user = request.user
-        if user.is_staff or user.role == 'ADMIN' or lesson.module.course.mentor == user:
-            return
-        from payments.models import Enrollment
-        # Enrollment check must ensure the course isn't soft-deleted
-        if not Enrollment.objects.filter(student=user, course=lesson.module.course, course__is_deleted=False).exists():
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You must be enrolled in this course to take the quiz.")
-
     @action(detail=False, methods=['post'], url_path='lessons/(?P<lesson_pk>[^/.]+)/start')
     def start(self, request, lesson_pk=None):
-        lesson = self._get_quiz_lesson(lesson_pk)
-        self._check_enrollment(request, lesson)
-        student = request.user
+        lesson = quiz_service.get_quiz_lesson(lesson_pk)
+        quiz_service.check_enrollment(request.user, lesson)
 
-        submitted_count = QuizAttempt.objects.filter(
-            lesson=lesson, student=student, status=QuizAttempt.Status.SUBMITTED
-        ).count()
-        if lesson.max_quiz_attempts and submitted_count >= lesson.max_quiz_attempts:
-            return Response(
-                {"detail": f"You have used all {lesson.max_quiz_attempts} allowed attempts for this quiz."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Resume an in-progress attempt rather than creating duplicates
-        attempt = QuizAttempt.objects.filter(
-            lesson=lesson, student=student, status=QuizAttempt.Status.IN_PROGRESS
-        ).first()
-
-        if not attempt:
-            total_points = lesson.quiz_questions.aggregate(total=Sum('points'))['total'] or 0
-            attempt = QuizAttempt.objects.create(
-                lesson=lesson,
-                student=student,
-                total_points=total_points,
-                attempt_number=submitted_count + 1,
-            )
+        try:
+            attempt = quiz_service.start_attempt(request.user, lesson)
+        except quiz_service.QuizStateError as exc:
+            return Response({"detail": str(exc)}, status=exc.status_code)
 
         questions = QuizQuestionSerializer(
             lesson.quiz_questions.all(), many=True, context={'request': request}
@@ -514,76 +432,18 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         attempt = self.get_object()
-        if attempt.student != request.user:
-            return Response({"detail": "This is not your quiz attempt."}, status=status.HTTP_403_FORBIDDEN)
-        if attempt.status == QuizAttempt.Status.SUBMITTED:
-            return Response({"detail": "This attempt has already been submitted."},
-                             status=status.HTTP_400_BAD_REQUEST)
-
-        lesson = attempt.lesson
-        time_expired = False
-        if lesson.quiz_time_limit_minutes:
-            elapsed_minutes = (timezone.now() - attempt.started_at).total_seconds() / 60
-            time_expired = elapsed_minutes > lesson.quiz_time_limit_minutes
 
         input_serializer = QuizAnswerInputSerializer(data=request.data.get('answers', []), many=True)
         input_serializer.is_valid(raise_exception=True)
 
-        questions_by_id = {q.id: q for q in lesson.quiz_questions.prefetch_related('options').all()}
-        score_points = 0
-
-        for ans in input_serializer.validated_data:
-            question = questions_by_id.get(ans['question_id'])
-            if not question:
-                continue  # ignore answers for questions that aren't part of this lesson
-
-            selected_ids = ans.get('selected_option_ids') or []
-
-            if question.question_type == QuizQuestion.QuestionType.FILL_BLANK:
-                is_correct = question.check_text_answer(ans.get('text_answer'))
-            else:
-                correct_ids = set(question.options.filter(is_correct=True).values_list('id', flat=True))
-                is_correct = len(correct_ids) > 0 and set(selected_ids) == correct_ids
-
-            points_awarded = question.points if is_correct else 0
-            score_points += points_awarded
-
-            answer, _ = QuizAnswer.objects.update_or_create(
-                attempt=attempt,
-                question=question,
-                defaults={
-                    'text_answer': ans.get('text_answer'),
-                    'is_correct': is_correct,
-                    'points_awarded': points_awarded,
-                }
-            )
-            answer.selected_options.set(selected_ids)
-
-        attempt.score_points = score_points
-        attempt.score_percent = (
-            round((score_points / attempt.total_points) * 100, 2) if attempt.total_points else 0.00
-        )
-        attempt.passed = attempt.score_percent >= lesson.passing_score_percent
-        attempt.status = QuizAttempt.Status.SUBMITTED
-        attempt.submitted_at = timezone.now()
-        attempt.save()
-
         try:
-            from notifications.models import Notification
-            Notification.objects.create(
-                recipient=attempt.student,
-                title="Quiz Submitted",
-                message=(
-                    f"You scored {attempt.score_percent}% on '{lesson.title}'. "
-                    f"{'Passed!' if attempt.passed else 'Try again to pass.'}"
-                ),
-                notification_type=getattr(Notification.NotificationType, 'QUIZ_RESULT', 'COURSE_UPDATED'),
-                related_object_id=attempt.id,
-                related_object_type="QuizAttempt"
+            attempt, time_expired = quiz_service.submit_attempt(
+                attempt, request.user, input_serializer.validated_data
             )
-        except Exception:
-            # Notification delivery should never block the graded result from returning.
-            pass
+        except quiz_service.QuizPermissionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except quiz_service.QuizStateError as exc:
+            return Response({"detail": exc.message}, status=exc.status_code)
 
         response_data = QuizAttemptSerializer(attempt, context={'request': request}).data
         if time_expired:
@@ -593,10 +453,8 @@ class QuizAttemptViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_path='lessons/(?P<lesson_pk>[^/.]+)/history')
     def history(self, request, lesson_pk=None):
-        lesson = self._get_quiz_lesson(lesson_pk)
-        attempts = QuizAttempt.objects.filter(
-            lesson=lesson, student=request.user
-        ).order_by('-started_at')
+        lesson = quiz_service.get_quiz_lesson(lesson_pk)
+        attempts = quiz_service.get_history(lesson, request.user)
         serializer = QuizAttemptSerializer(attempts, many=True, context={'request': request})
         return Response(serializer.data)
 

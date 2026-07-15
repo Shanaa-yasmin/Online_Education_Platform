@@ -342,7 +342,7 @@ export default function LearningPlayer() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
-    if (tab === 'qa' || tab === 'lesson') {
+    if (tab === 'qa' || tab === 'lesson' || tab === 'curriculum') {
       setActiveTab(tab);
     }
   }, [location.search]);
@@ -384,6 +384,11 @@ export default function LearningPlayer() {
   }, [activeLesson?.id, activeLesson?.content_type]);
 
   const loadLearningData = useCallback(async () => {
+    if (!courseId || courseId === 'undefined') {
+      setError('Invalid course ID.');
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       
@@ -604,7 +609,7 @@ export default function LearningPlayer() {
       {/* Sidebar Syllabus */}
       <aside className="player-sidebar">
         <div className="sidebar-header">
-          <button onClick={() => navigate(-1)} className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+          <button onClick={() => navigate(`/courses/${courseId}`, { replace: true, state: { fromCheckout: location.state?.fromCheckout } })} className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}>
             <ArrowLeftIcon /> Back
           </button>
           <h2 className="sidebar-course-title">{course.title}</h2>

@@ -1,8 +1,6 @@
 /* MyCourses.css */
 
 .my-courses-header-section {
-  display: flex;
-  flex-direction: column;
   gap: 20px;
   border-bottom: 1px solid var(--border);
   padding-bottom: 24px;
@@ -43,7 +41,7 @@
   font-family: var(--font-ui);
   font-size: 13.5px;
   outline: none;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .my-courses-search-input:focus {
@@ -70,7 +68,7 @@
   background: none;
   cursor: pointer;
   border-radius: var(--r-sm);
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .my-courses-tabs .tab-btn:hover {
@@ -86,7 +84,7 @@
 /* Grid layout */
 .my-courses-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
   margin-top: 8px;
 }
@@ -99,9 +97,7 @@
   box-shadow: var(--shadow-card);
   transition: all 200ms ease;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-}
+  }
 
 .my-courses-card:hover {
   transform: translateY(-2px);
@@ -141,8 +137,6 @@
 .my-courses-card-content {
   padding: 20px;
   flex: 1;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
@@ -173,8 +167,6 @@
 }
 
 .my-courses-card-progress-section {
-  display: flex;
-  flex-direction: column;
   gap: 6px;
   margin-top: 4px;
 }
@@ -238,8 +230,6 @@
 
 .my-courses-content-skeleton {
   padding: 20px;
-  display: flex;
-  flex-direction: column;
   gap: 14px;
 }
 
@@ -277,5 +267,34 @@
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+
+/* Shared Flex Column Layout */
+.my-courses-header-section,
+.my-courses-card,
+.my-courses-card-content,
+.my-courses-card-progress-section,
+.my-courses-content-skeleton {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .my-courses-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .my-courses-search {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .my-courses-tabs {
+    width: 100% !important;
+    justify-content: center !important;
   }
 }

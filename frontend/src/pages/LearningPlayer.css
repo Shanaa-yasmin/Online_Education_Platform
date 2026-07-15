@@ -1,14 +1,14 @@
 /* LearningPlayer.css — Miranda theme (premium pass) */
 
 :root {
-  --maroon: #6B1A1A;
-  --maroon-dark: #4A1010;
+  --maroon: var(--brand);
+  --maroon-dark: var(--brand-dark);
   --maroon-light: #8A2A2A;
-  --blush: #FBF0F0;
+  --blush: var(--brand-subtle);
   --blush-mid: #F5E4E4;
-  --border-c: #E8D5D5;
-  --ink: #2A1010;
-  --muted: #7A5C5C;
+  --border-c: var(--border);
+  --ink: var(--txt-1);
+  --muted: var(--txt-3);
   --muted-2: #A08080;
   --surface: #FFFFFF;
 
@@ -54,8 +54,6 @@
 .player-sidebar {
   background: var(--surface);
   border-right: 1px solid var(--border-c);
-  display: flex;
-  flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
@@ -63,8 +61,6 @@
 .sidebar-header {
   padding: 22px 20px;
   border-bottom: 1px solid var(--border-c);
-  display: flex;
-  flex-direction: column;
   gap: 15px;
 }
 
@@ -96,8 +92,6 @@
 }
 
 .progress-indicator {
-  display: flex;
-  flex-direction: column;
   gap: 7px;
 }
 
@@ -124,19 +118,16 @@
   transition: width 0.4s var(--ease);
 }
 
+
 /* SYLLABUS NAV */
 .sidebar-syllabus {
   flex: 1;
   overflow-y: auto;
   padding: 18px 14px;
-  display: flex;
-  flex-direction: column;
   gap: 20px;
 }
 
 .syllabus-module {
-  display: flex;
-  flex-direction: column;
   gap: 6px;
 }
 
@@ -151,8 +142,6 @@
 }
 
 .module-lessons-menu {
-  display: flex;
-  flex-direction: column;
   gap: 3px;
 }
 
@@ -168,7 +157,7 @@
   cursor: pointer;
   width: 100%;
   color: var(--muted);
-  transition: all 0.18s var(--ease);
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
   font-family: 'Inter', sans-serif;
   position: relative;
 }
@@ -239,16 +228,12 @@
 
 /* MAIN AREA */
 .player-main-area {
-  display: flex;
-  flex-direction: column;
   height: 100%;
   background: var(--blush);
   overflow: hidden;
 }
 
 .active-lesson-container {
-  display: flex;
-  flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
@@ -299,8 +284,6 @@
 
 /* VIDEO */
 .video-player-wrapper {
-  display: flex;
-  flex-direction: column;
   gap: 26px;
   max-width: 800px;
   margin: 0 auto;
@@ -361,8 +344,6 @@
   max-width: 460px;
   width: 100%;
   text-align: center;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 15px;
   box-shadow: var(--shadow-sm);
@@ -422,8 +403,6 @@
   border-radius: var(--radius-xl);
   padding: 50px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 17px;
   box-shadow: var(--shadow-md);
@@ -485,8 +464,6 @@
   border: 1px solid var(--border-c);
   border-radius: var(--radius-lg);
   padding: 30px;
-  display: flex;
-  flex-direction: column;
   gap: 22px;
   box-shadow: var(--shadow-sm);
 }
@@ -514,8 +491,6 @@
 }
 
 .quiz-options-list {
-  display: flex;
-  flex-direction: column;
   gap: 11px;
 }
 
@@ -530,7 +505,7 @@
   text-align: left;
   cursor: pointer;
   color: var(--muted);
-  transition: all 0.18s var(--ease);
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
   font-family: 'Inter', sans-serif;
   width: 100%;
 }
@@ -572,7 +547,7 @@
   font-size: 12.5px;
   font-weight: 700;
   flex-shrink: 0;
-  transition: all 0.18s var(--ease);
+  transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
   background: var(--surface);
 }
 
@@ -638,8 +613,6 @@
   padding: 46px;
   max-width: 380px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 11px;
   box-shadow: var(--shadow-lg);
@@ -694,8 +667,6 @@
 
 /* EMPTY STATE */
 .no-active-lesson-state {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 13px;
@@ -730,8 +701,6 @@
 .player-loading-page,
 .player-error-page {
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 18px;
@@ -911,8 +880,6 @@
 
 /* ─── Q&A Panel ──────────────────────────────────── */
 .qa-panel {
-  display: flex;
-  flex-direction: column;
   height: 100%;
   overflow: hidden;
   background: var(--blush);
@@ -986,15 +953,11 @@
   flex: 1;
   overflow-y: auto;
   padding: 22px;
-  display: flex;
-  flex-direction: column;
   gap: 13px;
 }
 
 .qa-loading,
 .qa-empty {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
@@ -1016,8 +979,6 @@
 
 /* Thread wrapper */
 .qa-thread {
-  display: flex;
-  flex-direction: column;
   gap: 5px;
 }
 
@@ -1070,8 +1031,6 @@
 .qa-msg-body {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 
@@ -1162,7 +1121,7 @@
   font-weight: 650;
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.15s var(--ease);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .qa-action-btn:hover {
@@ -1189,8 +1148,6 @@
   border-top: 1px solid var(--border-c);
   padding: 14px 18px;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
   gap: 9px;
 }
 
@@ -1287,4 +1244,34 @@
   color: var(--muted-2);
   margin: 0;
   text-align: right;
+}
+
+
+/* Shared Flex Column Layout */
+.player-sidebar,
+.sidebar-header,
+.progress-indicator,
+.sidebar-syllabus,
+.syllabus-module,
+.module-lessons-menu,
+.player-main-area,
+.active-lesson-container,
+.video-player-wrapper,
+.mock-pdf-screen,
+.quiz-result-card,
+.quiz-question-card,
+.quiz-options-list,
+.completion-modal,
+.no-active-lesson-state,
+.player-loading-page,
+.player-error-page,
+.qa-panel,
+.qa-messages-list,
+.qa-loading,
+.qa-empty,
+.qa-thread,
+.qa-msg-body,
+.qa-compose {
+  display: flex;
+  flex-direction: column;
 }

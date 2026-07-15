@@ -13,18 +13,15 @@ stripe_client.py, and paypal_client.py.
 
 import json
 import logging
-import uuid
 
 import stripe
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
-from courses.models import Course, Lesson
-from notifications.models import Notification
+from courses.models import Course
 
 from .models import Enrollment, Payment
 from progress.models import LessonProgress
@@ -40,8 +37,6 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
-
-User = get_user_model()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -98,6 +93,13 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if not course_id:
             return Response(
                 {"detail": "course_id parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            course_id = int(course_id)
+        except ValueError:
+            return Response(
+                {"detail": "course_id must be a valid integer."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -212,54 +214,31 @@ class CheckoutViewSet(viewsets.ViewSet):
         if err:
             return err
 
-        is_mock_stripe = (gateway == 'STRIPE') and (not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == 'sk_test_mock' or settings.STRIPE_SECRET_KEY.endswith('_mock'))
-        is_mock_paypal = (gateway == 'PAYPAL') and (not settings.PAYPAL_CLIENT_ID or settings.PAYPAL_CLIENT_ID == 'paypal_mock' or settings.PAYPAL_SECRET == 'paypal_mock')
-
         # ── Stripe ──────────────────────────────────────────────────────
         if gateway == 'STRIPE':
-            if is_mock_stripe:
-                transaction_id = f"mock_stripe_sess_{uuid.uuid4().hex}"
-                checkout_url = (
-                    f"{settings.FRONTEND_URL}/mock-checkout"
-                    f"?gateway=stripe"
-                    f"&course_id={course.id}"
-                    f"&transaction_id={transaction_id}"
+            try:
+                session = stripe_client.create_checkout_session(course, user, enrollment)
+                transaction_id = session.id
+                checkout_url   = session.url
+            except stripe.error.StripeError as exc:
+                logger.error("[Stripe] Session creation failed: %s", exc)
+                return Response(
+                    {"detail": f"Stripe session creation failed: {exc.user_message}"},
+                    status=status.HTTP_502_BAD_GATEWAY,
                 )
-                logger.warning("[Stripe] Using local simulated checkout for course %s", course.id)
-            else:
-                try:
-                    session = stripe_client.create_checkout_session(course, user, enrollment)
-                    transaction_id = session.id
-                    checkout_url   = session.url
-                except stripe.error.StripeError as exc:
-                    logger.error("[Stripe] Session creation failed: %s", exc)
-                    return Response(
-                        {"detail": f"Stripe session creation failed: {exc.user_message}"},
-                        status=status.HTTP_502_BAD_GATEWAY,
-                    )
 
         # ── PayPal ──────────────────────────────────────────────────────
         else:
-            if is_mock_paypal:
-                transaction_id = f"mock_paypal_order_{uuid.uuid4().hex}"
-                checkout_url = (
-                    f"{settings.FRONTEND_URL}/mock-checkout"
-                    f"?gateway=paypal"
-                    f"&course_id={course.id}"
-                    f"&transaction_id={transaction_id}"
+            try:
+                order_data   = paypal_client.create_order(course, enrollment)
+                transaction_id = order_data['id']
+                checkout_url   = paypal_client.get_approve_url(order_data)
+            except RuntimeError as exc:
+                logger.error("[PayPal] Order creation failed: %s", exc)
+                return Response(
+                    {"detail": f"PayPal order creation failed: {exc}"},
+                    status=status.HTTP_502_BAD_GATEWAY,
                 )
-                logger.warning("[PayPal] Using local simulated checkout for course %s", course.id)
-            else:
-                try:
-                    order_data   = paypal_client.create_order(course, enrollment)
-                    transaction_id = order_data['id']
-                    checkout_url   = paypal_client.get_approve_url(order_data)
-                except RuntimeError as exc:
-                    logger.error("[PayPal] Order creation failed: %s", exc)
-                    return Response(
-                        {"detail": f"PayPal order creation failed: {exc}"},
-                        status=status.HTTP_502_BAD_GATEWAY,
-                    )
 
         # ── Create or reuse a PENDING payment row ──────────────────────
         # Enrollment is unique per (student, course), so it gets reused
@@ -330,12 +309,14 @@ class CheckoutViewSet(viewsets.ViewSet):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
+            if payment.student != request.user:
+                return Response(
+                    {"detail": "This payment does not belong to your account."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             if payment.status == Payment.StatusChoices.COMPLETED:
                 return Response({"verified": True, "detail": "Payment already verified."})
-
-            if session_id.startswith('mock_'):
-                services.activate_enrollment(payment)
-                return Response({"verified": True, "detail": "Stripe mock payment verified."})
 
             try:
                 session = stripe_client.retrieve_session(session_id)
@@ -374,12 +355,14 @@ class CheckoutViewSet(viewsets.ViewSet):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
+            if payment.student != request.user:
+                return Response(
+                    {"detail": "This payment does not belong to your account."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             if payment.status == Payment.StatusChoices.COMPLETED:
                 return Response({"verified": True, "detail": "Payment already verified."})
-
-            if order_id.startswith('mock_'):
-                services.activate_enrollment(payment)
-                return Response({"verified": True, "detail": "PayPal mock payment captured and verified."})
 
             try:
                 cap_data = paypal_client.capture_order(order_id)

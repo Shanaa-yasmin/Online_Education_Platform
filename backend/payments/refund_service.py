@@ -2,8 +2,7 @@
 payments/refund_service.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 Orchestrates refunding a single Payment: calling out to the correct
-payment gateway (or skipping the call entirely for mock/simulated
-transactions), then applying the shared state transition via
+payment gateway, then applying the shared state transition via
 services.mark_refunded. views.py only handles permission checks and
 translates RefundError into an HTTP response.
 """
@@ -35,17 +34,11 @@ class RefundError(Exception):
 
 def process_refund(payment: Payment, refunded_by) -> None:
     """
-    Refund `payment` at its gateway (unless it's a mock transaction),
-    then mark it REFUNDED and revoke the enrollment via services.py.
-    Raises RefundError on any gateway failure.
+    Refund `payment` at its gateway, then mark it REFUNDED and revoke
+    the enrollment via services.py. Raises RefundError on any gateway
+    failure.
     """
-    if payment.transaction_id.startswith('mock_'):
-        logger.info(
-            "[Refund] Bypassing third-party API refund for mock transaction %s",
-            payment.transaction_id,
-        )
-
-    elif payment.gateway == Payment.GatewayChoices.STRIPE:
+    if payment.gateway == Payment.GatewayChoices.STRIPE:
         try:
             session = stripe_client.retrieve_session(payment.transaction_id)
             pi_id = session.payment_intent

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
-import NotificationBell from '../components/NotificationBell.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import './AdminPanel.css';
 
@@ -13,18 +12,17 @@ export default function AdminPanel() {
   const [activeTab, setTabState] = useState(searchParams.get('tab') || 'courses');
   const [pendingCourses, setPendingCourses] = useState([]);
   const [pendingMentors, setPendingMentors] = useState([]);
-  const [payments, setPayments] = useState([]);
   const [users, setUsers] = useState([]);
   const [loadingCourses, setLC] = useState(true);
   const [loadingMentors, setLM] = useState(true);
-  const [loadingPayments, setLP] = useState(true);
   const [loadingUsers, setLU] = useState(true);
   const [coursesError, setCE] = useState('');
   const [mentorsError, setME] = useState('');
-  const [paymentsError, setPE] = useState('');
   const [usersError, setUE] = useState('');
   const [actioningId, setActioningId] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLS] = useState(true);
 
   // User Management Filters & Details state
   const [userSearch, setUserSearch] = useState('');
@@ -40,16 +38,36 @@ export default function AdminPanel() {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['courses', 'mentors', 'payments', 'users'].includes(tabParam) && tabParam !== activeTab) {
+    if (tabParam && ['courses', 'mentors', 'users'].includes(tabParam) && tabParam !== activeTab) {
       setTabState(tabParam);
     }
   }, [searchParams]);
 
   const fetchCourses = async (active) => { try { setLC(true); const r = await api.get('/api/courses/'); if (active.current) { setPendingCourses((r.data.results || r.data).filter(c => !c.is_approved)); setCE(''); } } catch { if (active.current) setCE('Failed to fetch pending courses.'); } finally { if (active.current) setLC(false); } };
   const fetchMentors = async (active) => { try { setLM(true); const r = await api.get('/api/auth/profiles/?role=MENTOR&is_approved=false'); if (active.current) { setPendingMentors(r.data.results || r.data); setME(''); } } catch { if (active.current) setME('Failed to fetch pending mentors.'); } finally { if (active.current) setLM(false); } };
-  const fetchPayments = async (active) => { try { setLP(true); const r = await api.get('/api/payments/payments/'); if (active.current) { setPayments(r.data.results || r.data); setPE(''); } } catch { if (active.current) setPE('Failed to fetch payments logs.'); } finally { if (active.current) setLP(false); } };
+  const fetchStats = async (active) => {
+    try {
+      setLS(true);
+      const r = await api.get('/api/payments/dashboard-stats/');
+      if (active.current) {
+        setStats(r.data.stats);
+      }
+    } catch {
+      console.error('Failed to fetch admin stats.');
+    } finally {
+      if (active.current) setLS(false);
+    }
+  };
 
-  const fetchUsers = async (active) => {
+  useEffect(() => {
+    const active = { current: true };
+    fetchCourses(active);
+    fetchMentors(active);
+    fetchStats(active);
+    return () => { active.current = false; };
+  }, []);
+
+  const fetchUsers = async (active = { current: true }) => {
     try {
       setLU(true);
       let url = '/api/auth/admin/users/';
@@ -75,7 +93,6 @@ export default function AdminPanel() {
     const active = { current: true };
     fetchCourses(active);
     fetchMentors(active);
-    fetchPayments(active);
     return () => { active.current = false; };
   }, []);
 
@@ -100,19 +117,7 @@ export default function AdminPanel() {
     catch { alert(`Failed to ${action} mentor.`); }
     finally { setActioningId(null); }
   };
-  const actRefund = async (id) => {
-    if (!window.confirm('Are you sure you want to refund this payment? The student will immediately lose access to the course.')) return;
-    setActioningId(id);
-    try {
-      await api.post(`/api/payments/payments/${id}/refund/`);
-      setPayments(p => p.map(pay => pay.id === id ? { ...pay, status: 'REFUNDED', refunded_at: new Date().toISOString() } : pay));
-      alert('Payment refunded successfully. Student access revoked.');
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to refund payment.');
-    } finally {
-      setActioningId(null);
-    }
-  };
+
 
   const viewUserDetails = async (id) => {
     try {
@@ -127,25 +132,7 @@ export default function AdminPanel() {
     }
   };
 
-  const toggleUserActivation = async (id, isActive) => {
-    const act = isActive ? 'deactivate' : 'activate';
-    if (user.id === id && act === 'deactivate') {
-      alert("You cannot deactivate your own account.");
-      return;
-    }
-    setActioningId(id);
-    try {
-      const r = await api.post(`/api/auth/admin/users/${id}/${act}/`);
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: r.data.is_active } : u));
-      if (selectedUser && selectedUser.id === id) {
-        setSelectedUser(prev => ({ ...prev, is_active: r.data.is_active }));
-      }
-    } catch (err) {
-      alert(err.response?.data?.detail || `Failed to ${act} user.`);
-    } finally {
-      setActioningId(null);
-    }
-  };
+
 
   const toggleUserSuspension = async (id, isSuspended) => {
     const act = isSuspended ? 'reactivate' : 'suspend';
@@ -197,12 +184,6 @@ export default function AdminPanel() {
     <div className="page-shell">
       <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="admin-portal" />
       <div className="inner-page">
-        <header className="topbar">
-          <div className="topbar-left"><h1>Admin Portal</h1><p>Review and moderate content submissions</p></div>
-          <div className="topbar-right">
-            <NotificationBell user={user} />
-          </div>
-        </header>
 
         <div className="admin-page-wrap">
           <div>
@@ -212,21 +193,37 @@ export default function AdminPanel() {
           </div>
 
           {/* Stats */}
-          <div className="admin-stats">
-            {[
-              { label: 'Courses Awaiting Review', value: pendingCourses.length, icon: 'ti-books', color: '#309D8E', bg: 'rgba(48,157,142,0.1)' },
-              { label: 'Mentor Registrations', value: pendingMentors.length, icon: 'ti-users', color: '#2563eb', bg: '#eff4fe' },
-            ].map(s => (
-              <div key={s.label} className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div className="stat-card-icon" style={{ background: s.bg, color: s.color, width: 44, height: 44, borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <i className={`ti ${s.icon}`} style={{ fontSize: 22 }} />
-                </div>
-                <div>
-                  <div className="stat-card-num">{s.value}</div>
-                  <div className="stat-card-lbl">{s.label}</div>
-                </div>
-              </div>
-            ))}
+          <div className="admin-stats animate-fadeIn">
+            {loadingStats
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="stat-card stat-card-skeleton" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div className="skeleton-block skeleton-icon" style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div className="skeleton-block skeleton-num" style={{ width: '45%', height: 20, marginBottom: 6 }} />
+                      <div className="skeleton-block skeleton-lbl" style={{ width: '80%', height: 12 }} />
+                    </div>
+                  </div>
+                ))
+              : [
+                  { label: 'Total Courses', value: stats?.total_courses ?? 0, icon: 'ti-book', color: 'var(--brand)', bg: 'var(--brand-light)' },
+                  { label: 'Published Courses', value: stats?.published_count ?? 0, icon: 'ti-circle-check', color: 'var(--success)', bg: 'var(--success-bg)' },
+                  { label: 'Courses Awaiting Review', value: stats?.pending_courses ?? pendingCourses.length, icon: 'ti-alert-circle', color: 'var(--warning)', bg: 'var(--warning-bg)' },
+                  { label: 'Total Students', value: stats?.total_students ?? 0, icon: 'ti-users', color: 'var(--info)', bg: 'var(--info-bg)' },
+                  { label: 'Total Mentors', value: stats?.total_mentors ?? 0, icon: 'ti-award', color: 'var(--success)', bg: 'var(--success-bg)' },
+                  { label: 'Total Revenue', value: stats?.revenue !== undefined ? `$${stats.revenue.toFixed(2)}` : '—', icon: 'ti-wallet', color: '#16a34a', bg: '#dcfce7' },
+                  { label: 'Total Enrollments', value: stats?.total_enrollments ?? 0, icon: 'ti-clipboard-list', color: 'var(--info)', bg: 'var(--info-bg)' },
+                  { label: 'Total Reviews', value: stats?.total_reviews ?? 0, icon: 'ti-star', color: 'var(--warning)', bg: 'var(--warning-bg)' },
+                ].map(s => (
+                  <div key={s.label} className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div className="stat-card-icon" style={{ background: s.bg, color: s.color, width: 44, height: 44, borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <i className={`ti ${s.icon}`} style={{ fontSize: 22 }} />
+                    </div>
+                    <div>
+                      <div className="stat-card-num" style={{ fontSize: 18, fontWeight: 700 }}>{s.value}</div>
+                      <div className="stat-card-lbl" style={{ fontSize: 11, color: 'var(--txt-3)', marginTop: 3 }}>{s.label}</div>
+                    </div>
+                  </div>
+                ))}
           </div>
 
           {/* Tabs */}
@@ -236,9 +233,6 @@ export default function AdminPanel() {
             </button>
             <button className={`tab-btn${activeTab === 'mentors' ? ' active' : ''}`} onClick={() => setTab('mentors')}>
               Mentor Queue ({pendingMentors.length})
-            </button>
-            <button className={`tab-btn${activeTab === 'payments' ? ' active' : ''}`} onClick={() => setTab('payments')}>
-              Payments Log ({payments.length})
             </button>
             <button className={`tab-btn${activeTab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
               User Management
@@ -310,73 +304,7 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {activeTab === 'payments' && (
-            <div>
-              {paymentsError && <div className="alert alert-error">{paymentsError}</div>}
-              {loadingPayments ? (
-                <div className="loading-container"><div className="loading-spinner" /><p>Loading payments logs…</p></div>
-              ) : payments.length === 0 ? (
-                <div className="admin-empty"><i className="ti ti-receipt" /><h3>No payments found</h3><p>Transaction records will appear here.</p></div>
-              ) : (
-                <div className="mod-list">
-                  <div className="payments-table-wrap" style={{ width: '100%', overflowX: 'auto', background: 'var(--bg-card)', borderRadius: 'var(--r-md)', border: '1px solid var(--border-subtle)', padding: '16px' }}>
-                    <table className="payments-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, textAlign: 'left' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid var(--border-subtle)', height: 40, color: 'var(--txt-3)' }}>
-                          <th style={{ padding: 8 }}>Student</th>
-                          <th style={{ padding: 8 }}>Course</th>
-                          <th style={{ padding: 8 }}>Amount</th>
-                          <th style={{ padding: 8 }}>Gateway</th>
-                          <th style={{ padding: 8 }}>Transaction ID</th>
-                          <th style={{ padding: 8 }}>Status</th>
-                          <th style={{ padding: 8 }}>Date</th>
-                          <th style={{ padding: 8 }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {payments.map(pay => (
-                          <tr key={pay.id} style={{ borderBottom: '1px solid var(--border-subtle)', height: 48 }}>
-                            <td style={{ padding: 8 }}>
-                              <div style={{ fontWeight: 600, color: 'var(--txt-1)' }}>@{pay.student?.username}</div>
-                              <div style={{ fontSize: 11.5, color: 'var(--txt-3)' }}>{pay.student?.email}</div>
-                            </td>
-                            <td style={{ padding: 8, color: 'var(--txt-1)' }}>{pay.course_title}</td>
-                            <td style={{ padding: 8, fontWeight: 600, color: 'var(--txt-1)' }}>${pay.amount}</td>
-                            <td style={{ padding: 8 }}><span className="badge badge-beginner" style={{ background: '#edf2f7', color: '#4a5568' }}>{pay.gateway}</span></td>
-                            <td style={{ padding: 8, fontFamily: 'monospace', fontSize: 12, color: 'var(--txt-3)' }}>{pay.transaction_id}</td>
-                            <td style={{ padding: 8 }}>
-                              <span className={`badge ${pay.status === 'COMPLETED' ? 'badge-live' : pay.status === 'PENDING' ? 'badge-pending-mod' : 'badge-draft'}`}>
-                                {pay.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: 8, color: 'var(--txt-3)' }}>{new Date(pay.created_at).toLocaleDateString()}</td>
-                            <td style={{ padding: 8 }}>
-                              {pay.status === 'COMPLETED' ? (
-                                <button
-                                  className="btn btn-danger btn-xs"
-                                  style={{ padding: '4px 8px', fontSize: 11 }}
-                                  onClick={() => actRefund(pay.id)}
-                                  disabled={actioningId !== null}
-                                >
-                                  Refund
-                                </button>
-                              ) : pay.status === 'REFUNDED' ? (
-                                <span style={{ fontSize: 12, color: 'var(--txt-3)' }}>
-                                  Refunded
-                                </span>
-                              ) : (
-                                <span style={{ color: 'var(--txt-3)' }}>-</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+
 
           {activeTab === 'users' && (
             <div className="admin-users-section">
@@ -507,14 +435,7 @@ export default function AdminPanel() {
                                   >
                                     <i className="ti ti-eye" /> Details
                                   </button>
-                                  <button
-                                    onClick={() => toggleUserActivation(u.id, u.is_active)}
-                                    className={`btn btn-xs btn-action ${u.is_active ? 'btn-warning-outline' : 'btn-success'}`}
-                                    disabled={actioningId !== null}
-                                    title={u.is_active ? "Deactivate Account" : "Activate Account"}
-                                  >
-                                    <i className={u.is_active ? "ti ti-lock" : "ti ti-lock-open"} /> {u.is_active ? "Deactivate" : "Activate"}
-                                  </button>
+
                                   <button
                                     onClick={() => toggleUserSuspension(u.id, u.is_suspended)}
                                     className={`btn btn-xs btn-action ${u.is_suspended ? 'btn-success-outline' : 'btn-warning'}`}
@@ -542,7 +463,7 @@ export default function AdminPanel() {
                 </div>
 
                 {/* Details Side Panel / Details Card */}
-                {selectedUser && (
+                {(selectedUser || loadingUserDetail) && (
                   <div className="user-details-card animate-fade-in">
                     <div className="card-header-with-close">
                       <h3>User Profile Details</h3>
@@ -551,116 +472,121 @@ export default function AdminPanel() {
                       </button>
                     </div>
 
-                    <div className="detail-avatar-section">
-                      {selectedUser.avatar ? (
-                        <img src={selectedUser.avatar} alt={selectedUser.username} className="detail-avatar-img" />
-                      ) : (
-                        <div className="detail-avatar-placeholder">{selectedUser.username.substring(0, 2).toUpperCase()}</div>
-                      )}
-                      <h4>{selectedUser.first_name} {selectedUser.last_name}</h4>
-                      <p className="detail-sub">@{selectedUser.username} · {selectedUser.email}</p>
-                      <span className={`badge badge-${selectedUser.role.toLowerCase()}`}>{selectedUser.role}</span>
-                    </div>
-
-                    <div className="detail-info-grid">
-                      <div className="info-item">
-                        <span className="info-lbl">Location</span>
-                        <span className="info-val">{selectedUser.location || 'Not specified'}</span>
+                    {loadingUserDetail ? (
+                      <div className="loading-container" style={{ margin: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                        <div className="loading-spinner" />
+                        <p style={{ color: 'var(--txt-3)', fontSize: 13.5 }}>Loading user details…</p>
                       </div>
-                      <div className="info-item">
-                        <span className="info-lbl">Website</span>
-                        <span className="info-val">
-                          {selectedUser.website ? (
-                            <a href={selectedUser.website} target="_blank" rel="noopener noreferrer">{selectedUser.website}</a>
-                          ) : 'Not specified'}
-                        </span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-lbl">Phone Number</span>
-                        <span className="info-val">{selectedUser.phone_number || 'Not specified'}</span>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-lbl">Title / Occupation</span>
-                        <span className="info-val">{selectedUser.title || 'Not specified'}</span>
-                      </div>
-                      {selectedUser.skills && (
-                        <div className="info-item full-width">
-                          <span className="info-lbl">Skills</span>
-                          <span className="info-val">{selectedUser.skills}</span>
-                        </div>
-                      )}
-                      {selectedUser.bio && (
-                        <div className="info-item full-width">
-                          <span className="info-lbl">Bio</span>
-                          <p className="info-val-bio">{selectedUser.bio}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Role Statistics */}
-                    {selectedUser.extra_stats && Object.keys(selectedUser.extra_stats).length > 0 && (
-                      <div className="detail-stats-section">
-                        <h5>Platform Statistics</h5>
-                        <div className="stats-box-grid">
-                          {selectedUser.role === 'STUDENT' && (
-                            <>
-                              <div className="sub-stat-card">
-                                <span className="lbl">Enrolled Courses</span>
-                                <span className="val">{selectedUser.extra_stats.courses_enrolled}</span>
-                              </div>
-                              <div className="sub-stat-card">
-                                <span className="lbl">Certificates</span>
-                                <span className="val">{selectedUser.extra_stats.certificates_earned}</span>
-                              </div>
-                            </>
+                    ) : (
+                      <>
+                        <div className="detail-avatar-section">
+                          {selectedUser.avatar ? (
+                            <img src={selectedUser.avatar} alt={selectedUser.username} className="detail-avatar-img" />
+                          ) : (
+                            <div className="detail-avatar-placeholder">{selectedUser.username.substring(0, 2).toUpperCase()}</div>
                           )}
-                          {selectedUser.role === 'MENTOR' && (
-                            <>
-                              <div className="sub-stat-card">
-                                <span className="lbl">Courses Created</span>
-                                <span className="val">{selectedUser.extra_stats.courses_created}</span>
-                              </div>
-                              <div className="sub-stat-card">
-                                <span className="lbl">Active Students</span>
-                                <span className="val">{selectedUser.extra_stats.students_enrolled}</span>
-                              </div>
-                              <div className="sub-stat-card">
-                                <span className="lbl">Avg Rating</span>
-                                <span className="val">{selectedUser.extra_stats.avg_rating} ★</span>
-                              </div>
-                              <div className="sub-stat-card">
-                                <span className="lbl">Earnings</span>
-                                <span className="val">${selectedUser.extra_stats.total_earnings}</span>
-                              </div>
-                            </>
+                          <h4>{selectedUser.first_name} {selectedUser.last_name}</h4>
+                          <p className="detail-sub">@{selectedUser.username} · {selectedUser.email}</p>
+                          <span className={`badge badge-${selectedUser.role.toLowerCase()}`}>{selectedUser.role}</span>
+                        </div>
+
+                        <div className="detail-info-grid">
+                          <div className="info-item">
+                            <span className="info-lbl">Location</span>
+                            <span className="info-val">{selectedUser.location || 'Not specified'}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-lbl">Website</span>
+                            <span className="info-val">
+                              {selectedUser.website ? (
+                                <a href={selectedUser.website} target="_blank" rel="noopener noreferrer">{selectedUser.website}</a>
+                              ) : 'Not specified'}
+                            </span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-lbl">Phone</span>
+                            <span className="info-val">{selectedUser.phone_number || 'Not specified'}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-lbl">Title / Headline</span>
+                            <span className="info-val">{selectedUser.title || 'Not specified'}</span>
+                          </div>
+
+                          {selectedUser.skills && (
+                            <div className="info-item full-width">
+                              <span className="info-lbl">Skills</span>
+                              <span className="info-val">{selectedUser.skills}</span>
+                            </div>
+                          )}
+
+                          {selectedUser.bio && (
+                            <div className="info-item full-width">
+                              <span className="info-lbl">Biography</span>
+                              <p className="info-val-bio">{selectedUser.bio}</p>
+                            </div>
                           )}
                         </div>
-                      </div>
+
+                        {selectedUser.extra_stats && Object.keys(selectedUser.extra_stats).length > 0 && (
+                          <div className="detail-stats-section">
+                            <h5>Activity Summary</h5>
+                            <div className="detail-stats-grid">
+                              {selectedUser.role === 'STUDENT' && (
+                                <>
+                                  <div className="sub-stat-card">
+                                    <span className="lbl">Enrolled</span>
+                                    <span className="val">{selectedUser.extra_stats.courses_enrolled}</span>
+                                  </div>
+                                  <div className="sub-stat-card">
+                                    <span className="lbl">Certificates</span>
+                                    <span className="val">{selectedUser.extra_stats.certificates_earned}</span>
+                                  </div>
+                                </>
+                              )}
+                              {selectedUser.role === 'MENTOR' && (
+                                <>
+                                  <div className="sub-stat-card">
+                                    <span className="lbl">Courses</span>
+                                    <span className="val">{selectedUser.extra_stats.courses_created}</span>
+                                  </div>
+                                  <div className="sub-stat-card">
+                                    <span className="lbl">Students</span>
+                                    <span className="val">{selectedUser.extra_stats.students_enrolled}</span>
+                                  </div>
+                                  <div className="sub-stat-card">
+                                    <span className="lbl">Rating</span>
+                                    <span className="val">{selectedUser.extra_stats.avg_rating} ★</span>
+                                  </div>
+                                  <div className="sub-stat-card">
+                                    <span className="lbl">Earnings</span>
+                                    <span className="val">${selectedUser.extra_stats.total_earnings}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="detail-actions-section">
+                          <h5>Quick Status Management</h5>
+                          <div className="detail-action-buttons">
+
+                            <button
+                              onClick={() => toggleUserSuspension(selectedUser.id, selectedUser.is_suspended)}
+                              className={`btn btn-sm ${selectedUser.is_suspended ? 'btn-success-outline' : 'btn-warning'}`}
+                            >
+                              <i className={selectedUser.is_suspended ? "ti ti-player-play" : "ti ti-player-pause"} /> {selectedUser.is_suspended ? "Lift Suspension" : "Suspend Account"}
+                            </button>
+                            <button
+                              onClick={() => deleteUserAccount(selectedUser.id, selectedUser.username)}
+                              className="btn btn-sm btn-danger"
+                            >
+                              <i className="ti ti-trash" /> Delete Account
+                            </button>
+                          </div>
+                        </div>
+                      </>
                     )}
-
-                    <div className="detail-actions-section">
-                      <h5>Quick Status Management</h5>
-                      <div className="detail-action-buttons">
-                        <button
-                          onClick={() => toggleUserActivation(selectedUser.id, selectedUser.is_active)}
-                          className={`btn btn-sm ${selectedUser.is_active ? 'btn-warning-outline' : 'btn-success'}`}
-                        >
-                          <i className={selectedUser.is_active ? "ti ti-lock" : "ti ti-lock-open"} /> {selectedUser.is_active ? "Deactivate" : "Activate"}
-                        </button>
-                        <button
-                          onClick={() => toggleUserSuspension(selectedUser.id, selectedUser.is_suspended)}
-                          className={`btn btn-sm ${selectedUser.is_suspended ? 'btn-success-outline' : 'btn-warning'}`}
-                        >
-                          <i className={selectedUser.is_suspended ? "ti ti-player-play" : "ti ti-player-pause"} /> {selectedUser.is_suspended ? "Lift Suspension" : "Suspend Account"}
-                        </button>
-                        <button
-                          onClick={() => deleteUserAccount(selectedUser.id, selectedUser.username)}
-                          className="btn btn-sm btn-danger"
-                        >
-                          <i className="ti ti-trash" /> Delete Account
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>

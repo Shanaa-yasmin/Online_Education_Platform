@@ -3,8 +3,6 @@
    ============================================================ */
 
 .nce-container {
-  display: flex;
-  flex-direction: column;
   gap: 20px;
   max-width: 900px;
   margin: 0 auto;
@@ -50,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .nce-tab:hover {
@@ -148,14 +146,7 @@
   border-radius: var(--r-md);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.nce-list {
-  display: flex;
-  flex-direction: column;
-}
+  }
 
 .nce-list .nc-card {
   border-bottom: 1px solid var(--border);
@@ -167,8 +158,6 @@
 
 /* Empty State Styles */
 .nce-empty-state {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 64px 32px;
@@ -208,4 +197,14 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--txt-2);
+}
+
+
+/* Shared Flex Column Layout */
+.nce-container,
+.nce-body-card,
+.nce-list,
+.nce-empty-state {
+  display: flex;
+  flex-direction: column;
 }

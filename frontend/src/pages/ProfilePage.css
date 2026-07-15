@@ -6,15 +6,11 @@
   padding: 28px 32px;
   max-width: 1200px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
   gap: 24px;
 }
 
 /* Loading & Spinner state */
 .profile-loading {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 80px 20px;
@@ -38,8 +34,6 @@
 
 /* ── Left Sticky Panel ───────────────────────────────────── */
 .profile-aside-left {
-  display: flex;
-  flex-direction: column;
   gap: 24px;
   position: sticky;
   top: 80px;
@@ -50,8 +44,6 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 32px 24px;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   text-align: center;
   box-shadow: var(--shadow-card);
@@ -106,8 +98,6 @@
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
   gap: 12px;
   text-align: left;
 }
@@ -141,8 +131,6 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 8px;
-  display: flex;
-  flex-direction: column;
   gap: 4px;
   box-shadow: var(--shadow-card);
 }
@@ -160,7 +148,7 @@
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .tab-nav-btn:hover {
@@ -210,12 +198,13 @@
   line-height: 1.5;
 }
 
-/* ── Stats Dashboard Grid ────────────────────────────────── */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
+  max-width: 1000px;
+  width: 100%;
 }
 
 .stat-card {
@@ -223,8 +212,6 @@
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: 20px;
-  display: flex;
-  flex-direction: column;
   gap: 4px;
 }
 
@@ -260,8 +247,6 @@
 
 /* Empty stats states */
 .stats-empty-state {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px;
@@ -285,8 +270,6 @@
 
 /* Learning Log List styling */
 .learning-log-list {
-  display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
@@ -376,7 +359,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .certificate-item-card:hover {
@@ -460,8 +443,6 @@
 
 /* Activity Timeline for Admin */
 .activity-timeline {
-  display: flex;
-  flex-direction: column;
   gap: 16px;
   position: relative;
   padding-left: 20px;
@@ -524,8 +505,6 @@
 
 /* ── Forms design ───────────────────────────────────────── */
 .profile-edit-form, .profile-security-form {
-  display: flex;
-  flex-direction: column;
   gap: 20px;
 }
 
@@ -547,8 +526,6 @@
 }
 
 .form-control-wrap {
-  display: flex;
-  flex-direction: column;
   gap: 6px;
 }
 
@@ -573,7 +550,7 @@
   font-size: 13.5px;
   color: var(--txt-1);
   outline: none;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .form-control-wrap input:focus, .form-control-wrap textarea:focus {
@@ -599,4 +576,23 @@
   align-self: flex-start;
   border-radius: var(--r-md);
   margin-top: 16px;
+}
+
+
+/* Shared Flex Column Layout */
+.profile-page-wrap,
+.profile-loading,
+.profile-aside-left,
+.profile-meta-card,
+.profile-meta-details,
+.profile-tabs-nav,
+.stat-card,
+.stats-empty-state,
+.learning-log-list,
+.activity-timeline,
+.profile-edit-form,
+.profile-security-form,
+.form-control-wrap {
+  display: flex;
+  flex-direction: column;
 }

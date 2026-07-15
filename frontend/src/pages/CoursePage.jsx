@@ -93,6 +93,13 @@ export default function CoursePage() {
 
   // ── Load course + enrollment ────────────────────────────────────────────
   const loadData = async (active) => {
+    if (!courseId || courseId === 'undefined') {
+      if (active.current) {
+        setPageError('Invalid course ID.');
+        setLoading(false);
+      }
+      return;
+    }
     try {
       setLoading(true);
       const promises = [api.get(`/api/courses/${courseId}/`)];
@@ -261,7 +268,13 @@ export default function CoursePage() {
 
   return (
     <div className="student-course-page">
-      <button onClick={() => navigate(-1)} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
+      <button onClick={() => {
+        if (location.state?.fromCheckout) {
+          navigate('/my-courses');
+        } else {
+          navigate(-1);
+        }
+      }} className="back-link btn-link" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: 0 }}>
         <ArrowLeftIcon /> Back
       </button>
 
@@ -465,11 +478,7 @@ export default function CoursePage() {
                 </div>
               </div>
 
-              {/* Test-mode reminder (remove before going live) */}
-              <div className="alert alert-warning" style={{ fontSize: 12 }}>
-                <strong>Test mode.</strong> Use Stripe card <code>4242 4242 4242 4242</code> or
-                your PayPal Sandbox buyer account.
-              </div>
+
 
               <div className="modal-actions">
                 <button

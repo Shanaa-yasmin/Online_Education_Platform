@@ -3,15 +3,11 @@
   padding: 28px 32px;
   max-width: 1200px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
   gap: 24px;
 }
 
 /* Rich Catalog Controls */
 .rich-catalog-controls {
-  display: flex;
-  flex-direction: column;
   gap: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -71,7 +67,7 @@
   font-size: 13.5px;
   color: var(--txt-1);
   outline: none;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .search-wrap input::placeholder {
@@ -122,7 +118,7 @@
   outline: none;
   cursor: pointer;
   appearance: none;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237A5C5C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 10px center;
@@ -146,7 +142,7 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
 }
 
 .advanced-toggle-btn:hover,
@@ -274,7 +270,7 @@
 /* Grid */
 .courses-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 18px;
 }
 
@@ -386,8 +382,6 @@
 }
 
 .catalog-empty {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 12px;
   padding: 80px 24px;
@@ -458,8 +452,6 @@
 
 .skeleton-body {
   padding: 16px;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
@@ -530,7 +522,7 @@
   font-size: 13.5px;
   border-radius: var(--r-md);
   cursor: pointer;
-  transition: all var(--t);
+  transition: background-color var(--t), border-color var(--t), color var(--t), box-shadow var(--t), transform var(--t);
   outline: none;
 }
 
@@ -564,4 +556,59 @@
   align-items: center;
   justify-content: flex-start;
   gap: 16px;
+}
+
+
+/* Shared Flex Column Layout */
+.courses-page-wrap,
+.rich-catalog-controls,
+.catalog-empty,
+.skeleton-body {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .controls-row-filters {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+  .filter-select-wrap {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+  }
+
+  .filter-select-wrap select {
+    width: 100% !important;
+  }
+
+  .advanced-toggle-btn {
+    grid-column: span 2 !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls-row-filters {
+    grid-template-columns: 1fr !important;
+  }
+
+  .advanced-toggle-btn {
+    grid-column: span 1 !important;
+  }
+
+  .price-range-inputs {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .advanced-filters-panel {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
 }

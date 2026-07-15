@@ -6,10 +6,8 @@
     background: var(--surface, #fff);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    padding: 12px 14px;
+    gap: 12px;
 }
 
 .activity-cal-hd {
@@ -214,4 +212,17 @@
     .activity-cal-cell {
         font-size: 10px;
     }
+}
+
+
+/* Shared Flex Column Layout */
+/* ActivityCalendar.css
+   Same visual language as Dashboard.css: sharp corners (3-4px),
+border-based
+   separation,
+8px spacing scale. Color tokens unchanged. */
+
+.activity-cal {
+  display: flex;
+  flex-direction: column;
 }

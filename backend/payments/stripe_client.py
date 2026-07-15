@@ -45,8 +45,9 @@ def create_checkout_session(course, user, enrollment):
         }],
         mode='payment',
         success_url=(
-            f"{settings.FRONTEND_URL}/courses/{course.id}"
-            f"?payment_success=true&gateway=stripe"
+            f"{settings.FRONTEND_URL}/payment/success"
+            f"?gateway=stripe"
+            f"&course_id={course.id}"
             f"&session_id={{CHECKOUT_SESSION_ID}}"
         ),
         cancel_url=(

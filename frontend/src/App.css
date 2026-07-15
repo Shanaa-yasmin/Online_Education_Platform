@@ -7,8 +7,6 @@
 /* Remove Vite's default #root constraints */
 #root {
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -27,4 +25,11 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+
+/* Shared Flex Column Layout */
+#root {
+  display: flex;
+  flex-direction: column;
 }

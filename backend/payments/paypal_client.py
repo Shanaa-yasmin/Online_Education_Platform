@@ -8,7 +8,6 @@ All public functions raise RuntimeError on unexpected HTTP failures so that
 callers can catch a single exception type.
 """
 
-import json
 import logging
 
 import requests
@@ -70,8 +69,9 @@ def create_order(course, enrollment) -> dict:
             "landing_page": "LOGIN",
             "user_action": "PAY_NOW",
             "return_url": (
-                f"{settings.FRONTEND_URL}/courses/{course.id}"
-                f"?payment_success=true&gateway=paypal"
+                f"{settings.FRONTEND_URL}/payment/success"
+                f"?gateway=paypal"
+                f"&course_id={course.id}"
             ),
             "cancel_url": (
                 f"{settings.FRONTEND_URL}/courses/{course.id}?payment_cancel=true"

@@ -181,10 +181,17 @@ class CourseProgressDetailView(APIView):
 
     def get(self, request, course_id):
         course = get_object_or_404(Course, pk=course_id)
+        is_exempt = (
+            request.user.is_staff
+            or request.user.role == 'ADMIN'
+            or (request.user.role == 'MENTOR' and course.mentor == request.user)
+        )
         # Check enrollment
-        if not request.user.is_staff and not request.user.role == 'ADMIN' and not Enrollment.objects.filter(student=request.user, course=course, is_active=True, course__is_deleted=False).exists():
+        if not is_exempt and not Enrollment.objects.filter(
+            student=request.user, course=course, is_active=True, course__is_deleted=False
+        ).exists():
             return Response({"detail": "You are not enrolled in this course."}, status=status.HTTP_403_FORBIDDEN)
-            
+
         progress_data = get_course_progress_data(request.user, course)
         return Response(progress_data, status=status.HTTP_200_OK)
 

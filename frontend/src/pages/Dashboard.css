@@ -147,14 +147,12 @@
 
 .hero-row-with-calendar {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 280px;
   gap: 16px;
   align-items: stretch;
 }
 
 .hero-left {
-  display: flex;
-  flex-direction: column;
   gap: 16px;
 }
 
@@ -189,27 +187,90 @@
 }
 
 .stats-grid-4 {
-  grid-template-columns: repeat(4, 1fr);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) !important;
+  max-width: 760px;
+  width: 100%;
+  gap: 12px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 768px) {
   .stats-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
+    display: flex !important;
+    overflow-x: auto;
+    gap: 10px;
+    width: 100%;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .stats-grid-4::-webkit-scrollbar {
+    display: none;
+  }
+  .stats-grid-4 .stat-card {
+    flex: 0 0 110px;
   }
 }
 
-@media (max-width: 600px) {
-  .stats-grid-4 {
-    grid-template-columns: 1fr;
+.stats-grid-6 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr) !important;
+  max-width: 1100px;
+  width: 100%;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid-6 {
+    display: flex !important;
+    overflow-x: auto;
+    gap: 10px;
+    width: 100%;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .stats-grid-6::-webkit-scrollbar {
+    display: none;
+  }
+  .stats-grid-6 .stat-card {
+    flex: 0 0 110px;
+  }
+}
+
+.stats-grid-8 {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr) !important;
+  max-width: 1400px;
+  width: 100%;
+  gap: 12px;
+}
+
+@media (max-width: 1024px) {
+  .stats-grid-8 {
+    display: flex !important;
+    overflow-x: auto;
+    gap: 10px;
+    width: 100%;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .stats-grid-8::-webkit-scrollbar {
+    display: none;
+  }
+  .stats-grid-8 .stat-card {
+    flex: 0 0 110px;
   }
 }
 
 .stat-card {
-  border-radius: 4px;
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--surface, #fff);
-  padding: 16px;
+  padding: 12px 14px;
   transition: border-color 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
 }
 
 .stat-card:hover {
@@ -217,27 +278,27 @@
 }
 
 .stat-card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 3px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  margin-bottom: 12px;
+  font-size: 14px;
+  margin-bottom: 8px;
 }
 
 .stat-card-num {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--txt-1);
   line-height: 1.2;
 }
 
 .stat-card-lbl {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--txt-3);
-  margin-top: 4px;
+  margin-top: 3px;
   font-weight: 500;
 }
 
@@ -259,8 +320,6 @@
 /* .card supplies background/border/radius — this just adds page-specific layout */
 .dash-section-card {
   padding: 20px;
-  display: flex;
-  flex-direction: column;
   gap: 16px;
 }
 
@@ -324,8 +383,6 @@
 }
 
 .my-learning-card {
-  display: flex;
-  flex-direction: column;
   justify-content: space-between;
   padding: 16px;
   border-radius: 4px;
@@ -427,8 +484,6 @@
 }
 
 .student-dashboard-col {
-  display: flex;
-  flex-direction: column;
   gap: 16px;
 }
 
@@ -466,8 +521,6 @@
 }
 
 .upcoming-lessons-list {
-  display: flex;
-  flex-direction: column;
   gap: 12px;
 }
 
@@ -524,14 +577,6 @@
   padding: 20px;
 }
 
-.perf-list,
-.enroll-list,
-.registration-list,
-.refund-list {
-  display: flex;
-  flex-direction: column;
-}
-
 .perf-item {
   display: flex;
   justify-content: space-between;
@@ -555,11 +600,6 @@
   font-size: 12px;
   color: var(--txt-3);
   white-space: nowrap;
-}
-
-.qa-list {
-  display: flex;
-  flex-direction: column;
 }
 
 .qa-item {
@@ -621,11 +661,6 @@
   font-weight: 600;
 }
 
-.review-list {
-  display: flex;
-  flex-direction: column;
-}
-
 .review-item {
   font-size: 13px;
   padding: 10px 0;
@@ -672,11 +707,6 @@
   }
 }
 
-.approval-list {
-  display: flex;
-  flex-direction: column;
-}
-
 .approval-item {
   display: flex;
   justify-content: space-between;
@@ -694,8 +724,6 @@
 }
 
 .approval-info {
-  display: flex;
-  flex-direction: column;
   gap: 2px;
 }
 
@@ -828,4 +856,23 @@
 .dash-course-info {
   flex: 1;
   min-width: 0;
+}
+
+
+/* Shared Flex Column Layout */
+.hero-left,
+.dash-section-card,
+.my-learning-card,
+.student-dashboard-col,
+.upcoming-lessons-list,
+.perf-list,
+.enroll-list,
+.registration-list,
+.refund-list,
+.qa-list,
+.review-list,
+.approval-list,
+.approval-info {
+  display: flex;
+  flex-direction: column;
 }

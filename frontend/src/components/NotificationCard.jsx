@@ -62,7 +62,7 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
       case 'ENROLLMENT':
       case 'COURSE_APPROVED':
       case 'COURSE_REJECTED':
-        path = id ? `/mentor/courses/${id}/builder` : '/mentor/dashboard';
+        path = id ? `/mentor/courses/${id}/builder` : '/my-courses';
         break;
       case 'COURSE_PENDING_APPROVAL':
         path = '/admin/portal?tab=courses';
@@ -83,7 +83,7 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
         // Admins receive these for oversight; mentors for their own course sales.
         path = notification.recipient_role === 'ADMIN'
           ? '/admin/portal?tab=payments'
-          : '/mentor/dashboard?tab=payments';
+          : '/mentor/payments';
         break;
       case 'LESSON_ADDED':
         path = id ? `/courses/${id}/learn` : '/courses';
@@ -92,7 +92,7 @@ export default function NotificationCard({ notification, onClickItem, onDelete, 
         path = id ? `/courses/${id}` : '/courses';
         break;
       case 'MENTOR_APPROVED':
-        path = '/mentor/dashboard';
+        path = '/my-courses';
         break;
       default:
         path = '/notifications';

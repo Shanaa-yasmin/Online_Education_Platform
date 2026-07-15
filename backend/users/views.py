@@ -642,39 +642,7 @@ class AdminUserViewSet(viewsets.ViewSet):
         data['extra_stats'] = extra
         return Response(data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'])
-    def activate(self, request, pk=None):
-        """Re-enable a previously deactivated user account (is_active=True)."""
-        profile = self._get_profile_or_404(pk)
-        if not profile:
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-        user = profile.user
-        if user.is_active:
-            return Response({"detail": "User account is already active."}, status=status.HTTP_200_OK)
-        user.is_active = True
-        user.save()
-        return Response({
-            "detail": f"User '{user.username}' has been activated.",
-            "is_active": True
-        }, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'])
-    def deactivate(self, request, pk=None):
-        """Deactivate a user account (is_active=False). Prevents login."""
-        profile = self._get_profile_or_404(pk)
-        if not profile:
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-        user = profile.user
-        if user == request.user:
-            return Response({"detail": "You cannot deactivate your own account."}, status=status.HTTP_400_BAD_REQUEST)
-        if not user.is_active:
-            return Response({"detail": "User account is already inactive."}, status=status.HTTP_200_OK)
-        user.is_active = False
-        user.save()
-        return Response({
-            "detail": f"User '{user.username}' has been deactivated.",
-            "is_active": False
-        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def suspend(self, request, pk=None):

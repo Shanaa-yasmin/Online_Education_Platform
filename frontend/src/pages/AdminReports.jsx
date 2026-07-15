@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
-import NotificationBell from '../components/NotificationBell.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -126,12 +125,6 @@ export default function AdminReports() {
     <div className="page-shell">
       <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="admin-reports" />
       <div className="inner-page">
-        <header className="topbar">
-          <div className="topbar-left"><h1>Platform Reports</h1><p>Analytics and exports for all platform activity</p></div>
-          <div className="topbar-right">
-            <NotificationBell user={user} />
-          </div>
-        </header>
 
         <div className="reports-wrap">
           <div className="reports-hd">
