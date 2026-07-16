@@ -136,14 +136,15 @@ def generate_certificate_pdf(enrollment):
     date_str     = datetime.datetime.now().strftime("%B %d, %Y")
     cert_code    = str(uuid.uuid4()).replace("-", "").upper()[:20]
 
-    certificates_dir = os.path.join(settings.MEDIA_ROOT, "certificates")
-    os.makedirs(certificates_dir, exist_ok=True)
+    import io
+    from django.core.files.base import ContentFile
+
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     filename  = f"certificate_{enrollment.id}_{timestamp}.pdf"
-    file_path = os.path.join(certificates_dir, filename)
 
-    # Landscape Letter: 792 × 612 pt
-    c = canvas.Canvas(file_path, pagesize=letter)
+    # Landscape Letter: 792 × 612 pt (Generate in-memory)
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
     w, h = letter
     c.setPageSize((h, w))
     W, H = h, w
@@ -246,11 +247,16 @@ def generate_certificate_pdf(enrollment):
     c.showPage()
     c.save()
 
-    cert = Certificate.objects.create(
+    # Get the raw PDF bytes
+    pdf_data = buffer.getvalue()
+    buffer.close()
+
+    # Instanstiate model and save the file via the storage backend
+    cert = Certificate(
         enrollment=enrollment,
         student=student,
         course=course,
         certificate_code=cert_code,
-        pdf_file=os.path.join("certificates", filename),
     )
+    cert.pdf_file.save(filename, ContentFile(pdf_data), save=True)
     return cert
