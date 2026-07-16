@@ -4,6 +4,12 @@ from courses.models import Course
 from payments.models import Enrollment
 
 
+def get_certificate_storage():
+    if getattr(settings, 'USE_CLOUDINARY', False):
+        from cloudinary_storage.storage import RawMediaCloudinaryStorage
+        return RawMediaCloudinaryStorage()
+    return None
+
 class Certificate(models.Model):
     """Completion certificate issued when a student finishes 100% of a course."""
     enrollment = models.OneToOneField(
@@ -19,7 +25,12 @@ class Certificate(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='certificates')
     certificate_code = models.CharField(max_length=100, unique=True)
     issued_at = models.DateTimeField(auto_now_add=True)
-    pdf_file  = models.FileField(upload_to='certificates/', null=True, blank=True)
+    pdf_file  = models.FileField(
+        upload_to='certificates/',
+        storage=get_certificate_storage,
+        null=True,
+        blank=True
+    )
 
     class Meta:
         unique_together = ('student', 'course')
