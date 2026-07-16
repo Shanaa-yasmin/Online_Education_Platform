@@ -204,6 +204,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+WHITENOISE_MANIFEST_STRICT = False
 
 # ── Media files / Cloudinary ──────────────────────────────────────────────────
 # Local dev:   media files are stored under BASE_DIR/media (MEDIA_ROOT).
