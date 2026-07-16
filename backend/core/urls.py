@@ -27,7 +27,13 @@ def health_check(request):
     """No-auth health check used by Render to verify the service is alive."""
     return JsonResponse({'status': 'ok'})
 
+from django.shortcuts import redirect
+
+def root_redirect(request):
+    return redirect(settings.FRONTEND_URL)
+
 urlpatterns = [
+    path('', root_redirect, name='root_redirect'),
     path('api/health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
