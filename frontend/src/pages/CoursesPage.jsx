@@ -187,7 +187,7 @@ export default function CoursesPage() {
 
       <div className="inner-page">
 
-        <div className="courses-page-wrap">
+        <div className="inner-content">
           <div className="page-header">
             <Link to="/dashboard" className="back-link"><i className="ti ti-arrow-left" /> Back to Dashboard</Link>
             <h1>Explore Courses</h1>
@@ -401,7 +401,23 @@ export default function CoursesPage() {
                   >
                     <div className={`cc-thumb ${THUMB[course.level] || 'cc-thumb-beg'}`}>
                       {course.thumbnail ? (
-                        <img src={course.thumbnail} alt={course.title} className="cc-thumb-img" loading="lazy" />
+                        <img 
+                          src={course.thumbnail} 
+                          alt={course.title} 
+                          className="cc-thumb-img" 
+                          loading="lazy" 
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            const parent = e.target.parentElement;
+                            if (parent && !parent.querySelector('.fallback-icon')) {
+                              const icon = document.createElement('i');
+                              icon.className = `ti ${ICON[course.level] || 'ti-book'} fallback-icon`;
+                              icon.style.fontSize = '44px';
+                              icon.style.opacity = '0.5';
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
                       ) : (
                         <i className={`ti ${ICON[course.level] || 'ti-book'}`} style={{ fontSize: 44, opacity: 0.5 }} />
                       )}
