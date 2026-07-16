@@ -162,9 +162,11 @@ export default function CourseBuilder() {
   // =========================================================
   // Delete Course
   // =========================================================
+  const isDraft = course && !course.is_published && !course.is_approved && !course.is_submitted_for_review;
+
   const canDelete = user && course && (
     user.is_staff || user.role === 'ADMIN' ||
-    (course.mentor && user.id === course.mentor.id)
+    (course.mentor && user.id === course.mentor.id && isDraft)
   );
 
   const [deleting, setDeleting] = useState(false);

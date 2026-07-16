@@ -211,6 +211,17 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         course = self.get_object()
+        user = request.user
+        is_admin = user.is_staff or user.role == 'ADMIN'
+
+        if not is_admin:
+            is_draft = not course.is_published and not course.is_approved and not course.is_submitted_for_review
+            if not is_draft:
+                return Response(
+                    {"detail": "Mentors can only delete draft courses. This course is already approved, published, or under review."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         course.is_deleted = True
         course.deleted_at = timezone.now()
         course.is_published = False   # pull it from the public catalog immediately
