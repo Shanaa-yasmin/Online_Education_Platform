@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
 import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
 import './CoursesPage.css';
 
 // SVG Icons
@@ -470,6 +471,7 @@ export default function CoursesPage() {
             </>
           )}
         </div>
+        <Footer />
       </div>
     </div>
   );

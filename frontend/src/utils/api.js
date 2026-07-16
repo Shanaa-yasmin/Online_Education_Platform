@@ -2,7 +2,7 @@ import axios from 'axios';
 import { tokenStore } from './tokenStore.js';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   withCredentials: true,   // send/receive the httponly refresh cookie
   headers: { 'Content-Type': 'application/json' },
 });
@@ -55,7 +55,7 @@ api.interceptors.response.use(
       try {
         // No body needed — the refresh token cookie is sent automatically.
         const response = await axios.post(
-          'http://localhost:8000/api/auth/refresh/',
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/refresh/`,
           {},
           { withCredentials: true }
         );

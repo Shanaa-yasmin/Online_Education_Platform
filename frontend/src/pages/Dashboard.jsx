@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api.js';
 import ActivityCalendar from '../components/ActivityCalendar.jsx';
 import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
 import './Dashboard.css';
 
 // Mirrors the fallback treatment used on CoursesPage.jsx when a course has no thumbnail
@@ -505,6 +506,7 @@ export default function Dashboard() {
           )}
 
         </div>
+        <Footer />
       </div>
     </div>
   );

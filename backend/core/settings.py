@@ -10,22 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-
 from pathlib import Path
 from dotenv import load_dotenv
 import os
 import dj_database_url
-import ssl
-
-# Bypass SSL verification for local dev environments (SMTP/Brevo)
-if hasattr(ssl, '_create_unverified_context'):
-    ssl._create_default_https_context = ssl._create_unverified_context
-    ssl.create_default_context = ssl._create_unverified_context
-import dj_database_url
 
 load_dotenv()  # reads .env file automatically
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Then use os.environ.get() for all secrets:
+
 SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
@@ -38,10 +31,17 @@ PAYPAL_SECRET    = os.environ.get('PAYPAL_SECRET', '')
 PAYPAL_MODE      = os.environ.get('PAYPAL_MODE', 'sandbox')
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
-ALLOWED_HOSTS = []
+
+# ── ALLOWED_HOSTS ──────────────────────────────────────────────────────────────
+# Comma-separated list in the env var, e.g.:
+#   ALLOWED_HOSTS=edupath-backend.onrender.com,127.0.0.1,localhost
+_raw_hosts = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
+
 # Application definition
 
 INSTALLED_APPS = [
+    'cloudinary_storage',
     'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+    'cloudinary',
+
     # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
@@ -58,7 +59,8 @@ INSTALLED_APPS = [
     'django_filters',
     'django_elasticsearch_dsl',
     'channels',
-    
+    'whitenoise',
+
     # Custom apps
     'users',
     'courses',
@@ -73,6 +75,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # serve static files on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -194,15 +197,40 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
+# ── Static files ───────────────────────────────────────────────────────────────
+# WhiteNoise serves compressed, cache-busted static files directly from Daphne
+# without needing a separate CDN step. STATICFILES_STORAGE controls the manifest.
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files for course attachments, videos, and avatars
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# ── Media files / Cloudinary ──────────────────────────────────────────────────
+# Local dev:   media files are stored under BASE_DIR/media (MEDIA_ROOT).
+# Production:  set USE_CLOUDINARY=true and configure CLOUDINARY_* credentials.
+#
+# This keeps local dev zero-config while making Cloudinary a one-var switch in prod.
+
+USE_CLOUDINARY = os.environ.get('USE_CLOUDINARY', 'false').lower() == 'true'
+
+if USE_CLOUDINARY:
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+        'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
+        'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+    }
+    MEDIA_URL = '/media/'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 # Custom Auth Model
 AUTH_USER_MODEL = 'users.User'
@@ -284,11 +312,20 @@ CHANNEL_LAYERS = {
     },
 }
 
-# CORS Headers Config
-CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,
-]
+# ── CORS ───────────────────────────────────────────────────────────────────────
+# CORS_ALLOWED_ORIGINS: comma-separated list of allowed origins.
+# Minimum required:  your Vercel frontend URL.
+# Example:  CORS_ALLOWED_ORIGINS=https://edupath.vercel.app,http://localhost:5173
+_raw_cors = os.environ.get('CORS_ALLOWED_ORIGINS', FRONTEND_URL)
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _raw_cors.split(',') if o.strip()]
 CORS_ALLOW_CREDENTIALS = True
+
+# ── CSRF ───────────────────────────────────────────────────────────────────────
+# Required when cookies are used cross-domain (SameSite=None) so Django will
+# accept POST/PUT/DELETE requests coming from your Vercel frontend.
+# Example: CSRF_TRUSTED_ORIGINS=https://edupath.vercel.app,https://edupath-backend.onrender.com
+_raw_csrf = os.environ.get('CSRF_TRUSTED_ORIGINS', FRONTEND_URL)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
@@ -322,10 +359,16 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'no-reply@edupath.com'
 
+# ── Auth Cookie ────────────────────────────────────────────────────────────────
+# When the frontend (Vercel) and backend (Render) are on different domains,
+# SameSite must be 'None' so the browser sends the HttpOnly refresh cookie
+# cross-site. SameSite=None requires Secure=True (HTTPS), which is always
+# the case on both Vercel and Render. For local dev (DEBUG=True) keep 'Lax'
+# so you don't need HTTPS on localhost.
 AUTH_COOKIE_NAME = 'refresh_token'
-AUTH_COOKIE_SECURE = not DEBUG          # True in production (HTTPS only)
-AUTH_COOKIE_SAMESITE = 'Lax'            # 'None' + Secure=True if frontend/backend end up on different domains
-AUTH_COOKIE_PATH = '/api/auth/'         # cookie only sent to auth endpoints, not every request
+AUTH_COOKIE_SECURE = not DEBUG           # True in production (HTTPS only)
+AUTH_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'  # 'None' required for cross-domain
+AUTH_COOKIE_PATH = '/api/auth/'          # cookie only sent to auth endpoints
 
 # ── Elasticsearch ─────────────────────────────────────────────────────────────
 # Toggle ES on/off — set ES_ENABLED=true in .env when you have an ES instance.
@@ -361,3 +404,70 @@ ELASTICSEARCH_DSL = {
 # don't raise ConnectionError on every model save.
 ELASTICSEARCH_DSL_AUTOSYNC = ES_ENABLED
 ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = 'django_elasticsearch_dsl.signals.RealTimeSignalProcessor'
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+# Render captures stdout/stderr. Using a single StreamHandler to stdout gives
+# Render's log-drain clean, timestamped, levelled lines for each request and
+# exception — much easier to search than Django's default stderr-only output.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        # App-level loggers — set to DEBUG in dev via LOG_LEVEL env var
+        'users': {
+            'handlers': ['console'],
+            'level': os.environ.get('LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'courses': {
+            'handlers': ['console'],
+            'level': os.environ.get('LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'payments': {
+            'handlers': ['console'],
+            'level': os.environ.get('LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'notifications': {
+            'handlers': ['console'],
+            'level': os.environ.get('LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'announcements': {
+            'handlers': ['console'],
+            'level': os.environ.get('LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'chat': {
+            'handlers': ['console'],
+            'level': os.environ.get('LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}

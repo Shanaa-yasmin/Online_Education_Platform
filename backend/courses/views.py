@@ -6,6 +6,9 @@ from rest_framework.response import Response
 from rest_framework.generics import get_object_or_404
 from django.db.models import Q, Avg, Count, Sum
 from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 from .models import (
@@ -41,7 +44,13 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Course.objects.all().select_related('mentor')
+        queryset = Course.objects.all().select_related('mentor').annotate(
+            enrollment_count=Count(
+                'enrollments',
+                filter=Q(enrollments__is_active=True),
+                distinct=True,
+            )
+        )
 
         # Prefetch complete nested curriculum only for detail operations
         if self.action in ['retrieve', 'update', 'partial_update']:

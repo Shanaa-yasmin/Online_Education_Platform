@@ -1362,3 +1362,201 @@ h6 {
   display: flex;
   flex-direction: column;
 }
+
+/* ============================================================
+   EduPath — Unified Reusable Footer Styles
+   ============================================================ */
+.footer {
+  background: var(--brand-dark);
+  padding: 60px 48px 32px;
+  width: 100%;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr 1fr 1fr;
+  gap: 48px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.f-brand-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.7;
+  max-width: 240px;
+  margin: 14px 0 22px;
+}
+
+.f-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.f-logo-mark {
+  width: 32px;
+  height: 32px;
+  background: var(--brand);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.f-logo-mark i {
+  color: #FFFFFF;
+  font-size: 15px;
+}
+
+.f-logo-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+.f-logo-text span {
+  color: #F5E4E4;
+}
+
+.socials {
+  display: flex;
+  gap: 9px;
+  margin-bottom: 28px;
+}
+
+.sc-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.4);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.sc-btn:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #FFFFFF;
+}
+
+.sc-btn i {
+  font-size: 15px;
+}
+
+.f-cert {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cert-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 10px;
+  border-radius: 7px;
+  width: fit-content;
+}
+
+.cert-pill i {
+  font-size: 13px;
+  color: #F5E4E4;
+}
+
+.f-col-h {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.f-links {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.f-link {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.f-link:hover {
+  color: #F5E4E4;
+}
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.f-copy {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.f-legal {
+  display: flex;
+  gap: 20px;
+}
+
+.f-leg-link {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.25);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.f-leg-link:hover {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 1024px) {
+  .footer {
+    padding: 48px 32px 28px;
+  }
+  .footer-top {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
+  .footer-top>div:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 880px) {
+  .footer-top {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .footer-top>div:nth-child(4) {
+    grid-column: auto;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+}

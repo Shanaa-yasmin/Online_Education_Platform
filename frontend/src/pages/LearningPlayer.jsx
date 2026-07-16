@@ -125,10 +125,9 @@ export function QAPanel({ courseId, user }) {
 
   // Open WebSocket connection
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-    const ws = new WebSocket(`ws://localhost:8000/ws/course/${courseId}/qa/?token=${token}`);
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const wsBase = apiUrl.replace(/^http/, 'ws');
+    const ws = new WebSocket(`${wsBase}/ws/course/${courseId}/qa/?token=${token}`);
     wsRef.current = ws;
 
     ws.onopen = () => {

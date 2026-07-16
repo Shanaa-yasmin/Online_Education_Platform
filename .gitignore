@@ -58,3 +58,10 @@ frontend/*.local
 *.njsproj
 *.sln
 *.sw?
+
+# Caches
+.pytest_cache/
+.eslintcache
+.cache/
+.parcel-cache/
+

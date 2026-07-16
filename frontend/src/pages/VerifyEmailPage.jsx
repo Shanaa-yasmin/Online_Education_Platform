@@ -46,6 +46,13 @@ export default function VerifyEmailPage() {
 
       <div className="auth-panel-right">
         <div className="auth-form-box">
+          <div className="auth-mobile-header">
+            <div className="auth-mobile-logo-circle">
+              <img src="/favicon.jpeg" alt="EduPath Logo" className="auth-mobile-logo" />
+            </div>
+            <span className="auth-mobile-brand-name">EduPath</span>
+          </div>
+
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             
             {status === 'verifying' && (

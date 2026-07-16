@@ -156,7 +156,7 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 class CourseListSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
-    enrollment_count = serializers.SerializerMethodField()
+    enrollment_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Course
@@ -167,14 +167,17 @@ class CourseListSerializer(serializers.ModelSerializer):
             'enrollment_count'
         ]
 
-    def get_enrollment_count(self, obj):
-        return obj.enrollments.filter(is_active=True).count()
+    def to_representation(self, instance):
+        # Fallback to query count only if enrollment_count was not annotated on the queryset
+        if not hasattr(instance, 'enrollment_count'):
+            instance.enrollment_count = instance.enrollments.filter(is_active=True).count()
+        return super().to_representation(instance)
 
 
 class CourseSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
     modules = ModuleSerializer(many=True, read_only=True)
-    enrollment_count = serializers.SerializerMethodField()
+    enrollment_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Course
@@ -186,8 +189,11 @@ class CourseSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['is_approved']
 
-    def get_enrollment_count(self, obj):
-        return obj.enrollments.filter(is_active=True).count()
+    def to_representation(self, instance):
+        # Fallback to query count only if enrollment_count was not annotated on the queryset
+        if not hasattr(instance, 'enrollment_count'):
+            instance.enrollment_count = instance.enrollments.filter(is_active=True).count()
+        return super().to_representation(instance)
 
     def validate_price(self, value):
         if value < 0:

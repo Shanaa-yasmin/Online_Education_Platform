@@ -13,6 +13,9 @@ from django.conf import settings
 from rest_framework_simplejwt.exceptions import TokenError
 from datetime import timedelta
 from payments.dashboard_service import ADMIN_DASHBOARD_CACHE_KEY
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 from .serializers import (
@@ -74,7 +77,7 @@ class RegisterView(APIView):
                         fail_silently=False,
                     )
                 except Exception as e:
-                    print(f"Failed to send verification email to {user.email}: {e}")
+                    logger.error(f"Failed to send verification email to {user.email}: {e}")
 
             threading.Thread(target=send_verification_email).start()
 
@@ -149,7 +152,7 @@ class ResendVerificationEmailView(APIView):
                         fail_silently=False,
                     )
                 except Exception as e:
-                    print(f"Failed to send verification email to {user.email}: {e}")
+                    logger.error(f"Failed to send verification email to {user.email}: {e}")
 
             threading.Thread(target=send_verification_email).start()
             
@@ -416,13 +419,13 @@ class PasswordResetRequestView(APIView):
             # Construct reset URL
             reset_link = f"http://localhost:5173/password-reset/confirm?uid={uid}&token={token}"
             
-            # Print mock email details to standard output
-            print("\n" + "="*60)
-            print("MOCK EMAIL SERVICE - PASSWORD RESET LINK")
-            print(f"To: {email}")
-            print(f"Subject: Reset Your Password")
-            print(f"Reset Link: {reset_link}")
-            print("="*60 + "\n")
+            # Log mock email details
+            logger.warning(
+                f"\nMOCK EMAIL SERVICE - PASSWORD RESET LINK\n"
+                f"To: {email}\n"
+                f"Subject: Reset Your Password\n"
+                f"Reset Link: {reset_link}\n"
+            )
             
             return Response({
                 "detail": "Password reset link generated (mocked). Check console logs.",

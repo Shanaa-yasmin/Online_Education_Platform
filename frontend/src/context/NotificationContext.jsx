@@ -5,7 +5,12 @@ import axios from 'axios';
 
 const NotificationContext = createContext(undefined);
 
-const WS_BASE = 'ws://localhost:8000';
+const getWSBaseUrl = () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  return apiUrl.replace(/^http/, 'ws');
+};
+
+const WS_BASE = getWSBaseUrl();
 
 export function NotificationProvider({ children, user }) {
   const [notifications, setNotifications] = useState([]);
@@ -76,8 +81,9 @@ export function NotificationProvider({ children, user }) {
 
       if (event.code === 4001) {
         try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
           const res = await axios.post(
-            'http://localhost:8000/api/auth/refresh/',
+            `${apiUrl}/api/auth/refresh/`,
             {},
             { withCredentials: true }
           );

@@ -1,4 +1,5 @@
 import threading
+import logging
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -10,6 +11,8 @@ from asgiref.sync import async_to_sync
 from .models import Notification
 from .serializers import NotificationSerializer
 
+logger = logging.getLogger(__name__)
+
 
 def _send_email_async(subject, body, recipient_list, is_priority=False):
     """
@@ -19,8 +22,8 @@ def _send_email_async(subject, body, recipient_list, is_priority=False):
     """
     try:
         from django.conf import settings
-        print(f"[EMAIL DEBUG] Using DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
-        print(f"[EMAIL QUEUE] Attempting to send email to {recipient_list} (Subject: {subject})")
+        logger.info(f"[EMAIL DEBUG] Using DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+        logger.info(f"[EMAIL QUEUE] Attempting to send email to {recipient_list} (Subject: {subject})")
         send_mail(
             subject=subject,
             message=body,
@@ -28,9 +31,9 @@ def _send_email_async(subject, body, recipient_list, is_priority=False):
             recipient_list=recipient_list,
             fail_silently=False
         )
-        print(f"[EMAIL SUCCESS] Email successfully sent to {recipient_list}")
+        logger.info(f"[EMAIL SUCCESS] Email successfully sent to {recipient_list}")
     except Exception as e:
-        print(f"[EMAIL FAILED] Error sending email to {recipient_list}: {e}")
+        logger.error(f"[EMAIL FAILED] Error sending email to {recipient_list}: {e}")
     finally:
         connection.close()
 
@@ -62,7 +65,7 @@ def send_realtime_and_email_notification(sender, instance, created, **kwargs):
                 }
             )
         except Exception as ws_err:
-            print(f"WebSocket send error: {ws_err}")
+            logger.error(f"WebSocket send error: {ws_err}")
 
     # 2. Email — only for transactional types.
     if instance.should_email:
@@ -78,14 +81,14 @@ def send_realtime_and_email_notification(sender, instance, created, **kwargs):
         recipient_list = [instance.recipient.email]
         is_priority = True
 
-        print(f"[NOTIFICATION] should_email=True for {instance.notification_type}, starting email thread.")
+        logger.info(f"[NOTIFICATION] should_email=True for {instance.notification_type}, starting email thread.")
         threading.Thread(
             target=_send_email_async,
             args=(subject, body, recipient_list, is_priority),
             daemon=True
         ).start()
     else:
-        print(f"[NOTIFICATION] should_email=False for {instance.notification_type}. Skipping email.")
+        logger.info(f"[NOTIFICATION] should_email=False for {instance.notification_type}. Skipping email.")
 
 
 # ── Payment/Enrollment Signals ───────────────────────────────────────────────
@@ -144,7 +147,7 @@ def notify_students_new_lesson(sender, instance, created, **kwargs):
     if created:
         course = instance.module.course
         # Only notify active enrollments for non-deleted courses
-        enrollments = Enrollment.objects.filter(course=course, is_active=True, course__is_deleted=False)
+        enrollments = Enrollment.objects.filter(course=course, is_active=True, course__is_deleted=False).select_related('student')
         for enrollment in enrollments:
             lesson_msg = f"A new lesson '{instance.title}' has been added to the course '{course.title}'."
             Notification.objects.create(

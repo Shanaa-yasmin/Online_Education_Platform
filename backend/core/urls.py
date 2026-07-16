@@ -18,10 +18,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 
 from users.views import ProfileView, ChangePasswordView
 
+
+def health_check(request):
+    """No-auth health check used by Render to verify the service is alive."""
+    return JsonResponse({'status': 'ok'})
+
 urlpatterns = [
+    path('api/health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
     path('api/profile/', ProfileView.as_view(), name='core_profile'),
@@ -35,6 +42,8 @@ urlpatterns = [
     path('api/announcements/', include('announcements.urls')),
 ]
 
+# In local dev, serve media + static from Django's built-in dev server.
+# In production, static files are handled by WhiteNoise; media is on S3.
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

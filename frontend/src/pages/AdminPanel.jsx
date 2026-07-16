@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import Sidebar from '../components/Sidebar.jsx';
+import Footer from '../components/Footer.jsx';
 import './AdminPanel.css';
 
 export default function AdminPanel() {
@@ -804,6 +805,7 @@ export default function AdminPanel() {
             </div>
           )}
         </div>
+        <Footer />
       </div>
 
     </div>

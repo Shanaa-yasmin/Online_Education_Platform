@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 from PIL import Image
+import io
 
 class CourseQuerySet(models.QuerySet):
     def alive(self):
@@ -96,9 +97,16 @@ class Course(models.Model):
             self._original_thumbnail_name = self.thumbnail.name
 
     def _process_thumbnail(self):
-        """Center-crop + resize the uploaded thumbnail to a fixed 16:9 ratio."""
+        """Center-crop + resize the uploaded thumbnail to a fixed 16:9 ratio.
+
+        Uses the storage backend's open/save API rather than .path so that this
+        works identically with both local filesystem storage (dev) and S3
+        (production). Calling .path on an S3FieldFile raises NotImplementedError.
+        """
         try:
-            img = Image.open(self.thumbnail.path)
+            with self.thumbnail.open('rb') as f:
+                img = Image.open(f)
+                img.load()  # force decode before the file handle closes
         except Exception:
             return  # corrupt/unreadable file — leave as-is, don't crash the save
 
@@ -121,7 +129,17 @@ class Course(models.Model):
             img = img.crop((0, top, src_w, top + new_h))
 
         img = img.resize(self.THUMBNAIL_SIZE, Image.LANCZOS)
-        img.save(self.thumbnail.path, quality=85, optimize=True)
+
+        # Write processed image back to the storage backend in memory
+        buffer = io.BytesIO()
+        img.save(buffer, format='JPEG', quality=85, optimize=True)
+        buffer.seek(0)
+
+        # Save back using the same filename (overwrite)
+        storage = self.thumbnail.storage
+        name = self.thumbnail.name
+        storage.delete(name)  # remove the original before writing
+        storage.save(name, buffer)
 
 
 class Module(models.Model):

@@ -6,6 +6,9 @@ from django.contrib.auth import get_user_model
 from django.db import connection
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import Announcement
 from .serializers import AnnouncementSerializer
@@ -92,10 +95,10 @@ def _fan_out_notifications_async(announcement_id):
                         }
                     )
                 except Exception as ws_err:
-                    print(f"[WS ERROR] Failed to send WS notification for user {notif.recipient_id}: {ws_err}")
+                    logger.error(f"[WS ERROR] Failed to send WS notification for user {notif.recipient_id}: {ws_err}")
                     
     except Exception as err:
-        print(f"[FANOUT ERROR] Failed fanning out notifications for announcement {announcement_id}: {err}")
+        logger.error(f"[FANOUT ERROR] Failed fanning out notifications for announcement {announcement_id}: {err}")
     finally:
         connection.close()
 
