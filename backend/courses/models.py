@@ -90,20 +90,23 @@ class Course(models.Model):
             is_new or self.thumbnail.name != self._original_thumbnail_name
         )
 
-        super().save(*args, **kwargs)
-
         if thumbnail_changed:
             self._process_thumbnail()
-            self._original_thumbnail_name = self.thumbnail.name
+
+        super().save(*args, **kwargs)
+        self._original_thumbnail_name = self.thumbnail.name if self.thumbnail else None
 
     def _process_thumbnail(self):
-        """Center-crop + resize the uploaded thumbnail to a fixed 16:9 ratio.
+        """Center-crop + resize the uploaded thumbnail to a fixed 16:9 ratio in-memory.
 
-        Uses the storage backend's open/save API rather than .path so that this
-        works identically with both local filesystem storage (dev) and S3
-        (production). Calling .path on an S3FieldFile raises NotImplementedError.
+        Modifies the file object before it is uploaded to the storage backend (Cloudinary or local).
         """
+        if not self.thumbnail:
+            return
         try:
+            import os
+            from django.core.files.uploadedfile import InMemoryUploadedFile
+            
             with self.thumbnail.open('rb') as f:
                 img = Image.open(f)
                 img.load()  # force decode before the file handle closes
@@ -130,16 +133,24 @@ class Course(models.Model):
 
         img = img.resize(self.THUMBNAIL_SIZE, Image.LANCZOS)
 
-        # Write processed image back to the storage backend in memory
+        # Write processed image back to memory
         buffer = io.BytesIO()
         img.save(buffer, format='JPEG', quality=85, optimize=True)
         buffer.seek(0)
 
-        # Save back using the same filename (overwrite)
-        storage = self.thumbnail.storage
-        name = self.thumbnail.name
-        storage.delete(name)  # remove the original before writing
-        storage.save(name, buffer)
+        filename = self.thumbnail.name
+        if not filename.lower().endswith(('.jpg', '.jpeg')):
+            filename = os.path.splitext(filename)[0] + '.jpg'
+
+        # Wrap in Django InMemoryUploadedFile and assign to self.thumbnail
+        self.thumbnail = InMemoryUploadedFile(
+            file=buffer,
+            field_name='thumbnail',
+            name=filename,
+            content_type='image/jpeg',
+            size=buffer.getbuffer().nbytes,
+            charset=None
+        )
 
 
 class Module(models.Model):
