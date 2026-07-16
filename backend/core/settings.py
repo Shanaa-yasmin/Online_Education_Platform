@@ -41,7 +41,6 @@ ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 # Application definition
 
 INSTALLED_APPS = [
-    'cloudinary_storage',
     'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -203,15 +202,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-WHITENOISE_MANIFEST_STRICT = False
 
 # ── Media files / Cloudinary ──────────────────────────────────────────────────
-# Local dev:   media files are stored under BASE_DIR/media (MEDIA_ROOT).
-# Production:  set USE_CLOUDINARY=true and configure CLOUDINARY_* credentials.
-#
-# This keeps local dev zero-config while making Cloudinary a one-var switch in prod.
-
 USE_CLOUDINARY = os.environ.get('USE_CLOUDINARY', 'false').lower() == 'true'
 
 if USE_CLOUDINARY:
@@ -220,18 +212,23 @@ if USE_CLOUDINARY:
         'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
         'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
     }
-    MEDIA_URL = '/media/'
-    STORAGES = {
-        'default': {
-            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
-        },
-        'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
-        },
-    }
-else:
-    MEDIA_URL = '/media/'
+
+MEDIA_URL = '/media/'
+if not USE_CLOUDINARY:
     MEDIA_ROOT = BASE_DIR / 'media'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage' if USE_CLOUDINARY else 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+WHITENOISE_MANIFEST_STRICT = True
 
 # Custom Auth Model
 AUTH_USER_MODEL = 'users.User'
