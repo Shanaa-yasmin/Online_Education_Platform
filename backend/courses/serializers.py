@@ -156,19 +156,25 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 class CourseListSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
+    enrollment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
             'id', 'title', 'description', 'mentor', 'price',
             'level', 'language', 'duration_hours', 'category', 'thumbnail',
-            'is_approved', 'is_published', 'rating_average', 'total_reviews'
+            'is_approved', 'is_published', 'rating_average', 'total_reviews',
+            'enrollment_count'
         ]
+
+    def get_enrollment_count(self, obj):
+        return obj.enrollments.filter(is_active=True).count()
 
 
 class CourseSerializer(serializers.ModelSerializer):
     mentor = UserMiniSerializer(read_only=True)
     modules = ModuleSerializer(many=True, read_only=True)
+    enrollment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -176,14 +182,18 @@ class CourseSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'mentor', 'price',
             'level', 'language', 'duration_hours', 'category', 'thumbnail',
             'is_approved', 'is_published','is_submitted_for_review', 'is_rejected', 'created_at', 'updated_at',
-            'modules', 'rating_average', 'total_reviews'
+            'modules', 'rating_average', 'total_reviews', 'enrollment_count'
         ]
         read_only_fields = ['is_approved']
+
+    def get_enrollment_count(self, obj):
+        return obj.enrollments.filter(is_active=True).count()
 
     def validate_price(self, value):
         if value < 0:
             raise serializers.ValidationError("Price cannot be a negative value.")
         return value
+
 
 
 class CourseSearchSerializer(serializers.ModelSerializer):

@@ -232,17 +232,18 @@ h6 {
 }
 
 .btn-primary {
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
   color: #fff;
-  border-color: var(--brand);
+  border: none;
   border-radius: var(--r-md);
+  box-shadow: 0 2px 8px rgba(107, 26, 26, 0.16);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--brand-dark);
-  border-color: var(--brand-dark);
+  background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-deeper) 100%);
   color: #fff;
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(107, 26, 26, 0.25);
 }
 
 .btn-outline {
@@ -746,7 +747,7 @@ h6 {
   height: 60px;
   min-height: 60px;
   flex-shrink: 0;
-  background: var(--brand-dark);
+  background: linear-gradient(90deg, var(--brand-deeper) 0%, var(--brand-dark) 50%, var(--brand) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: row;
@@ -868,7 +869,7 @@ h6 {
   left: -280px;
   width: 280px;
   height: 100vh;
-  background: var(--brand-dark);
+  background: linear-gradient(180deg, var(--brand-deeper) 0%, var(--brand-dark) 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;

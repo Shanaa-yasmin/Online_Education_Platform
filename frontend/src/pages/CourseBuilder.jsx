@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
@@ -82,6 +82,18 @@ export default function CourseBuilder() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const actionsDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target)) {
+        setShowActionsDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Accordion active modules
   const [expandedModules, setExpandedModules] = useState({});
@@ -600,52 +612,65 @@ export default function CourseBuilder() {
               <span className="moderation-notice moderation-rejected">Changes Requested</span>
             )}
           </div>
-          <p className="course-summary">{course.description}</p>
         </div>
 
-        <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => navigate(`/announcements?create=true&courseId=${course.id}`)}>
-            <i className="ti ti-speakerphone" style={{ marginRight: 6 }} /> Add Announcement
+        <div className="header-actions" ref={actionsDropdownRef}>
+          {/* Dropdown toggle for mobile viewports */}
+          <button
+            className="mobile-actions-toggle"
+            onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+            title="Course Actions"
+          >
+            <i className="ti ti-dots-vertical" />
           </button>
 
-          <button className="btn btn-secondary" onClick={openEditCourseModal}>
-            <EditIcon /> Edit Course Details
-          </button>
+          <div className={`actions-buttons-wrapper ${showActionsDropdown ? 'open' : ''}`}>
+            <button className="btn btn-secondary" onClick={() => { setShowActionsDropdown(false); navigate(`/announcements?create=true&courseId=${course.id}`); }}>
+              <i className="ti ti-speakerphone" style={{ marginRight: 6 }} /> Add Announcement
+            </button>
 
-          {course.is_published ? (
-            <button className="btn btn-secondary btn-publish" onClick={handlePublishToggle} disabled={publishing}>
-              {publishing ? 'Updating...' : 'Unpublish Course'}
+            <button className="btn btn-secondary" onClick={() => { setShowActionsDropdown(false); openEditCourseModal(); }}>
+              <EditIcon /> Edit Course Details
             </button>
-          ) : course.is_approved ? (
-            <button className="btn btn-primary btn-publish" onClick={handlePublishToggle} disabled={publishing}>
-              {publishing ? 'Updating...' : 'Publish Course'}
-            </button>
-          ) : (
-            <button
-              className="btn btn-primary btn-publish"
-              onClick={handleSubmitForReview}
-              disabled={submittingReview || course.is_submitted_for_review}
-              title={course.is_submitted_for_review ? 'Waiting on admin approval' : ''}
-            >
-              {submittingReview
-                ? 'Submitting...'
-                : course.is_submitted_for_review
-                  ? 'Pending Admin Review'
-                  : course.is_rejected
-                    ? 'Resubmit for Review'
-                    : 'Submit for Review'}
-            </button>
-          )}
-          {canDelete && (
-            <button className="btn btn-danger" onClick={handleDeleteCourse} disabled={deleting}>
-              <TrashIcon /> {deleting ? 'Deleting...' : 'Delete Course'}
-            </button>
-          )}
+
+            {course.is_published ? (
+              <button className="btn btn-secondary btn-publish" onClick={() => { setShowActionsDropdown(false); handlePublishToggle(); }} disabled={publishing}>
+                {publishing ? 'Updating...' : 'Unpublish Course'}
+              </button>
+            ) : course.is_approved ? (
+              <button className="btn btn-primary btn-publish" onClick={() => { setShowActionsDropdown(false); handlePublishToggle(); }} disabled={publishing}>
+                {publishing ? 'Updating...' : 'Publish Course'}
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary btn-publish"
+                onClick={() => { setShowActionsDropdown(false); handleSubmitForReview(); }}
+                disabled={submittingReview || course.is_submitted_for_review}
+                title={course.is_submitted_for_review ? 'Waiting on admin approval' : ''}
+              >
+                {submittingReview
+                  ? 'Submitting...'
+                  : course.is_submitted_for_review
+                    ? 'Pending Admin Review'
+                    : course.is_rejected
+                      ? 'Resubmit for Review'
+                      : 'Submit for Review'}
+              </button>
+            )}
+            {canDelete && (
+              <button className="btn btn-danger" onClick={() => { setShowActionsDropdown(false); handleDeleteCourse(); }} disabled={deleting}>
+                <TrashIcon /> {deleting ? 'Deleting...' : 'Delete Course'}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Curriculum Manager Layout */}
       <main className="builder-content">
+        {course.description && (
+          <p className="course-summary">{course.description}</p>
+        )}
         <div className="section-title-row">
           <h2>Curriculum & Modules</h2>
           <button className="btn btn-secondary btn-sm" onClick={() => openModuleModal(null)}>

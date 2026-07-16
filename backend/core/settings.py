@@ -338,7 +338,10 @@ _ES_PORT = os.environ.get('ES_PORT', '9200')
 _ES_SCHEME = os.environ.get('ES_SCHEME', 'http')
 _ES_URL = f"{_ES_SCHEME}://{_ES_HOST}:{_ES_PORT}"
 
-_es_conn = {'hosts': _ES_URL}
+_es_conn = {
+    'hosts': _ES_URL,
+    'request_timeout': float(os.environ.get('ES_TIMEOUT', '2.0')),
+}
 
 # Optional auth — supports API key (Elastic Cloud) or basic auth (self-hosted)
 _ES_API_KEY = os.environ.get('ES_API_KEY', '')

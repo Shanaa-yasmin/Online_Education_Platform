@@ -5,6 +5,7 @@ import SearchAutocomplete from './SearchAutocomplete.jsx';
 
 const NAV_ITEMS = [
   { key: 'dashboard',       to: '/dashboard',        icon: 'ti ti-layout-dashboard', label: 'Dashboard',    roles: 'all' },
+  { key: 'courses',         to: '/courses',          icon: 'ti ti-book',             label: 'Explore Courses', roles: 'all' },
   { key: 'admin-portal',    to: '/admin/portal',     icon: 'ti ti-settings',         label: 'Admin Portal', roles: ['ADMIN'] },
   { key: 'admin-reports',   to: '/admin/reports',    icon: 'ti ti-chart-bar',        label: 'Reports',      roles: ['ADMIN'] },
   { key: 'my-courses',      to: '/my-courses',       icon: 'ti ti-notebook',         label: 'My Courses',   roles: ['STUDENT', 'MENTOR'] },
@@ -12,7 +13,6 @@ const NAV_ITEMS = [
   { key: 'mentor-payments', to: '/mentor/payments',  icon: 'ti ti-wallet',           label: 'Payment Logs', roles: ['MENTOR', 'ADMIN'] },
   { key: 'mentor-analytics',to: '/mentor/analytics', icon: 'ti ti-chart-pie',        label: 'Analytics',    roles: ['MENTOR'] },
   { key: 'announcements',   to: '/announcements',    icon: 'ti ti-speakerphone',     label: 'Announcements',roles: 'all' },
-  { key: 'courses',         to: '/courses',          icon: 'ti ti-book',             label: 'Courses',      roles: 'all' },
   { key: 'profile',         to: '/profile',          icon: 'ti ti-user',             label: 'Profile',      roles: 'all' },
 ];
 

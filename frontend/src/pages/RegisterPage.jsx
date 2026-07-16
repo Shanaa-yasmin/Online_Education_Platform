@@ -53,6 +53,9 @@ export default function RegisterPage() {
     const e = {};
     if (!form.username.trim())      e.username = 'Username is required.';
     else if (form.username.length < 3) e.username = 'Min 3 characters.';
+    else if (!/^[a-zA-Z0-9._]+$/.test(form.username)) {
+      e.username = 'Username can only contain letters, numbers, "." and "_".';
+    }
     if (!form.email.trim())         e.email = 'Email is required.';
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email.';
     if (!form.password)             e.password = 'Password is required.';

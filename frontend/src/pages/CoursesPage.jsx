@@ -410,26 +410,21 @@ export default function CoursesPage() {
                     </div>
                     <div className="cc-body">
                       <div className="cc-rating-row">
-                        <span className="cc-stars">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <StarIcon key={i} filled={i < Math.round(course.avg_rating || 0)} />
-                          ))}
-                        </span>
+                        <StarIcon filled={course.avg_rating > 0} />
                         <span className="cc-rating-num">
-                          {course.avg_rating > 0 ? course.avg_rating.toFixed(1) : 'No reviews'}
+                          {course.avg_rating > 0 ? parseFloat(course.avg_rating).toFixed(1) : 'No reviews'}
                         </span>
                       </div>
                       <p className="cc-cat">{course.language}</p>
                       <h3 className="cc-title">{course.title}</h3>
                       <div className="cc-meta">
-                        <span><i className="ti ti-clock" /> {course.duration_hours}h</span>
                         <span><i className="ti ti-user" /> {course.mentor?.username || 'Expert'}</span>
                         <span><i className="ti ti-users" /> {course.enrollment_count || 0} enrolled</span>
                       </div>
                     </div>
                     <div className="cc-footer">
                       <span className={`cc-price${parseFloat(course.price) <= 0 ? ' free' : ''}`}>
-                        {parseFloat(course.price) > 0 ? `$${course.price}` : 'Free'}
+                        {parseFloat(course.price) > 0 ? `$${Math.round(parseFloat(course.price))}` : 'Free'}
                       </span>
                       <Link to={`/courses/${course.id}`} className="btn btn-primary btn-sm" style={{ borderRadius: 7 }}>
                         {parseFloat(course.price) > 0 ? 'View & Enroll' : 'Enroll Free'}

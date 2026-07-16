@@ -516,6 +516,8 @@ def _notify_admins_of_reported_review(review, report_count):
     from channels.layers import get_channel_layer
     from asgiref.sync import async_to_sync
     import threading
+    import logging
+    logger = logging.getLogger(__name__)
 
     def notify():
         try:
@@ -550,11 +552,12 @@ def _notify_admins_of_reported_review(review, report_count):
                             }
                         )
                     except Exception as ws_err:
-                        print(f"[WS ERROR] Failed to send WS notification: {ws_err}")
+                        logger.error(f"[WS ERROR] Failed to send WS notification: {ws_err}")
         except Exception as e:
-            print(f"Error in notifying admins of reported review: {e}")
+            logger.error(f"Error in notifying admins of reported review: {e}")
             
     threading.Thread(target=notify, daemon=True).start()
+
 
 
 class AdminReviewReportViewSet(viewsets.ModelViewSet):

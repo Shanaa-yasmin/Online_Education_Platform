@@ -351,6 +351,8 @@ export default function LearningPlayer() {
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState('');
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [syllabusOpen, setSyllabusOpen] = useState(false);
+
 
   // ── Quiz attempt state (matches QuizAttemptViewSet: start / submit / history) ──
   const [quizAttempt, setQuizAttempt] = useState(null);   // { attempt_id, attempt_number, time_limit_minutes, started_at, questions }
@@ -391,7 +393,7 @@ export default function LearningPlayer() {
     }
     try {
       setLoading(true);
-      
+
       const [courseResponse, enrollResponse, progressRes] = await Promise.all([
         api.get(`/api/courses/${courseId}/`),
         api.get(`/api/payments/enrollments/check/?course_id=${courseId}`),
@@ -548,6 +550,8 @@ export default function LearningPlayer() {
   const handleLessonClick = async (lesson) => {
     setActiveLesson(lesson);
     setActiveTab('lesson');
+    setSyllabusOpen(false);
+
 
     try {
       await api.post(`/api/progress/lesson/${lesson.id}/resume/`);
@@ -607,8 +611,11 @@ export default function LearningPlayer() {
   return (
     <div className="learning-player-layout">
       {/* Sidebar Syllabus */}
-      <aside className="player-sidebar">
+      <aside className={`player-sidebar ${syllabusOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
+          {/* Close button on mobile */}
+          <button className="mobile-syllabus-close-btn" onClick={() => setSyllabusOpen(false)}>✕</button>
+
           <button onClick={() => navigate(`/courses/${courseId}`, { replace: true, state: { fromCheckout: location.state?.fromCheckout } })} className="back-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}>
             <ArrowLeftIcon /> Back
           </button>
@@ -648,8 +655,29 @@ export default function LearningPlayer() {
         </nav>
       </aside>
 
+      {syllabusOpen && (
+        <div className="syllabus-backdrop-overlay" onClick={() => setSyllabusOpen(false)} />
+      )}
+
       {/* Main Content Area */}
       <main className="player-main-area">
+        {/* Mobile Header (visible on mobile only) */}
+        <div className="player-mobile-header">
+          <button 
+            className="mobile-syllabus-toggle-btn"
+            onClick={() => setSyllabusOpen(true)}
+          >
+            <i className="ti ti-menu-2" style={{ marginRight: 6 }} />
+            <span>Syllabus</span>
+          </button>
+          <button 
+            onClick={() => navigate(`/courses/${courseId}`, { replace: true, state: { fromCheckout: location.state?.fromCheckout } })} 
+            className="mobile-back-btn"
+          >
+            <ArrowLeftIcon /> Back
+          </button>
+        </div>
+
         {/* Tab Bar */}
         <div className="player-tab-bar">
           <button

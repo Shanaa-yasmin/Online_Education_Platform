@@ -54,6 +54,14 @@ const LockIcon = () => (
     <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
+const UsersIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function CoursePage() {
@@ -62,6 +70,11 @@ export default function CoursePage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+
+  // Remember if the user arrived here from a payment gateway redirect
+  const [wasRedirectedFromCheckout] = useState(() => {
+    return searchParams.get('payment_success') === 'true' || searchParams.get('payment_cancel') === 'true';
+  });
 
   // Data
   const [course, setCourse] = useState(null);
@@ -137,7 +150,7 @@ export default function CoursePage() {
 
     if (isCancel) {
       alert('Checkout was cancelled. You have not been charged.');
-      setSearchParams({});
+      setSearchParams({}, { replace: true });
       return;
     }
 
@@ -160,12 +173,12 @@ export default function CoursePage() {
         if (res.data.verified) {
           setVerifyMsg('Payment confirmed! Launching classroom…');
           setTimeout(() => {
-            setSearchParams({});
+            setSearchParams({}, { replace: true });
             navigate(`/courses/${courseId}/learn`);
           }, 1500);
         } else {
           alert(res.data.detail || 'Payment verification failed. Please contact support.');
-          setSearchParams({});
+          setSearchParams({}, { replace: true });
         }
       } catch (err) {
         console.error(err);
@@ -173,7 +186,7 @@ export default function CoursePage() {
           err.response?.data?.detail ||
           'An error occurred during payment verification. Please contact support.'
         );
-        setSearchParams({});
+        setSearchParams({}, { replace: true });
       } finally {
         setVerifying(false);
       }
@@ -269,8 +282,8 @@ export default function CoursePage() {
   return (
     <div className="student-course-page">
       <button onClick={() => {
-        if (location.state?.fromCheckout) {
-          navigate('/my-courses');
+        if (location.state?.fromCheckout || wasRedirectedFromCheckout) {
+          navigate('/courses');
         } else {
           navigate(-1);
         }
@@ -298,6 +311,12 @@ export default function CoursePage() {
           <p className="mentor-row">
             Created by <strong>{course.mentor?.username || 'Expert'}</strong>
           </p>
+
+          <div className="course-quick-stats">
+            <span className="stat-item"><ClockIcon /> <strong>{course.duration_hours || 0}h</strong> duration</span>
+            <span className="stat-item"><UsersIcon /> <strong>{course.enrollment_count || 0}</strong> students enrolled</span>
+            <span className="stat-item">⭐ <strong>{course.rating_average > 0 ? parseFloat(course.rating_average).toFixed(1) : '0.0'}</strong> ({course.total_reviews} reviews)</span>
+          </div>
 
           <div className="course-description-block">
             <h3>Course Overview</h3>
@@ -373,7 +392,12 @@ export default function CoursePage() {
               <BookOpenIcon />
               <span>Modules: <strong>{course.modules?.length || 0} sections</strong></span>
             </div>
+            <div className="spec-row">
+              <UsersIcon />
+              <span>Enrolled: <strong>{course.enrollment_count || 0} students</strong></span>
+            </div>
           </div>
+
 
           <div className="cta-action-block">
             {isEnrolled ? (

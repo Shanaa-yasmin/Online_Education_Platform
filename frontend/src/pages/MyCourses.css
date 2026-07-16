@@ -299,10 +299,10 @@
     justify-content: center !important;
   }
 
-  /* Two courses side by side on mobile */
+  /* One course per row on mobile */
   .my-courses-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
   }
 
   .my-courses-card-content {
