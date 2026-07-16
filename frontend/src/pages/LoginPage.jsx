@@ -61,7 +61,7 @@ export default function LoginPage() {
                 <i className="ti ti-mail input-icon" />
                 <input className="form-input" name="email" type="email"
                   placeholder="you@example.com" value={form.email}
-                  onChange={handleChange} autoComplete="email" required />
+                  onChange={handleChange} autoComplete="off" required />
               </div>
             </div>
 

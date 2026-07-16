@@ -843,6 +843,7 @@ export default function CourseBuilder() {
                   value={moduleTitle}
                   onChange={(e) => setModuleTitle(e.target.value)}
                   placeholder="e.g. Module 1: Foundations & Architecture"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -878,6 +879,7 @@ export default function CourseBuilder() {
                   value={lessonData.title}
                   onChange={(e) => setLessonData(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g. Lesson 1.2: System Flow & Protocols"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -905,6 +907,7 @@ export default function CourseBuilder() {
                     value={lessonData.video_url}
                     onChange={(e) => setLessonData(prev => ({ ...prev, video_url: e.target.value }))}
                     placeholder="https://example.com/streaming-link"
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -947,6 +950,7 @@ export default function CourseBuilder() {
                         type="number" id="les-max-attempts" min="0"
                         value={lessonData.max_quiz_attempts}
                         onChange={(e) => setLessonData(prev => ({ ...prev, max_quiz_attempts: e.target.value }))}
+                        autoComplete="off"
                       />
                       <small className="meta-sub">0 = unlimited attempts</small>
                     </div>
@@ -956,6 +960,7 @@ export default function CourseBuilder() {
                         type="number" id="les-pass-score" min="0" max="100"
                         value={lessonData.passing_score_percent}
                         onChange={(e) => setLessonData(prev => ({ ...prev, passing_score_percent: e.target.value }))}
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -965,6 +970,7 @@ export default function CourseBuilder() {
                       type="number" id="les-time-limit" min="0"
                       value={lessonData.quiz_time_limit_minutes}
                       onChange={(e) => setLessonData(prev => ({ ...prev, quiz_time_limit_minutes: e.target.value }))}
+                      autoComplete="off"
                     />
                     <small className="meta-sub">0 = no time limit</small>
                   </div>
@@ -997,7 +1003,7 @@ export default function CourseBuilder() {
 
               <div className="form-group">
                 <label htmlFor="edit-title">Course Title</label>
-                <input type="text" id="edit-title" name="title" value={editCourseForm.title} onChange={handleEditCourseInput} required />
+                <input type="text" id="edit-title" name="title" value={editCourseForm.title} onChange={handleEditCourseInput} autoComplete="off" required />
               </div>
 
               <div className="form-group">
@@ -1041,11 +1047,11 @@ export default function CourseBuilder() {
               <div className="form-row-grid">
                 <div className="form-group">
                   <label htmlFor="edit-lang">Language</label>
-                  <input type="text" id="edit-lang" name="language" value={editCourseForm.language} onChange={handleEditCourseInput} required />
+                  <input type="text" id="edit-lang" name="language" value={editCourseForm.language} onChange={handleEditCourseInput} autoComplete="off" required />
                 </div>
                 <div className="form-group">
                   <label htmlFor="edit-hours">Estimated Hours</label>
-                  <input type="number" id="edit-hours" name="duration_hours" value={editCourseForm.duration_hours} onChange={handleEditCourseInput} min="0" required />
+                  <input type="number" id="edit-hours" name="duration_hours" value={editCourseForm.duration_hours} onChange={handleEditCourseInput} min="0" autoComplete="off" required />
                 </div>
               </div>
 
@@ -1115,6 +1121,7 @@ export default function CourseBuilder() {
                   type="number" id="q-points" min="1"
                   value={quizData.points}
                   onChange={(e) => setQuizData(prev => ({ ...prev, points: e.target.value }))}
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -1128,6 +1135,7 @@ export default function CourseBuilder() {
                       value={quizData.correct_text_answer}
                       onChange={(e) => setQuizData(prev => ({ ...prev, correct_text_answer: e.target.value }))}
                       placeholder="e.g. Merge Sort"
+                      autoComplete="off"
                       required
                     />
                   </div>
@@ -1163,6 +1171,7 @@ export default function CourseBuilder() {
                         placeholder={`Option ${idx + 1}`}
                         disabled={quizData.question_type === 'TRUE_FALSE'}
                         style={{ flex: 1 }}
+                        autoComplete="off"
                         required
                       />
                       {quizData.question_type !== 'TRUE_FALSE' && quizData.options.length > 2 && (
