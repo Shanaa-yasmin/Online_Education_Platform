@@ -58,6 +58,9 @@ class CourseViewSet(viewsets.ModelViewSet):
                 'modules__lessons__quiz_questions__options'
             )
 
+        if self.request.query_params.get('enrolled') == 'true':
+            return queryset.filter(enrollments__student=user, enrollments__is_active=True).distinct().order_by('-created_at')
+
         # Admins see all courses
         if user.is_staff or user.role == 'ADMIN':
             return queryset.order_by('-created_at')

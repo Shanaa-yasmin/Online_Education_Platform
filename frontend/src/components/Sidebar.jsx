@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { key: 'admin-portal',    to: '/admin/portal',     icon: 'ti ti-settings',         label: 'Admin Portal', roles: ['ADMIN'] },
   { key: 'admin-reports',   to: '/admin/reports',    icon: 'ti ti-chart-bar',        label: 'Reports',      roles: ['ADMIN'] },
   { key: 'my-courses',      to: '/my-courses',       icon: 'ti ti-notebook',         label: 'My Courses',   roles: ['STUDENT', 'MENTOR'] },
-  { key: 'mentor-qa',       to: '/mentor/qa',        icon: 'ti ti-messages',         label: 'Q&A',          roles: ['MENTOR'] },
+  { key: 'qa',              to: '/qa',               icon: 'ti ti-messages',         label: 'Q&A',          roles: 'all' },
   { key: 'mentor-payments', to: '/mentor/payments',  icon: 'ti ti-wallet',           label: 'Payment Logs', roles: ['MENTOR', 'ADMIN'] },
   { key: 'mentor-analytics',to: '/mentor/analytics', icon: 'ti ti-chart-pie',        label: 'Analytics',    roles: ['MENTOR'] },
   { key: 'announcements',   to: '/announcements',    icon: 'ti ti-speakerphone',     label: 'Announcements',roles: 'all' },

@@ -60,7 +60,8 @@ function AppContent() {
 
             {/* Mentor */}
             <Route path="/mentor/courses/:courseId/builder" element={<ProtectedRoute allowedRoles={['MENTOR', 'ADMIN']}><CourseBuilder /></ProtectedRoute>} />
-            <Route path="/mentor/qa" element={<ProtectedRoute allowedRoles={['MENTOR', 'ADMIN']}><QAPage /></ProtectedRoute>} />
+            {/* Q&A page (All authenticated users) */}
+            <Route path="/qa" element={<ProtectedRoute><QAPage /></ProtectedRoute>} />
             <Route path="/mentor/payments" element={<ProtectedRoute allowedRoles={['MENTOR', 'ADMIN']}><PaymentLogs /></ProtectedRoute>} />
             <Route path="/mentor/analytics" element={<ProtectedRoute allowedRoles={['MENTOR', 'ADMIN']}><AnalyticsPage /></ProtectedRoute>} />
 

@@ -93,6 +93,7 @@ function getYouTubeEmbedUrl(url, startSeconds = 0) {
 
 // ── Q&A Chat Panel Component ────────────────────────────────────────────────
 export function QAPanel({ courseId, user }) {
+  const { token } = useAuth();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState(null);   // { id, username }
@@ -168,7 +169,7 @@ export function QAPanel({ courseId, user }) {
     ws.onclose = () => setWsStatus('closed');
 
     return () => ws.close();
-  }, [courseId, user]);
+  }, [courseId, user, token]);
 
   const sendMessage = useCallback(() => {
     const text = inputText.trim();

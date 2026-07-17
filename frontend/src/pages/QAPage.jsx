@@ -20,7 +20,13 @@ export default function QAPage() {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        const r = await api.get('/api/courses/?created_by_me=true');
+        let endpoint = '/api/courses/';
+        if (user.role === 'STUDENT') {
+          endpoint = '/api/courses/?enrolled=true';
+        } else if (user.role === 'MENTOR') {
+          endpoint = '/api/courses/?created_by_me=true';
+        }
+        const r = await api.get(endpoint);
         if (active) {
           const results = r.data.results || r.data;
           setCourses(results);
@@ -49,7 +55,7 @@ export default function QAPage() {
 
   return (
     <div className="page-shell">
-      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="mentor-qa" />
+      <Sidebar user={user} onLogout={handleLogout} loggingOut={loggingOut} active="qa" />
       <div className="inner-page">
 
         <div className="mentor-page-wrap">
@@ -57,7 +63,7 @@ export default function QAPage() {
             <div className="qa-course-picker-header">
               <div>
                 <h3 style={{ fontFamily: 'Fraunces,serif', fontWeight: 800, fontSize: '1.1rem', margin: 0 }}>Select Course for Chat</h3>
-                <p style={{ fontSize: 13, color: 'var(--txt-3)', marginTop: 4 }}>Pick a course below to open its live Q&A moderation window.</p>
+                <p style={{ fontSize: 13, color: 'var(--txt-3)', marginTop: 4 }}>Pick a course below to open its live Q&A chat window.</p>
               </div>
               <div className="qa-course-picker-wrap">
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt-3)' }}>Course</label>
