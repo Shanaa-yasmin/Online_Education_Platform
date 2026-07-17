@@ -249,7 +249,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="profile-tabs-nav">
+                <div className="profile-tabs-nav desktop-tabs">
                   <button className={`tab-nav-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
                     <i className="ti ti-chart-bar" />
                     <span>Overview & Analytics</span>
@@ -262,6 +262,21 @@ export default function ProfilePage() {
                     <i className="ti ti-lock" />
                     <span>Password & Security</span>
                   </button>
+                </div>
+
+                <div className="profile-tabs-dropdown-wrap mobile-only-tabs">
+                  <select
+                    value={activeTab}
+                    onChange={(e) => setActiveTab(e.target.value)}
+                    className="profile-tab-select"
+                  >
+                    <option value="overview">📊 Overview & Analytics</option>
+                    <option value="settings">✏️ Edit Profile Info</option>
+                    <option value="security">🔒 Password & Security</option>
+                  </select>
+                  <div className="select-arrow-icon">
+                    <i className="ti ti-chevron-down" />
+                  </div>
                 </div>
               </aside>
 

@@ -597,51 +597,91 @@
   flex-direction: column;
 }
 
+/* Tab Navigation Toggles */
+.mobile-only-tabs {
+  display: none;
+}
+
+.profile-tabs-dropdown-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.profile-tab-select {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand);
+  background: var(--surface);
+  border: 2.5px solid var(--brand);
+  border-radius: 6px;
+  appearance: none; /* Hide native dropdown arrow */
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.profile-tab-select:focus {
+  box-shadow: 0 0 0 3px var(--brand-light);
+}
+
+.select-arrow-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--brand);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+}
+
 /* ── Mobile Responsive ──────────────────────────────────── */
 @media (max-width: 768px) {
-  .profile-page-wrap {
+  /* Increase specificity to override index.css padding-left/right: 32px !important */
+  body .profile-page-wrap {
     padding: 16px 12px !important;
     gap: 16px !important;
     box-sizing: border-box !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
   }
 
-  .profile-layout-new {
+  body .profile-layout-new {
     grid-template-columns: 1fr !important;
     gap: 20px !important;
     width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .desktop-tabs {
+    display: none !important;
+  }
+
+  .mobile-only-tabs {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 8px !important;
+    box-sizing: border-box !important;
   }
 
   .profile-meta-card {
     padding: 24px 16px !important;
-    border-radius: var(--r-md) !important;
+    border-radius: 6px !important;
     border: 1px solid var(--border) !important;
     box-sizing: border-box !important;
+    width: 100% !important;
   }
 
   .profile-aside-left {
     position: static !important;
     top: auto !important;
     width: 100% !important;
-  }
-
-  .profile-tabs-nav {
-    flex-direction: row !important;
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-    border-bottom: 1px solid var(--border) !important;
-    gap: 0 !important;
-    width: 100% !important;
     box-sizing: border-box !important;
-  }
-
-  .profile-tabs-nav::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  .tab-nav-btn {
-    flex-shrink: 0 !important;
-    white-space: nowrap !important;
   }
 
   .profile-content-right {
