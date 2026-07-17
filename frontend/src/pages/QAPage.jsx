@@ -20,11 +20,11 @@ export default function QAPage() {
     const fetchCourses = async () => {
       try {
         setLoading(true);
-        let endpoint = '/api/courses/';
+        let endpoint = '/api/courses/?pagination=false';
         if (user.role === 'STUDENT') {
-          endpoint = '/api/courses/?enrolled=true';
+          endpoint = '/api/courses/?pagination=false&enrolled=true';
         } else if (user.role === 'MENTOR') {
-          endpoint = '/api/courses/?created_by_me=true';
+          endpoint = '/api/courses/?pagination=false&created_by_me=true';
         }
         const r = await api.get(endpoint);
         if (active) {

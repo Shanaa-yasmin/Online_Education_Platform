@@ -42,6 +42,12 @@ class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     permission_classes = [permissions.IsAuthenticated, IsCourseMentorOrAdmin]
 
+    @property
+    def paginator(self):
+        if self.request and self.request.query_params.get('pagination') == 'false':
+            return None
+        return super().paginator
+
     def get_queryset(self):
         user = self.request.user
         queryset = Course.objects.all().select_related('mentor').annotate(
