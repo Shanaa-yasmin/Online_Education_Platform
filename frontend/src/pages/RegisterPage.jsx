@@ -88,12 +88,12 @@ export default function RegisterPage() {
       {/* Right panel */}
       <div className="auth-panel-right">
         <div className="auth-form-box wide">
-          <div className="auth-mobile-header">
+          <Link to="/" className="auth-mobile-header" style={{ textDecoration: 'none' }}>
             <div className="auth-mobile-logo-circle">
               <img src="/favicon.jpeg" alt="EduPath Logo" className="auth-mobile-logo" />
             </div>
             <span className="auth-mobile-brand-name">EduPath</span>
-          </div>
+          </Link>
 
           {success ? (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import './AuthLeftPanel.css';
 
 export default function AuthLeftPanel({ 
@@ -8,10 +9,10 @@ export default function AuthLeftPanel({
 }) {
   return (
     <div className="auth-panel-left">
-      <div className="auth-brand">
+      <Link to="/" className="auth-brand" style={{ textDecoration: 'none' }}>
         <img src="/favicon.jpeg" alt="EduPath Logo" style={{ width: 36, height: 36, borderRadius: 8 }} />
         <span className="auth-brand-name">EduPath</span>
-      </div>
+      </Link>
       
       <div className="auth-hero">
         <p className="auth-hero-eyebrow">{eyebrow}</p>
