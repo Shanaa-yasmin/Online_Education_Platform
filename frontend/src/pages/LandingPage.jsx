@@ -28,6 +28,7 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [courses, setCourses] = useState([]);
   const [mentors, setMentors] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({ students: 0, mentors: 0, courses: 0, uplift: 70 });
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +39,7 @@ export default function LandingPage() {
         if (active) {
           setCourses(res.data.courses || []);
           setMentors(res.data.mentors || []);
+          setReviews(res.data.reviews || []);
           setStats(res.data.stats || { students: 0, mentors: 0, courses: 0, uplift: 70 });
           setLoading(false);
         }
@@ -102,7 +104,7 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="hero">
         <div className="hero-left">
-          <div className="hero-eyebrow"><i className="ti ti-sparkles" /> #1 Rated EdTech Platform 2025</div>
+          <div className="hero-eyebrow"><i className="ti ti-sparkles" /> #1 Rated EdTech Platform 2026</div>
           <h1 className="hero-h1">Bridge the gap between <em>skills and success</em></h1>
           <p className="hero-sub">Humans where it matters, technology where it scales. We help learners grow and turn learning outcomes into measurable career impact.</p>
           <form className="hero-search-form" onSubmit={handleHeroSearch}>
@@ -126,7 +128,7 @@ export default function LandingPage() {
               <div className="t-av av3">MJ</div>
               <div className="t-av av4">PR</div>
             </div>
-            <p className="trust-text"><strong>12,000+ learners</strong> already enrolled<br />and growing every week</p>
+            <p className="trust-text"><strong>{stats.students}+ learners</strong> already enrolled<br />and growing every week</p>
           </div>
         </div>
         <div className="hero-right">
@@ -145,7 +147,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  {[['94%', 'Completion'], ['320+', 'Courses'], ['4.9★', 'Rating']].map(([n, l]) => (
+                  {[[`${stats.avg_progress || 94}%`, 'Completion'], [`${stats.courses || 10}+`, 'Courses'], [`${stats.avg_rating || 4.9}★`, 'Rating']].map(([n, l]) => (
                     <div key={l} style={{ background: 'rgba(48,157,142,0.1)', borderRadius: 10, padding: '10px 16px', textAlign: 'center' }}>
                       <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.2rem', fontWeight: 800, color: '#309D8E' }}>{n}</div>
                       <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{l}</div>
@@ -156,10 +158,10 @@ export default function LandingPage() {
             </div>
             <div className="hero-img-card">
               <div className="hic-icon"><i className="ti ti-award" /></div>
-              <div><div className="hic-num">12k+</div><div className="hic-lbl">Active students</div></div>
+              <div><div className="hic-num">{stats.students || 10}+</div><div className="hic-lbl">Active students</div></div>
             </div>
             <div className="hero-img-card2">
-              <div className="hic2-num">70%</div>
+              <div className="hic2-num">{stats.uplift || 70}%</div>
               <div className="hic2-lbl">Career uplift</div>
             </div>
           </div>
@@ -180,10 +182,10 @@ export default function LandingPage() {
       <section className="stats-section">
         <div className="stats-grid">
           {[
-            ['Learners enrolled', stats.students > 0 ? `${stats.students}+` : '12,000+', 'Growing every month'],
-            ['Expert mentors', stats.mentors > 0 ? `${stats.mentors}+` : '840+', 'Active industry pros'],
-            ['Courses available', stats.courses > 0 ? `${stats.courses}+` : '320+', 'Across 24 domains'],
-            ['Career uplift rate', `${stats.uplift}%`, 'Within 6 months'],
+            ['Learners enrolled', `${stats.students || 0}`, 'Registered students'],
+            ['Expert mentors', `${stats.mentors || 0}`, 'Approved active mentors'],
+            ['Courses available', `${stats.courses || 0}`, 'Published study programs'],
+            ['Career uplift rate', `${stats.uplift || 70}%`, 'Within 1 month'],
           ].map(([eyebrow, num, desc]) => (
             <div key={eyebrow} className="stat-box">
               <p className="sb-eyebrow">{eyebrow}</p>
@@ -235,7 +237,7 @@ export default function LandingPage() {
             const levelCls = getLevelCls(c.level);
             const icon = c.icon || getCourseIcon(c.category);
             const formattedPrice = c.price === 0 || c.price === 'Free' ? 'Free' : `₹${parseFloat(c.price).toLocaleString()}`;
-            
+
             return (
               <div key={c.id || idx} className="course-card" onClick={() => navigate('/register')}>
                 <div className={`cc-thumb ${c.thumb || `cc-t${(idx % 3) + 1}`}`}>
@@ -268,22 +270,26 @@ export default function LandingPage() {
       <section className="impact-section" id="impact">
         <div className="impact-inner">
           <div className="impact-left">
-            <p className="sec-eyebrow">Our impact</p>
-            <h2 className="sec-title">Real numbers. Real outcomes.</h2>
-            <p className="sec-sub">We track every metric that matters — completion rates, placement rates, salary growth. Because outcomes are the only product.</p>
-            <button className="impact-cta" onClick={() => navigate('/register')}><i className="ti ti-chart-bar" /> See full report →</button>
+            <p className="sec-eyebrow">Why Choose EduPath</p>
+            <h2 className="sec-title" style={{ fontSize: '2.4rem' }}>Why Choose EduPath</h2>
+            <p className="sec-sub">A modern online learning platform designed to connect students with mentors through structured courses, progress tracking, interactive discussions, and seamless learning resources.</p>
+            <button className="impact-cta" onClick={() => navigate('/register')}><i className="ti ti-rocket" /> Get Started →</button>
           </div>
           <div className="impact-right">
             {[
-              { num: '94%', lbl: 'Course completion rate', fill: '94%' },
-              { num: '₹8.2L', lbl: 'Average post-course salary', fill: '82%' },
-              { num: '3.2×', lbl: 'ROI within 12 months', fill: '76%' },
-              { num: '4.9★', lbl: 'Learner satisfaction score', fill: '98%' },
-            ].map(c => (
-              <div key={c.lbl} className="impact-card">
-                <div className="ic-num">{c.num}</div>
-                <div className="ic-label">{c.lbl}</div>
-                <div className="ic-bar"><div className="ic-bar-fill" style={{ width: c.fill }} /></div>
+              { icon: 'ti-trending-up', title: 'Progress Tracking', desc: 'Monitor course completion and learning progress.' },
+              { icon: 'ti-messages', title: 'Interactive Q&A', desc: 'Ask questions and receive mentor guidance.' },
+              { icon: 'ti-award', title: 'Course Certificates', desc: 'Earn certificates after completing courses.' },
+              { icon: 'ti-bell', title: 'Real-time Notifications', desc: 'Stay updated with announcements and course activities.' },
+            ].map(item => (
+              <div key={item.title} className="impact-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', background: 'rgba(255,255,255,0.12)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <i className={`ti ${item.icon}`} style={{ color: '#fff', fontSize: '20px' }} />
+                  </div>
+                  <h4 style={{ color: '#fff', fontSize: '15.5px', fontWeight: 600, margin: 0 }}>{item.title}</h4>
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '13px', lineHeight: 1.5, margin: 0 }}>{item.desc}</p>
               </div>
             ))}
           </div>
@@ -297,20 +303,36 @@ export default function LandingPage() {
           <h2 className="sec-title">What our students say</h2>
         </div>
         <div className="test-grid">
-          {[
-            { quote: "Landed a 42% salary hike after completing the React bootcamp. The mentorship made the difference — my mentor reviewed my code every week.", name: "Anjali Kumar", role: "Frontend Dev · Flipkart", av: "AK", cls: "tp1" },
-            { quote: "I switched from marketing to data analytics in 4 months. The structured curriculum and live projects gave me the confidence to make the leap.", name: "Suresh Rao", role: "Data Analyst · Infosys", av: "SR", cls: "tp2" },
-            { quote: "The ML course gave me skills I use every day at work. My mentor helped me navigate a complete career pivot — worth every rupee.", name: "Mohammed Jaleel", role: "Data Analyst · TCS", av: "MJ", cls: "tp3" },
-          ].map(t => (
-            <div key={t.name} className="test-card">
-              <div className="test-stars">{[...Array(5)].map((_, i) => <i key={i} className="ti ti-star-filled" />)}</div>
-              <p className="test-quote">"{t.quote}"</p>
-              <div className="test-person">
-                <div className={`test-av ${t.cls}`}>{t.av}</div>
-                <div><div className="test-pname">{t.name}</div><div className="test-prole">{t.role}</div></div>
+          {(reviews.length > 0 ? reviews : [
+            { id: 't1', quote: "Landed a 42% salary hike after completing the React bootcamp. The mentorship made the difference — my mentor reviewed my code every week.", name: "Anjali Kumar", role: "Frontend Dev · Flipkart", initials: "AK", cls: "tp1", rating: 5 },
+            { id: 't2', quote: "I switched from marketing to data analytics in 4 months. The structured curriculum and live projects gave me the confidence to make the leap.", name: "Suresh Rao", role: "Data Analyst · Infosys", initials: "SR", cls: "tp2", rating: 5 },
+            { id: 't3', quote: "The ML course gave me skills I use every day at work. My mentor helped me navigate a complete career pivot — worth every rupee.", name: "Mohammed Jaleel", role: "Data Analyst · TCS", initials: "MJ", cls: "tp3", rating: 5 },
+          ]).map((t, idx) => {
+            const cls = t.cls || `tp${(idx % 3) + 1}`;
+            return (
+              <div key={t.id || idx} className="test-card">
+                <div className="test-stars">
+                  {[...Array(t.rating || 5)].map((_, i) => (
+                    <i key={i} className="ti ti-star-filled" />
+                  ))}
+                </div>
+                <p className="test-quote">"{t.quote}"</p>
+                <div className="test-person">
+                  <div className={`test-av ${cls}`}>
+                    {t.avatar ? (
+                      <img src={t.avatar} alt={t.name} />
+                    ) : (
+                      t.initials
+                    )}
+                  </div>
+                  <div>
+                    <div className="test-pname">{t.name}</div>
+                    <div className="test-prole">{t.role}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -330,7 +352,7 @@ export default function LandingPage() {
           ]).map((m, idx) => {
             const initials = m.name ? m.name.split(/[\s_]+/).map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
             const cls = m.cls || `ma${(idx % 4) + 1}`;
-            
+
             return (
               <div key={m.id || idx} className="mentor-card">
                 <div className={`mentor-av ${cls}`}>
@@ -360,7 +382,7 @@ export default function LandingPage() {
         <div className="cta-inner">
           <div className="cta-left">
             <h2 className="cta-h">Ready to build skills<br />that get you hired?</h2>
-            <p className="cta-p">Join 12,000+ learners who chose EduPath to accelerate their careers. Start for free — no credit card required.</p>
+            <p className="cta-p">Join 10+ who chose EduPath to accelerate their careers. Start for free — no credit card required.</p>
           </div>
           <div className="cta-right">
             <button className="cta-btn1" onClick={() => navigate('/register')}>Start Learning Free →</button>
