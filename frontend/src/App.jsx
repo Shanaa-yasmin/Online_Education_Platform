@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
-import { ProtectedRoute } from './components/ProtectedRoute.jsx';
+import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute.jsx';
 import { lazy, Suspense } from 'react';
 import './App.css';
 
@@ -41,8 +41,8 @@ function AppContent() {
           <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             {/* Protected (Profile Completion Required) */}

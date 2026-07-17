@@ -1,14 +1,12 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 /**
  * ProtectedRoute - Guards a route against unauthenticated access.
- * @param {object} props
- * @param {React.ReactNode} props.children - The protected page component.
- * @param {string[]} [props.allowedRoles] - Optional list of roles allowed to access this route.
  */
 export function ProtectedRoute({ children, allowedRoles, requireProfileComplete = true }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -20,7 +18,7 @@ export function ProtectedRoute({ children, allowedRoles, requireProfileComplete 
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (requireProfileComplete && !user.profile_complete) {
@@ -29,6 +27,31 @@ export function ProtectedRoute({ children, allowedRoles, requireProfileComplete 
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+/**
+ * PublicRoute - Allows access to guest-only routes (like Login / Register)
+ * and redirects already authenticated users.
+ */
+export function PublicRoute({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p className="loading-text">Verifying credentials...</p>
+      </div>
+    );
+  }
+
+  if (user) {
+    const from = location.state?.from?.pathname || '/dashboard';
+    return <Navigate to={from} replace />;
   }
 
   return children;
