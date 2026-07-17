@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 import Footer from '../components/Footer.jsx';
 import api from '../utils/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const getLevelCls = (level) => {
   if (!level) return 'cc-l-beg';
@@ -51,13 +52,20 @@ export default function LandingPage() {
     return () => { active = false; };
   }, []);
 
+  const { user } = useAuth();
+
   const handleHeroSearch = (e) => {
     e.preventDefault();
     const q = heroSearch.trim();
     if (q) {
-      navigate(`/courses?q=${encodeURIComponent(q)}`);
+      if (user) {
+        navigate(`/courses?q=${encodeURIComponent(q)}`);
+      } else {
+        // Redirect to login with query param target path as the return destination
+        navigate('/login', { state: { from: { pathname: '/courses', search: `?q=${encodeURIComponent(q)}` } } });
+      }
     } else {
-      navigate('/courses');
+      navigate(user ? '/courses' : '/login');
     }
   };
 
@@ -74,7 +82,7 @@ export default function LandingPage() {
         <div className="nav-links">
           <a className="nav-link" href="#programs">Programs</a>
           <a className="nav-link" href="#how">How it works</a>
-          <a className="nav-link" href="#impact">Our Impact</a>
+          <a className="nav-link" href="#impact">Why EduPath</a>
           <a className="nav-link" href="#mentors">Mentors</a>
         </div>
         <div className="nav-btns">
@@ -92,7 +100,7 @@ export default function LandingPage() {
         <div className={`nav-mobile-panel${mobileMenuOpen ? ' open' : ''}`}>
           <a className="nav-link" href="#programs" onClick={closeMenu}>Programs</a>
           <a className="nav-link" href="#how" onClick={closeMenu}>How it works</a>
-          <a className="nav-link" href="#impact" onClick={closeMenu}>Our Impact</a>
+          <a className="nav-link" href="#impact" onClick={closeMenu}>Why EduPath</a>
           <a className="nav-link" href="#mentors" onClick={closeMenu}>Mentors</a>
           <div className="nav-btns-mobile">
             <Link to="/login" className="btn-outline" onClick={closeMenu}>Log In</Link>
