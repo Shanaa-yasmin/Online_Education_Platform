@@ -600,20 +600,28 @@
 /* ── Mobile Responsive ──────────────────────────────────── */
 @media (max-width: 768px) {
   .profile-page-wrap {
-    padding: 16px 0 !important;
+    padding: 16px 12px !important;
     gap: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .profile-layout-new {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    width: 100% !important;
   }
 
   .profile-meta-card {
     padding: 24px 16px !important;
-    border-radius: 0 !important;
-    border-left: none !important;
-    border-right: none !important;
+    border-radius: var(--r-md) !important;
+    border: 1px solid var(--border) !important;
+    box-sizing: border-box !important;
   }
 
   .profile-aside-left {
     position: static !important;
     top: auto !important;
+    width: 100% !important;
   }
 
   .profile-tabs-nav {
@@ -623,6 +631,8 @@
     -ms-overflow-style: none !important;
     border-bottom: 1px solid var(--border) !important;
     gap: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .profile-tabs-nav::-webkit-scrollbar {
@@ -632,6 +642,43 @@
   .tab-nav-btn {
     flex-shrink: 0 !important;
     white-space: nowrap !important;
+  }
+
+  .profile-content-right {
+    padding: 24px 16px !important;
+    min-height: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .form-grid-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .certificates-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .learning-log-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .log-progress-text {
+    align-self: flex-end !important;
+  }
+
+  .progress-bar-wrap {
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .btn-save {
