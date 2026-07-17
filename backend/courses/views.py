@@ -645,3 +645,97 @@ class AdminReviewReportViewSet(viewsets.ModelViewSet):
         # Force recalculation of serializer to include updated fields
         serializer = self.get_serializer(report)
         return Response(serializer.data)
+
+
+from rest_framework.views import APIView
+from django.contrib.auth import get_user_model
+
+class LandingPageDataView(APIView):
+    """
+    Public endpoint to fetch landing page statistical overview,
+    featured courses (approved and published), and approved mentors.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        User = get_user_model()
+        
+        # 1. Fetch featured courses (approved & published)
+        courses_qs = Course.objects.filter(
+            is_approved=True, 
+            is_published=True
+        ).select_related('mentor', 'mentor__profile').annotate(
+            enrollment_count=Count('enrollments', filter=Q(enrollments__is_active=True), distinct=True)
+        ).order_by('-rating_average', '-total_reviews')[:3]
+
+        courses_data = []
+        for c in courses_qs:
+            thumbnail_url = None
+            if c.thumbnail:
+                thumbnail_url = request.build_absolute_uri(c.thumbnail.url)
+
+            mentor_avatar = None
+            if hasattr(c.mentor, 'profile') and c.mentor.profile.avatar:
+                mentor_avatar = request.build_absolute_uri(c.mentor.profile.avatar.url)
+
+            courses_data.append({
+                'id': c.id,
+                'title': c.title,
+                'description': c.description,
+                'price': float(c.price),
+                'level': c.get_level_display(),
+                'duration_hours': c.duration_hours,
+                'category': c.category,
+                'thumbnail': thumbnail_url,
+                'rating_average': float(c.rating_average),
+                'total_reviews': c.total_reviews,
+                'enrollment_count': c.enrollment_count,
+                'mentor': {
+                    'name': c.mentor.get_full_name() or c.mentor.username,
+                    'title': c.mentor.profile.title if hasattr(c.mentor, 'profile') else '',
+                    'avatar': mentor_avatar
+                }
+            })
+
+        # 2. Fetch approved mentors
+        mentors_qs = User.objects.filter(
+            role='MENTOR', 
+            profile__is_approved=True
+        ).select_related('profile')[:4]
+
+        mentors_data = []
+        for m in mentors_qs:
+            avatar_url = None
+            if m.profile.avatar:
+                avatar_url = request.build_absolute_uri(m.profile.avatar.url)
+
+            skills_list = []
+            if m.profile.skills:
+                skills_list = [s.strip() for s in m.profile.skills.split(',') if s.strip()]
+
+            mentors_data.append({
+                'id': m.id,
+                'name': m.get_full_name() or m.username,
+                'title': m.profile.title or 'Expert Mentor',
+                'avatar': avatar_url,
+                'skills': skills_list or m.profile.areas_of_expertise,
+                'years_of_experience': m.profile.years_of_experience
+            })
+
+        # 3. Dynamic statistics
+        total_students = User.objects.filter(role='STUDENT').count()
+        total_mentors = User.objects.filter(role='MENTOR', profile__is_approved=True).count()
+        total_courses = Course.objects.filter(is_approved=True, is_published=True).count()
+
+        stats = {
+            'students': total_students,
+            'mentors': total_mentors,
+            'courses': total_courses,
+            'uplift': 70
+        }
+
+        return Response({
+            'courses': courses_data,
+            'mentors': mentors_data,
+            'stats': stats
+        })

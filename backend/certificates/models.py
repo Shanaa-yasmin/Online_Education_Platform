@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from courses.models import Course
+from django.core.files.storage import default_storage 
 from payments.models import Enrollment
 
 
@@ -8,7 +9,7 @@ def get_certificate_storage():
     if getattr(settings, 'USE_CLOUDINARY', False):
         from cloudinary_storage.storage import RawMediaCloudinaryStorage
         return RawMediaCloudinaryStorage()
-    return None
+    return default_storage
 
 class Certificate(models.Model):
     """Completion certificate issued when a student finishes 100% of a course."""

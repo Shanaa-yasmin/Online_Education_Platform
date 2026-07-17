@@ -12,6 +12,7 @@ from .views import (
     QuizQuestionViewSet,
     ReviewViewSet,
     AdminReviewReportViewSet,
+    LandingPageDataView,
 )
 
 router = DefaultRouter()
@@ -27,6 +28,7 @@ router.register(r'quiz-attempts', QuizAttemptViewSet, basename='quizattempt')
 urlpatterns = [
     # Keep static course paths above router include to prevent course detail collisions.
     path('courses/search/', CourseSearchView.as_view(), name='course-search'),
+    path('landing/', LandingPageDataView.as_view(), name='landing-page-data'),
     path('courses/autocomplete/', CourseAutocompleteView.as_view(), name='course-autocomplete'),
     path('courses/<int:course_id>/analytics/', CourseAnalyticsView.as_view(), name='course-analytics'),
     path('mentor/overview/', MentorOverviewView.as_view(), name='mentor-overview'),

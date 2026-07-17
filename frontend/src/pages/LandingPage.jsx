@@ -1,13 +1,53 @@
 // LandingPage.jsx — matches the uploaded homepage design exactly
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 import Footer from '../components/Footer.jsx';
+import api from '../utils/api.js';
+
+const getLevelCls = (level) => {
+  if (!level) return 'cc-l-beg';
+  const l = level.toLowerCase();
+  if (l.includes('beg')) return 'cc-l-beg';
+  if (l.includes('int')) return 'cc-l-int';
+  return 'cc-l-adv';
+};
+
+const getCourseIcon = (category) => {
+  if (!category) return 'ti-code';
+  const c = category.toLowerCase();
+  if (c.includes('web') || c.includes('code') || c.includes('dev')) return 'ti-code';
+  if (c.includes('data') || c.includes('science') || c.includes('ai') || c.includes('brain')) return 'ti-brain';
+  if (c.includes('design') || c.includes('art') || c.includes('ui')) return 'ti-palette';
+  return 'ti-book';
+};
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [heroSearch, setHeroSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [mentors, setMentors] = useState([]);
+  const [stats, setStats] = useState({ students: 0, mentors: 0, courses: 0, uplift: 70 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/api/landing/')
+      .then(res => {
+        if (active) {
+          setCourses(res.data.courses || []);
+          setMentors(res.data.mentors || []);
+          setStats(res.data.stats || { students: 0, mentors: 0, courses: 0, uplift: 70 });
+          setLoading(false);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching landing data:", err);
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   const handleHeroSearch = (e) => {
     e.preventDefault();
@@ -140,10 +180,10 @@ export default function LandingPage() {
       <section className="stats-section">
         <div className="stats-grid">
           {[
-            ['Learners enrolled', '12,000+', 'Growing every month'],
-            ['Expert mentors', '840+', 'Active industry pros'],
-            ['Courses available', '320+', 'Across 24 domains'],
-            ['Career uplift rate', '70%', 'Within 6 months'],
+            ['Learners enrolled', stats.students > 0 ? `${stats.students}+` : '12,000+', 'Growing every month'],
+            ['Expert mentors', stats.mentors > 0 ? `${stats.mentors}+` : '840+', 'Active industry pros'],
+            ['Courses available', stats.courses > 0 ? `${stats.courses}+` : '320+', 'Across 24 domains'],
+            ['Career uplift rate', `${stats.uplift}%`, 'Within 6 months'],
           ].map(([eyebrow, num, desc]) => (
             <div key={eyebrow} className="stat-box">
               <p className="sb-eyebrow">{eyebrow}</p>
@@ -187,30 +227,40 @@ export default function LandingPage() {
           <Link to="/register" className="view-all-link">View all courses <i className="ti ti-arrow-right" /></Link>
         </div>
         <div className="courses-grid">
-          {[
-            { thumb: 'cc-t1', icon: 'ti-code', level: 'Beginner', levelCls: 'cc-l-beg', cat: 'Web Development', title: 'Full-Stack React & Node.js Bootcamp', dur: '42h', students: '2.4k', price: '₹4,999' },
-            { thumb: 'cc-t2', icon: 'ti-brain', level: 'Intermediate', levelCls: 'cc-l-int', cat: 'Data Science', title: 'Machine Learning with Python — Applied', dur: '38h', students: '1.8k', price: '₹5,499' },
-            { thumb: 'cc-t3', icon: 'ti-palette', level: 'Beginner', levelCls: 'cc-l-beg', cat: 'UI/UX Design', title: 'Product Design Fundamentals + Figma', dur: '24h', students: '3.1k', price: 'Free' },
-          ].map((c) => (
-            <div key={c.title} className="course-card" onClick={() => navigate('/register')}>
-              <div className={`cc-thumb ${c.thumb}`}>
-                <i className={`ti ${c.icon} cc-thumb-icon`} />
-                <span className={`cc-level ${c.levelCls}`}>{c.level}</span>
-              </div>
-              <div className="cc-body">
-                <p className="cc-cat">{c.cat}</p>
-                <h3 className="cc-title">{c.title}</h3>
-                <div className="cc-meta">
-                  <span><i className="ti ti-clock" />{c.dur}</span>
-                  <span><i className="ti ti-users" />{c.students} students</span>
+          {(courses.length > 0 ? courses : [
+            { id: 'm1', thumb: 'cc-t1', icon: 'ti-code', level: 'Beginner', category: 'Web Development', title: 'Full-Stack React & Node.js Bootcamp', duration_hours: 42, enrollment_count: 2400, price: 4999 },
+            { id: 'm2', thumb: 'cc-t2', icon: 'ti-brain', level: 'Intermediate', category: 'Data Science', title: 'Machine Learning with Python — Applied', duration_hours: 38, enrollment_count: 1800, price: 5499 },
+            { id: 'm3', thumb: 'cc-t3', icon: 'ti-palette', level: 'Beginner', category: 'UI/UX Design', title: 'Product Design Fundamentals + Figma', duration_hours: 24, enrollment_count: 3100, price: 0 },
+          ]).map((c, idx) => {
+            const levelCls = getLevelCls(c.level);
+            const icon = c.icon || getCourseIcon(c.category);
+            const formattedPrice = c.price === 0 || c.price === 'Free' ? 'Free' : `₹${parseFloat(c.price).toLocaleString()}`;
+            
+            return (
+              <div key={c.id || idx} className="course-card" onClick={() => navigate('/register')}>
+                <div className={`cc-thumb ${c.thumb || `cc-t${(idx % 3) + 1}`}`}>
+                  {c.thumbnail ? (
+                    <img src={c.thumbnail} alt={c.title} />
+                  ) : (
+                    <i className={`ti ${icon} cc-thumb-icon`} />
+                  )}
+                  <span className={`cc-level ${levelCls}`}>{c.level}</span>
+                </div>
+                <div className="cc-body">
+                  <p className="cc-cat">{c.category}</p>
+                  <h3 className="cc-title">{c.title}</h3>
+                  <div className="cc-meta">
+                    <span><i className="ti ti-clock" />{c.duration_hours}h</span>
+                    <span><i className="ti ti-users" />{c.enrollment_count >= 1000 ? `${(c.enrollment_count / 1000).toFixed(1)}k` : c.enrollment_count} students</span>
+                  </div>
+                </div>
+                <div className="cc-footer">
+                  <span className={`cc-price${formattedPrice === 'Free' ? ' free' : ''}`}>{formattedPrice}</span>
+                  <button className="cc-enroll" onClick={() => navigate('/register')}>Enroll →</button>
                 </div>
               </div>
-              <div className="cc-footer">
-                <span className={`cc-price${c.price === 'Free' ? ' free' : ''}`}>{c.price}</span>
-                <button className="cc-enroll" onClick={() => navigate('/register')}>Enroll →</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -272,19 +322,36 @@ export default function LandingPage() {
           <p className="sec-sub">Our mentors are active industry professionals — not just teachers.</p>
         </div>
         <div className="mentors-grid">
-          {[
-            { init: 'RK', name: 'Rahul Kapoor', role: 'Senior Engineer · Amazon', skills: ['React', 'Node.js', 'AWS'], cls: 'ma1' },
-            { init: 'PV', name: 'Priya Venkat', role: 'Data Scientist · Microsoft', skills: ['Python', 'ML', 'TensorFlow'], cls: 'ma2' },
-            { init: 'DM', name: 'Dev Mehta', role: 'Product Lead · Razorpay', skills: ['Strategy', 'Figma', 'Growth'], cls: 'ma3' },
-            { init: 'NA', name: 'Nadia Ahmed', role: 'UX Director · Swiggy', skills: ['UX Design', 'Research', 'Figma'], cls: 'ma4' },
-          ].map(m => (
-            <div key={m.name} className="mentor-card">
-              <div className={`mentor-av ${m.cls}`}>{m.init}</div>
-              <div className="mentor-name">{m.name}</div>
-              <div className="mentor-role">{m.role}</div>
-              <div className="mentor-skills">{m.skills.map(s => <span key={s} className="skill-pill">{s}</span>)}</div>
-            </div>
-          ))}
+          {(mentors.length > 0 ? mentors : [
+            { id: 'me1', name: 'Rahul Kapoor', title: 'Senior Engineer · Amazon', skills: ['React', 'Node.js', 'AWS'], cls: 'ma1' },
+            { id: 'me2', name: 'Priya Venkat', title: 'Data Scientist · Microsoft', skills: ['Python', 'ML', 'TensorFlow'], cls: 'ma2' },
+            { id: 'me3', name: 'Dev Mehta', title: 'Product Lead · Razorpay', skills: ['Strategy', 'Figma', 'Growth'], cls: 'ma3' },
+            { id: 'me4', name: 'Nadia Ahmed', title: 'UX Director · Swiggy', skills: ['UX Design', 'Research', 'Figma'], cls: 'ma4' },
+          ]).map((m, idx) => {
+            const initials = m.name ? m.name.split(/[\s_]+/).map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'M';
+            const cls = m.cls || `ma${(idx % 4) + 1}`;
+            
+            return (
+              <div key={m.id || idx} className="mentor-card">
+                <div className={`mentor-av ${cls}`}>
+                  {m.avatar ? (
+                    <img src={m.avatar} alt={m.name} />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                <div className="mentor-name">{m.name}</div>
+                <div className="mentor-role">{m.title}</div>
+                {m.skills && m.skills.length > 0 && (
+                  <div className="mentor-skills">
+                    {m.skills.slice(0, 3).map(s => (
+                      <span key={s} className="skill-pill">{s}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
