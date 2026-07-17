@@ -69,6 +69,17 @@
   animation: slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@media (max-width: 480px) {
+  .nb-dropdown {
+    position: fixed !important;
+    top: 60px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: calc(100dvh - 80px) !important;
+  }
+}
+
 @keyframes slide-down {
   from {
     opacity: 0;
@@ -293,6 +304,15 @@
   transition: transform var(--t), opacity var(--t);
 }
 
+@media (max-width: 480px) {
+  .nb-toast {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: 16px;
+  }
+}
+
 .nb-toast:hover {
   transform: translateY(-2px);
   border-color: var(--brand-border);
@@ -379,6 +399,17 @@
   z-index: 1000;
   overflow: hidden;
   animation: slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 480px) {
+  .nd-dropdown {
+    position: fixed !important;
+    top: 60px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: calc(100dvh - 80px) !important;
+  }
 }
 
 .nd-header {

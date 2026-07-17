@@ -629,7 +629,7 @@
     display: none !important;
   }
 
-  .profile-tab-btn {
+  .tab-nav-btn {
     flex-shrink: 0 !important;
     white-space: nowrap !important;
   }

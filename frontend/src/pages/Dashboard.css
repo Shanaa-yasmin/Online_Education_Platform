@@ -196,19 +196,9 @@
 
 @media (max-width: 768px) {
   .stats-grid-4 {
-    display: flex !important;
-    overflow-x: auto;
-    gap: 10px;
-    width: 100%;
-    padding-bottom: 6px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .stats-grid-4::-webkit-scrollbar {
-    display: none;
-  }
-  .stats-grid-4 .stat-card {
-    flex: 0 0 110px;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
   }
 }
 
@@ -220,21 +210,17 @@
   gap: 12px;
 }
 
+@media (max-width: 1024px) {
+  .stats-grid-6 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
 @media (max-width: 768px) {
   .stats-grid-6 {
-    display: flex !important;
-    overflow-x: auto;
-    gap: 10px;
-    width: 100%;
-    padding-bottom: 6px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .stats-grid-6::-webkit-scrollbar {
-    display: none;
-  }
-  .stats-grid-6 .stat-card {
-    flex: 0 0 110px;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
   }
 }
 
@@ -246,21 +232,23 @@
   gap: 12px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .stats-grid-8 {
-    display: flex !important;
-    overflow-x: auto;
-    gap: 10px;
-    width: 100%;
-    padding-bottom: 6px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    grid-template-columns: repeat(4, 1fr) !important;
   }
-  .stats-grid-8::-webkit-scrollbar {
-    display: none;
+}
+
+@media (max-width: 900px) {
+  .stats-grid-8 {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
-  .stats-grid-8 .stat-card {
-    flex: 0 0 110px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid-8 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
   }
 }
 
