@@ -13,8 +13,8 @@ class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_staff or user.role == 'ADMIN':
-            return Certificate.objects.all().order_by('-issued_at')
-        return Certificate.objects.filter(student=user).order_by('-issued_at')
+            return Certificate.objects.filter(enrollment__is_active=True).order_by('-issued_at')
+        return Certificate.objects.filter(student=user, enrollment__is_active=True).order_by('-issued_at')
 
     @action(
         detail=False,
@@ -24,8 +24,8 @@ class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def verify(self, request, code_str=None):
         try:
-            cert = Certificate.objects.get(certificate_code=code_str)
+            cert = Certificate.objects.get(certificate_code=code_str, enrollment__is_active=True)
             serializer = self.get_serializer(cert)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Certificate.DoesNotExist:
-            return Response({"detail": "Invalid certificate code."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Invalid or revoked certificate code."}, status=status.HTTP_404_NOT_FOUND)

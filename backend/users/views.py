@@ -247,7 +247,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             ).select_related('course', 'course__mentor'))
             
             completed_enrollments_count = sum(1 for e in enrollments_list if e.progress_percent == 100.0)
-            certificates = list(Certificate.objects.filter(student=user).select_related('course'))
+            certificates = list(Certificate.objects.filter(student=user, enrollment__is_active=True).select_related('course'))
             
             # Simple calculations
             progress_sum = sum(e.progress_percent for e in enrollments_list)
@@ -620,7 +620,7 @@ class AdminUserViewSet(viewsets.ViewSet):
             from payments.models import Enrollment
             from certificates.models import Certificate
             extra['courses_enrolled'] = Enrollment.objects.filter(student=user, is_active=True, course__is_deleted=False).count()
-            extra['certificates_earned'] = Certificate.objects.filter(student=user).count()
+            extra['certificates_earned'] = Certificate.objects.filter(student=user, enrollment__is_active=True).count()
 
         elif user.role == User.Role.MENTOR:
             from courses.models import Course

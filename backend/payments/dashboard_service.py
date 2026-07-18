@@ -323,7 +323,7 @@ def get_student_dashboard(user, request) -> dict:
                     break
 
     # 4. Certificates earned
-    certificates_count = Certificate.objects.filter(student=user).count()
+    certificates_count = Certificate.objects.filter(student=user, enrollment__is_active=True).count()
 
     # 5. Recent notifications
     recent_notifications_qs = Notification.objects.filter(recipient=user).order_by('-created_at')[:5]

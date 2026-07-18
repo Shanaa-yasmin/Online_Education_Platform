@@ -109,7 +109,7 @@ class CourseProgressListView(APIView):
         # Last-accessed lesson per course (most recent first per course)
         # Certificates: which enrollment_ids have one
         enrollment_ids_with_cert = set(
-            Certificate.objects.filter(enrollment_id__in=[e.id for e in enrollments])
+            Certificate.objects.filter(enrollment_id__in=[e.id for e in enrollments], enrollment__is_active=True)
             .values_list('enrollment_id', flat=True)
         )
 
