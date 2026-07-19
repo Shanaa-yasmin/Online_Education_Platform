@@ -165,43 +165,59 @@ def generate_certificate_pdf(enrollment):
     _corner(c, 22,      22,       90)
     _corner(c, W - 22,  22,       180)
 
+    # Logo rendering (gold-bordered and circular)
+    logo_path = os.path.join(settings.BASE_DIR, "static", "logo.jpeg")
+    if os.path.exists(logo_path):
+        c.saveState()
+        # Draw gold border around logo
+        c.setStrokeColor(GOLD)
+        c.setLineWidth(1.2)
+        c.circle(cx, H - 65, 24, stroke=1, fill=0)
+        
+        # Clip image to circle
+        path = c.beginPath()
+        path.circle(cx, H - 65, 24)
+        c.clipPath(path, stroke=0, fill=0)
+        c.drawImage(logo_path, cx - 24, H - 89, width=48, height=48)
+        c.restoreState()
+
     # Academy eyebrow + thin rule
     c.setFillColor(INK_LIGHT)
     c.setFont("Lora", 8)
-    c.drawCentredString(cx, H - 60, "LEARNHUB ACADEMY", charSpace=4)
-    _thin_rule(c, cx, H - 70, 100)
+    c.drawCentredString(cx, H - 106, "LEARNHUB ACADEMY", charSpace=4)
+    _thin_rule(c, cx, H - 114, 100)
 
     # Main title — Playfair Display
     c.setFillColor(INK_DARK)
     c.setFont("Playfair", 38)
-    c.drawCentredString(cx, H - 108, "Certificate of Completion")
+    c.drawCentredString(cx, H - 150, "Certificate of Completion")
 
     # Gold rule under title
     c.setStrokeColor(GOLD)
     c.setLineWidth(0.6)
-    c.line(cx - 230, H - 120, cx + 230, H - 120)
+    c.line(cx - 230, H - 162, cx + 230, H - 162)
 
     # Diamond separator
-    _rule(c, cx, H - 155, 150)
+    _rule(c, cx, H - 192, 150)
 
     # "This is to certify that" — Lora Italic
     c.setFillColor(INK_MID)
     c.setFont("LoraItalic", 12)
-    c.drawCentredString(cx, H - 188, "This is to certify that")
+    c.drawCentredString(cx, H - 220, "This is to certify that")
 
     # Student name — Playfair Display large
     c.setFillColor(INK_DARK)
     c.setFont("Playfair", 32)
-    c.drawCentredString(cx, H - 230, display_name)
+    c.drawCentredString(cx, H - 258, display_name)
     name_w = c.stringWidth(display_name, "Playfair", 32)
     c.setStrokeColor(GOLD_LIGHT)
     c.setLineWidth(0.9)
-    c.line(cx - name_w / 2, H - 237, cx + name_w / 2, H - 237)
+    c.line(cx - name_w / 2, H - 265, cx + name_w / 2, H - 265)
 
     # "has successfully completed" — Lora Italic
     c.setFillColor(INK_MID)
     c.setFont("LoraItalic", 12)
-    c.drawCentredString(cx, H - 265, "has successfully completed the course")
+    c.drawCentredString(cx, H - 290, "has successfully completed the course")
 
     # Course title — Liberation Serif Bold (wraps if > 580pt)
     c.setFillColor(INK_DARK)
@@ -209,15 +225,15 @@ def generate_certificate_pdf(enrollment):
     if c.stringWidth(course.title, "LibSerifBold", 16) > 580:
         words = course.title.split()
         mid   = len(words) // 2
-        c.drawCentredString(cx, H - 293, " ".join(words[:mid]))
-        c.drawCentredString(cx, H - 313, " ".join(words[mid:]))
-        course_bottom_y = H - 313
+        c.drawCentredString(cx, H - 318, " ".join(words[:mid]))
+        c.drawCentredString(cx, H - 338, " ".join(words[mid:]))
+        course_bottom_y = H - 338
     else:
-        c.drawCentredString(cx, H - 293, course.title)
-        course_bottom_y = H - 293
+        c.drawCentredString(cx, H - 318, course.title)
+        course_bottom_y = H - 318
 
     # Second diamond separator
-    _rule(c, cx, course_bottom_y - 30, 120)
+    _rule(c, cx, course_bottom_y - 25, 120)
 
     # Footer — date · seal · certificate ID
     fy = 48
