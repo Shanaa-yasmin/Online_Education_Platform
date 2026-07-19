@@ -262,7 +262,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         from django.contrib.auth import get_user_model
         from notifications.models import Notification
         User = get_user_model()
-        admins = User.objects.filter(Q(is_staff=True) | Q(role='ADMIN'))
+        admins = User.objects.filter(Q(is_staff=True) | Q(role='ADMIN') | Q(is_superuser=True)).distinct()
         for admin in admins:
             Notification.objects.create(
                 recipient=admin,
