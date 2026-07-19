@@ -65,7 +65,7 @@ def create_order(course, enrollment) -> dict:
             }
         ],
         "application_context": {
-            "brand_name": "LearnHub",
+            "brand_name": "EduPath",
             "landing_page": "LOGIN",
             "user_action": "PAY_NOW",
             "return_url": (

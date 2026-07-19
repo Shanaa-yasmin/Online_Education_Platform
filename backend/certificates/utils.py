@@ -184,7 +184,7 @@ def generate_certificate_pdf(enrollment):
     # Academy eyebrow + thin rule
     c.setFillColor(INK_LIGHT)
     c.setFont("Lora", 8)
-    c.drawCentredString(cx, H - 106, "LEARNHUB ACADEMY", charSpace=4)
+    c.drawCentredString(cx, H - 106, "EDUPATH ACADEMY", charSpace=4)
     _thin_rule(c, cx, H - 114, 100)
 
     # Main title — Playfair Display
