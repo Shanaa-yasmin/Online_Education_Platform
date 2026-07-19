@@ -1,9 +1,23 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute.jsx';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import './App.css';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const innerPages = document.querySelectorAll('.inner-page');
+    innerPages.forEach(el => {
+      el.scrollTop = 0;
+    });
+  }, [pathname]);
+
+  return null;
+}
 
 const LandingPage = lazy(() => import('./pages/LandingPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
@@ -37,6 +51,7 @@ function AppContent() {
   return (
     <NotificationProvider user={user}>
       <BrowserRouter>
+        <ScrollToTop />
         <Suspense fallback={<Fallback />}>
           <Routes>
             {/* Public */}
