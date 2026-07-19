@@ -430,84 +430,121 @@ export default function MyCourses() {
       {/* Create Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content animate-scaleIn" onClick={e => e.stopPropagation()}>
+          <div className="modal-content create-course-modal animate-scaleIn" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Create Course</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className="modal-header-icon">
+                  <i className="ti ti-book-plus" />
+                </div>
+                <div>
+                  <h2>Create New Course</h2>
+                  <p className="modal-subtitle">Fill in the basic curriculum details to create your course</p>
+                </div>
+              </div>
               <button className="modal-close-btn" onClick={closeModal}><i className="ti ti-x" /></button>
             </div>
             <form className="modal-form" onSubmit={handleCreate}>
               {submitError && <div className="alert alert-error">{submitError}</div>}
 
-              <div className="form-group">
-                <label>Course Title</label>
-                <input name="title" value={form.title} onChange={handleInput} placeholder="e.g. Intro to Data Science" required />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea name="description" value={form.description} onChange={handleInput} placeholder="What will students learn?" rows={3} required />
+              {/* Course Overview Section */}
+              <div className="form-section">
+                <div className="form-group">
+                  <label>Course Title <span className="req">*</span></label>
+                  <input name="title" value={form.title} onChange={handleInput} placeholder="e.g. Complete Web Development Bootcamp 2026" required />
+                </div>
+                <div className="form-group">
+                  <label>Description <span className="req">*</span></label>
+                  <textarea name="description" value={form.description} onChange={handleInput} placeholder="Write a summary of what students will master in this course..." rows={3} required />
+                </div>
               </div>
 
-              {/* Thumbnail upload */}
-              <div className="form-group">
-                <label>Course Thumbnail</label>
-                {thumbnailPreview ? (
-                  <div className="thumbnail-preview-box">
-                    <img src={thumbnailPreview} alt="Thumbnail preview" />
-                    <button type="button" className="thumbnail-remove-btn" onClick={clearThumbnail} title="Remove image">
-                      <i className="ti ti-x" />
-                    </button>
+              {/* Course Thumbnail Upload (16:9 Aspect Ratio) */}
+              <div className="form-section">
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ margin: 0 }}>Course Thumbnail</label>
+                    <span style={{ fontSize: 11.5, color: 'var(--txt-3)', fontWeight: 500 }}>
+                      <i className="ti ti-aspect-ratio" /> 16:9 Widescreen Banner
+                    </span>
                   </div>
-                ) : (
-                  <label className="thumbnail-dropzone">
-                    <i className="ti ti-photo-plus" />
-                    <span>Click to upload an image</span>
-                    <small>PNG or JPG, up to 5MB</small>
-                    <input type="file" accept="image/*" onChange={handleThumbnailChange} hidden />
-                  </label>
-                )}
+
+                  {thumbnailPreview ? (
+                    <div className="thumbnail-preview-container">
+                      <div className="thumbnail-preview-box">
+                        <img src={thumbnailPreview} alt="Course thumbnail 16:9 preview" />
+                        <span className="thumbnail-badge"><i className="ti ti-aspect-ratio" /> 16:9 Preview</span>
+                        <button type="button" className="thumbnail-remove-btn" onClick={clearThumbnail} title="Remove image">
+                          <i className="ti ti-trash" /> Change Photo
+                        </button>
+                      </div>
+                      <span className="thumbnail-helper-text">
+                        <i className="ti ti-check" /> 16:9 Thumbnail active. This banner will be displayed across the course catalog.
+                      </span>
+                    </div>
+                  ) : (
+                    <label className="thumbnail-dropzone-16-9">
+                      <div className="dropzone-icon-circle">
+                        <i className="ti ti-photo-plus" />
+                      </div>
+                      <div className="dropzone-text">
+                        <span className="dropzone-title">Click or drag image to upload thumbnail</span>
+                        <small className="dropzone-sub">Recommended: 1280×720px (16:9 ratio), PNG or JPG up to 5MB</small>
+                      </div>
+                      <input type="file" accept="image/*" onChange={handleThumbnailChange} hidden />
+                    </label>
+                  )}
+                </div>
               </div>
 
-              <div className="modal-form form-row-2">
-                <div className="form-group">
-                  <label>Difficulty Level</label>
-                  <select name="level" value={form.level} onChange={handleInput}>
-                    <option value="BEGINNER">Beginner</option>
-                    <option value="INTERMEDIATE">Intermediate</option>
-                    <option value="ADVANCED">Advanced</option>
-                  </select>
+              {/* Course Details & Pricing Section */}
+              <div className="form-section">
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Difficulty Level</label>
+                    <select name="level" value={form.level} onChange={handleInput}>
+                      <option value="BEGINNER">Beginner Level</option>
+                      <option value="INTERMEDIATE">Intermediate Level</option>
+                      <option value="ADVANCED">Advanced Level</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Price ($ USD) <span className="req">*</span></label>
+                    <input name="price" type="number" value={form.price} onChange={handleInput} step="0.01" min="0" placeholder="0.00 for Free" required />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Price ($)</label>
-                  <input name="price" type="number" value={form.price} onChange={handleInput} step="0.01" min="0" required />
+
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Language</label>
+                    <input name="language" value={form.language} onChange={handleInput} placeholder="English" required />
+                  </div>
+                  <div className="form-group">
+                    <label>Category</label>
+                    <select name="category" value={form.category} onChange={handleInput}>
+                      <option value="Development">Development</option>
+                      <option value="Design">Design</option>
+                      <option value="Business">Business</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="IT & Software">IT & Software</option>
+                      <option value="Personal Development">Personal Development</option>
+                      <option value="Data Science">Data Science</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row-2">
+                  <div className="form-group">
+                    <label>Estimated Hours <span className="req">*</span></label>
+                    <input name="duration_hours" type="number" value={form.duration_hours} onChange={handleInput} min="0" placeholder="e.g. 12" required />
+                  </div>
                 </div>
               </div>
-              <div className="modal-form form-row-2">
-                <div className="form-group">
-                  <label>Language</label>
-                  <input name="language" value={form.language} onChange={handleInput} placeholder="English" required />
-                </div>
-                <div className="form-group">
-                  <label>Category</label>
-                  <select name="category" value={form.category} onChange={handleInput}>
-                    <option value="Development">Development</option>
-                    <option value="Design">Design</option>
-                    <option value="Business">Business</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="IT & Software">IT & Software</option>
-                    <option value="Personal Development">Personal Development</option>
-                    <option value="Data Science">Data Science</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-form form-row-2">
-                <div className="form-group">
-                  <label>Estimated Hours</label>
-                  <input name="duration_hours" type="number" value={form.duration_hours} onChange={handleInput} min="0" required />
-                </div>
-              </div>
+
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Creating…' : 'Create Course'}</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Creating Course…' : 'Create & Open Builder'}
+                </button>
               </div>
             </form>
           </div>

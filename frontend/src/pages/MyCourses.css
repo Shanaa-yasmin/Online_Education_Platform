@@ -335,3 +335,201 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ── Professional Create Course Modal & 16:9 Thumbnail Styling ────────────── */
+.create-course-modal {
+  max-width: 620px !important;
+  border-radius: var(--r-xl) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid var(--border) !important;
+  overflow: hidden;
+}
+
+.create-course-modal .modal-header {
+  padding: 20px 24px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--brand-light);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.modal-subtitle {
+  font-size: 12.5px;
+  color: var(--txt-3);
+  margin: 2px 0 0 0;
+  font-weight: 400;
+}
+
+.modal-form {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.req {
+  color: var(--brand);
+  font-weight: bold;
+}
+
+/* 16:9 Widescreen Thumbnail Dropzone & Live Preview */
+.thumbnail-dropzone-16-9 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 190px;
+  border: 2px dashed var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-alt);
+  cursor: pointer;
+  padding: 20px;
+  gap: 10px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.thumbnail-dropzone-16-9:hover {
+  border-color: var(--brand);
+  background: var(--brand-light);
+  transform: translateY(-1px);
+}
+
+.dropzone-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dropzone-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--txt-1);
+}
+
+.dropzone-sub {
+  font-size: 11.5px;
+  color: var(--txt-3);
+}
+
+/* 16:9 Preview Box */
+.thumbnail-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.thumbnail-preview-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 220px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  background: #111;
+}
+
+.thumbnail-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.thumbnail-preview-box:hover img {
+  transform: scale(1.02);
+}
+
+.thumbnail-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.thumbnail-remove-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(220, 38, 38, 0.88);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.thumbnail-remove-btn:hover {
+  background: #dc2626;
+  transform: scale(1.03);
+}
+
+.thumbnail-helper-text {
+  font-size: 11.5px;
+  color: #16a34a;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
