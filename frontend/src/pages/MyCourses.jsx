@@ -92,7 +92,7 @@ export default function MyCourses() {
       const r = await api.post('/api/courses/', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
+
       const newCourseNormalized = {
         course_id: r.data.id,
         course_title: r.data.title,
@@ -104,7 +104,7 @@ export default function MyCourses() {
         is_published: r.data.is_published,
         is_approved: r.data.is_approved
       };
-      
+
       setCourses(p => [newCourseNormalized, ...p]);
       closeModal();
       navigate(`/mentor/courses/${r.data.id}/builder`);
@@ -167,7 +167,7 @@ export default function MyCourses() {
 
   const filteredCourses = courses.filter(item => {
     const matchesSearch = item.course_title.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     if (item.is_mentor_view) {
       if (filterTab === 'published') {
         return matchesSearch && item.is_published;
@@ -543,7 +543,7 @@ export default function MyCourses() {
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Creating Course…' : 'Create & Open Builder'}
+                  {submitting ? 'Creating Course…' : 'Create Course'}
                 </button>
               </div>
             </form>
