@@ -338,56 +338,142 @@
 
 /* ── Professional Create Course Modal & 16:9 Thumbnail Styling ────────────── */
 .create-course-modal {
-  max-width: 620px !important;
+  max-width: 660px !important;
+  width: 100% !important;
+  max-height: calc(100vh - 60px) !important;
+  display: flex !important;
+  flex-direction: column !important;
   border-radius: var(--r-xl) !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2) !important;
   border: 1px solid var(--border) !important;
-  overflow: hidden;
+  overflow: hidden !important;
 }
 
 .create-course-modal .modal-header {
-  padding: 20px 24px;
+  padding: 22px 28px;
   background: var(--surface-alt);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .modal-header-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--brand-light);
   color: var(--brand);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
   flex-shrink: 0;
 }
 
 .modal-subtitle {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--txt-3);
-  margin: 2px 0 0 0;
+  margin: 3px 0 0 0;
   font-weight: 400;
 }
 
-.modal-form {
-  padding: 24px;
+.create-course-modal .modal-form {
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(100vh - 180px);
+}
+
+/* Custom smooth scrollbar for modal form */
+.create-course-modal .modal-form::-webkit-scrollbar {
+  width: 6px;
+}
+.create-course-modal .modal-form::-webkit-scrollbar-track {
+  background: var(--surface-alt);
+}
+.create-course-modal .modal-form::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+.create-course-modal .modal-form::-webkit-scrollbar-thumb:hover {
+  background: var(--txt-4);
+}
+
+/* Larger, high-visibility form fields */
+.create-course-modal .form-group label {
+  font-size: 13.5px !important;
+  font-weight: 650 !important;
+  color: var(--txt-1) !important;
+  margin-bottom: 8px !important;
+  display: block;
+}
+
+.create-course-modal .form-group input,
+.create-course-modal .form-group select {
+  height: 46px !important;
+  font-size: 14px !important;
+  padding: 0 16px !important;
+  border-radius: var(--r-md) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--txt-1) !important;
+  transition: all 0.2s ease;
+}
+
+.create-course-modal .form-group input:focus,
+.create-course-modal .form-group select:focus,
+.create-course-modal .form-group textarea:focus {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(107, 26, 26, 0.12) !important;
+  outline: none !important;
+}
+
+.create-course-modal .form-group textarea {
+  font-size: 14px !important;
+  padding: 14px 16px !important;
+  min-height: 110px !important;
+  border-radius: var(--r-md) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--txt-1) !important;
+  line-height: 1.5;
+  resize: vertical;
+  transition: all 0.2s ease;
+}
+
+.create-course-modal .modal-actions {
+  position: sticky;
+  bottom: -28px;
+  background: var(--surface);
+  padding: 16px 0 0 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.create-course-modal .modal-actions .btn {
+  height: 44px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--r-md);
 }
 
 .form-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .form-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 18px;
 }
 
 .req {
