@@ -471,14 +471,14 @@ export default function MyCourses() {
                   {thumbnailPreview ? (
                     <div className="thumbnail-preview-container">
                       <div className="thumbnail-preview-box">
-                        <img src={thumbnailPreview} alt="Course thumbnail 16:9 preview" />
-                        <span className="thumbnail-badge"><i className="ti ti-aspect-ratio" /> 16:9 Preview</span>
+                        <img src={thumbnailPreview} alt="Course thumbnail preview" />
+                        <span className="thumbnail-badge"><i className="ti ti-aspect-ratio" /> Preview</span>
                         <button type="button" className="thumbnail-remove-btn" onClick={clearThumbnail} title="Remove image">
                           <i className="ti ti-trash" /> Change Photo
                         </button>
                       </div>
                       <span className="thumbnail-helper-text">
-                        <i className="ti ti-check" /> 16:9 Thumbnail active. This banner will be displayed across the course catalog.
+                        <i className="ti ti-check" />This banner will be displayed across the course catalog.
                       </span>
                     </div>
                   ) : (
@@ -488,7 +488,7 @@ export default function MyCourses() {
                       </div>
                       <div className="dropzone-text">
                         <span className="dropzone-title">Click or drag image to upload thumbnail</span>
-                        <small className="dropzone-sub">Recommended: 1280×720px (16:9 ratio), PNG or JPG up to 5MB</small>
+                        <small className="dropzone-sub">PNG or JPG up to 5MB</small>
                       </div>
                       <input type="file" accept="image/*" onChange={handleThumbnailChange} hidden />
                     </label>

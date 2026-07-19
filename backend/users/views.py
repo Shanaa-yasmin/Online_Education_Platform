@@ -54,12 +54,12 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             
-            # Generate verification token
+            # Generate cryptographically signed verification token (3 days validity)
+            from django.core import signing
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
+            token = signing.dumps({"user_id": user.pk})
             
             # Build verification URL
-            # We assume frontend is running on localhost:5173 for local dev, or use origin
             origin = request.headers.get('origin', 'http://localhost:5173')
             verify_url = f"{origin}/verify-email?uidb64={uidb64}&token={token}"
             
@@ -105,21 +105,38 @@ class VerifyEmailView(APIView):
         uidb64 = request.data.get('uidb64')
         token = request.data.get('token')
         
-        if not uidb64 or not token:
-            return Response({"detail": "Missing uidb64 or token."}, status=status.HTTP_400_BAD_REQUEST)
+        if not token:
+            return Response({"detail": "Missing verification token."}, status=status.HTTP_400_BAD_REQUEST)
             
+        user = None
+        from django.core import signing
+
+        # 1. Try cryptographic TimestampSigner first (valid for 3 days = 259200s)
         try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return Response({"detail": "Invalid verification link."}, status=status.HTTP_400_BAD_REQUEST)
-            
-        if default_token_generator.check_token(user, token):
+            data = signing.loads(token, max_age=259200)
+            user_id = data.get("user_id")
+            user = User.objects.get(pk=user_id)
+        except signing.SignatureExpired:
+            return Response({"detail": "Verification link has expired."}, status=status.HTTP_400_BAD_REQUEST)
+        except (signing.BadSignature, User.DoesNotExist):
+            pass
+
+        # 2. Fallback to uidb64 + default_token_generator for legacy links
+        if not user and uidb64:
+            try:
+                uid = urlsafe_base64_decode(uidb64).decode()
+                candidate_user = User.objects.get(pk=uid)
+                if default_token_generator.check_token(candidate_user, token):
+                    user = candidate_user
+            except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+                pass
+
+        if user:
             user.is_email_verified = True
-            user.save()
+            user.save(update_fields=['is_email_verified'])
             return Response({"detail": "Email verified successfully."}, status=status.HTTP_200_OK)
-        else:
-            return Response({"detail": "Verification link is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"detail": "Verification link is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ResendVerificationEmailView(APIView):
@@ -135,8 +152,9 @@ class ResendVerificationEmailView(APIView):
             if user.is_email_verified:
                 return Response({"detail": "Email is already verified."}, status=status.HTTP_400_BAD_REQUEST)
                 
+            from django.core import signing
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
+            token = signing.dumps({"user_id": user.pk})
             origin = request.headers.get('origin', 'http://localhost:5173')
             verify_url = f"{origin}/verify-email?uidb64={uidb64}&token={token}"
             

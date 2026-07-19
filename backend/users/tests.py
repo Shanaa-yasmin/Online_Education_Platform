@@ -123,3 +123,22 @@ class AuthTests(APITestCase):
         self.client.cookies['refresh_token'] = refresh
         refresh_response = self.client.post(self.refresh_url, format='json')
         self.assertEqual(refresh_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_email_verification_success(self):
+        from django.core import signing
+        # Register user
+        reg_res = self.client.post(self.register_url, self.student_data, format='json')
+        self.assertEqual(reg_res.status_code, status.HTTP_201_CREATED)
+        
+        user = User.objects.get(email='student@platform.com')
+        self.assertFalse(user.is_email_verified)
+        
+        # Generate token using signing
+        token = signing.dumps({"user_id": user.pk})
+        verify_url = reverse('auth_verify_email')
+        
+        verify_res = self.client.post(verify_url, {'token': token}, format='json')
+        self.assertEqual(verify_res.status_code, status.HTTP_200_OK)
+        
+        user.refresh_from_db()
+        self.assertTrue(user.is_email_verified)
