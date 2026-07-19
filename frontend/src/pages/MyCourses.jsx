@@ -24,11 +24,24 @@ export default function MyCourses() {
 
   // Course creation states
   const [showModal, setShowModal] = useState(false);
+  const [showApprovalNotice, setShowApprovalNotice] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
+
+  const handleCreateCourseClick = () => {
+    const isMentor = user?.role === 'MENTOR';
+    const isAdmin = user?.is_staff || user?.role === 'ADMIN';
+    const isApproved = user?.profile?.is_approved;
+
+    if (isMentor && !isAdmin && !isApproved) {
+      setShowApprovalNotice(true);
+      return;
+    }
+    setShowModal(true);
+  };
 
   const handleInput = e => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -196,7 +209,7 @@ export default function MyCourses() {
                   <button className="btn btn-secondary" style={{ height: 42, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => navigate('/announcements?create=true')}>
                     <i className="ti ti-speakerphone" /> Add Announcement
                   </button>
-                  <button className="btn btn-primary" style={{ height: 42 }} onClick={() => setShowModal(true)}>
+                  <button className="btn btn-primary" style={{ height: 42 }} onClick={handleCreateCourseClick}>
                     <i className="ti ti-plus" /> Create Course
                   </button>
                 </div>
@@ -497,6 +510,24 @@ export default function MyCourses() {
                 <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Creating…' : 'Create Course'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Mentor Approval Required Modal */}
+      {showApprovalNotice && (
+        <div className="modal-overlay" onClick={() => setShowApprovalNotice(false)}>
+          <div className="modal-content animate-scaleIn" style={{ maxWidth: 440, textAlign: 'center', padding: '32px 24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#FFFBE6', border: '1px solid #FFE58F', color: '#FAAD14', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 30 }}>
+              <i className="ti ti-alert-circle" />
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>Approval Required</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 24 }}>
+              Administrator should approve to create course.
+            </p>
+            <button className="btn btn-primary" style={{ width: '100%', height: 42 }} onClick={() => setShowApprovalNotice(false)}>
+              Understand & Close
+            </button>
           </div>
         </div>
       )}

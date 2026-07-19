@@ -168,7 +168,7 @@ export default function Dashboard() {
           {isMentor && !user?.profile?.is_approved && (
             <div className="alert alert-warning animate-fadeIn">
               <i className="ti ti-alert-triangle" />
-              <div><strong>Account pending approval.</strong> Your mentor account is under review. You'll be notified once approved.</div>
+              <div><strong>Account pending approval.</strong> Administrator should approve to create course.</div>
             </div>
           )}
 

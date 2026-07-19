@@ -1,0 +1,233 @@
+# EduPath: API Documentation & Entity-Relationship (ER) Diagrams
+
+This document outlines the database schema (via ER Diagrams) and lists the core REST API endpoints of the EduPath Online Education Platform.
+
+---
+
+## 1. Entity-Relationship (ER) Diagram
+
+Below is the database relationship diagram of the system modeled using Mermaid.js syntax:
+
+```mermaid
+erDiagram
+    USER {
+        int id PK
+        string username
+        string email
+        string role "STUDENT | MENTOR | ADMIN"
+        bool is_email_verified
+        bool profile_complete
+    }
+    
+    PROFILE {
+        int id PK
+        int user_id FK
+        string title
+        string skills
+        int years_of_experience
+        string location
+        string education_level
+        bool is_approved
+        bool is_suspended
+        image avatar
+    }
+
+    COURSE {
+        int id PK
+        string title
+        string slug
+        string description
+        int mentor_id FK
+        decimal price
+        string level "BEGINNER | INTERMEDIATE | ADVANCED"
+        string category
+        bool is_approved
+        bool is_published
+        decimal rating_average
+        int total_reviews
+    }
+
+    MODULE {
+        int id PK
+        int course_id FK
+        string title
+        int order
+    }
+
+    LESSON {
+        int id PK
+        int module_id FK
+        string title
+        string content_type "VIDEO | PDF | DOCUMENT"
+        string video_url
+        file file_attachment
+        string body_text
+        int order
+    }
+
+    QUIZ_QUESTION {
+        int id PK
+        int lesson_id FK
+        string question_text
+        string question_type "SINGLE_CHOICE | MULTIPLE_CHOICE | FILL_BLANK"
+        int points
+        int order
+    }
+
+    QUIZ_OPTION {
+        int id PK
+        int question_id FK
+        string text
+        bool is_correct
+        int order
+    }
+
+    ENROLLMENT {
+        int id PK
+        int student_id FK
+        int course_id FK
+        datetime enrolled_at
+        bool is_active
+        decimal progress_percent
+    }
+
+    PAYMENT {
+        int id PK
+        int enrollment_id FK
+        string gateway "STRIPE | PAYPAL"
+        string status "PENDING | COMPLETED | FAILED | REFUNDED"
+        decimal amount
+        string transaction_id
+    }
+
+    CERTIFICATE {
+        int id PK
+        int enrollment_id FK
+        int student_id FK
+        datetime issued_at
+        string verification_uuid
+    }
+
+    QUIZ_ATTEMPT {
+        int id PK
+        int student_id FK
+        int lesson_id FK
+        int attempt_number
+        decimal score_achieved
+        bool is_submitted
+        datetime started_at
+    }
+
+    REVIEW {
+        int id PK
+        int course_id FK
+        int student_id FK
+        int rating
+        string comment
+        bool is_flagged
+    }
+
+    REVIEW_REPORT {
+        int id PK
+        int review_id FK
+        int reported_by_id FK
+        string reason
+        string status "PENDING | DISMISSED | REVIEWED"
+    }
+
+    USER ||--|| PROFILE : "has"
+    USER ||--o{ COURSE : "mentors"
+    USER ||--o{ ENROLLMENT : "registers"
+    COURSE ||--o{ MODULE : "contains"
+    MODULE ||--o{ LESSON : "contains"
+    LESSON ||--o{ QUIZ_QUESTION : "has_questions"
+    QUIZ_QUESTION ||--o{ QUIZ_OPTION : "has_options"
+    COURSE ||--o{ ENROLLMENT : "enrolls"
+    ENROLLMENT ||--|| CERTIFICATE : "rewards"
+    ENROLLMENT ||--o{ PAYMENT : "bills"
+    USER ||--o{ QUIZ_ATTEMPT : "takes"
+    LESSON ||--o{ QUIZ_ATTEMPT : "evaluated_by"
+    USER ||--o{ REVIEW : "writes"
+    COURSE ||--o{ REVIEW : "reviewed_by"
+    REVIEW ||--o{ REVIEW_REPORT : "flagged_by"
+```
+
+---
+
+## 2. API Documentation
+
+### A. Authentication & Users (`/api/auth/`)
+All endpoints are relative to your API base url (e.g. `http://localhost:8000`).
+
+| Method | Endpoint | Auth | Description | Payload / Response |
+| :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/api/auth/register/` | None | Register a student or mentor | `{"username", "email", "password", "password_confirm", "role"}` |
+| **POST** | `/api/auth/login/` | None | Login user & issue HTTPOnly refresh cookies | `{"email", "password"}` ➔ Returns `{"access", "user"}` |
+| **POST** | `/api/auth/logout/` | JWT | Invalidate active refresh cookie | Standard logout |
+| **POST** | `/api/auth/refresh/` | Cookie | Rotate access tokens dynamically | Reads Cookie ➔ Returns `{"access"}` |
+| **GET** | `/api/auth/profile/` | JWT | Fetch logged-in user profile details | Returns user profile object |
+| **POST** | `/api/auth/complete-profile/` | JWT | Set DOB, location, resume, etc. | Custom profile details |
+
+---
+
+### B. Landing Page (`/api/landing/`)
+
+| Method | Endpoint | Auth | Description | Response JSON structure |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/landing/` | None | Fetch site summary stats, courses, mentors, and ratings | `{"courses": [...], "mentors": [...], "stats": {...}, "reviews": [...]}` |
+
+---
+
+### C. Courses & Curriculum (`/api/courses/`, `/api/modules/`, `/api/lessons/`)
+
+| Method | Endpoint | Auth | Description | Path Params / Query Params |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/courses/` | JWT | List published & approved courses | Optional `?q=searchterm` |
+| **GET** | `/api/courses/search/` | JWT | Elasticsearch ORM search fallback query | `?search=query` |
+| **POST** | `/api/courses/` | Mentor | Create a new draft course | `{"title", "description", "price", "level", "category"}` |
+| **GET** | `/api/courses/{id}/` | JWT | Retrieve course structure (modules + lesson indexes) | `{id}` |
+| **POST** | `/api/courses/{id}/submit_for_review/` | Mentor | Submit course draft to moderation queue | `{id}` |
+| **POST** | `/api/courses/{id}/approve/` | Admin | Approve course for catalog display | `{id}` |
+| **POST** | `/api/courses/{id}/publish/` | Mentor | Publish approved course draft | `{id}` |
+| **POST** | `/api/modules/` | Mentor | Add modular chapter to a course | `{"course_id", "title", "order"}` |
+| **POST** | `/api/lessons/` | Mentor | Upload PDF / Video / text lecture to module | `{"module_id", "title", "content_type", ...}` |
+
+---
+
+### D. Reviews & Reports (`/api/reviews/`)
+
+| Method | Endpoint | Auth | Description | Payload / Response |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET**| `/api/courses/{course_id}/reviews/` | JWT | List all flagged-safe reviews of a course | Distribution, avg, and list of reviews |
+| **POST**| `/api/courses/{course_id}/reviews/` | JWT | Submit or update review comment & rating | `{"rating": 1-5, "comment": "string"}` |
+| **POST**| `/api/reviews/{id}/report/` | JWT | Flag review for administrator moderation | `{"reason": "string"}` |
+
+---
+
+### E. Assessment Engine (`/api/quiz-attempts/`)
+
+| Method | Endpoint | Auth | Description | Query / Response Payload |
+| :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/api/quiz-attempts/lessons/{lesson_id}/start/` | Student | Initiate a timed quiz attempt | Start attempts state & quiz questions list |
+| **POST** | `/api/quiz-attempts/{attempt_id}/submit/` | Student | Grade answers and calculate final score | `{"answers": [{"question_id", "selected_options": [id]}]}` |
+| **GET** | `/api/quiz-attempts/lessons/{lesson_id}/history/` | Student | Fetch past scores for this quiz | List of past scores |
+
+---
+
+### F. Payments & Checkouts (`/api/payments/`)
+
+| Method | Endpoint | Auth | Description | Payload / Response |
+| :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/api/payments/checkout/create-session/` | Student | Generate Stripe checkout redirect session | `{"course_id"}` ➔ Returns `{"session_url"}` |
+| **POST** | `/api/payments/checkout/paypal-order/` | Student | Setup Paypal checkout execution payload | `{"course_id"}` ➔ Order details |
+
+---
+
+### G. Chat, Alerts & Announcements (`/api/chat/`, `/api/notifications/`, `/api/announcements/`)
+
+| Method | Endpoint | Auth | Description | Path Params / Query Params |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/chat/rooms/` | JWT | Fetch active direct message chatrooms | List of rooms |
+| **GET** | `/api/notifications/` | JWT | Retrieve user alert notifications | List of notifications |
+| **POST**| `/api/notifications/{id}/read/` | JWT | Mark specific alert as read | `{id}` |
+| **GET** | `/api/announcements/` | JWT | Fetch general system/enrolled course bulletins | List of bulletins |

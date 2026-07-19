@@ -88,9 +88,14 @@ class CourseViewSet(viewsets.ModelViewSet):
         return CourseSerializer
 
     def perform_create(self, serializer):
-        # Enforce that only mentors or admins can create courses
+        # Enforce that only approved mentors or admins can create courses
         user = self.request.user
-        if not (user.role == 'MENTOR' or user.is_staff or user.role == 'ADMIN'):
+        if user.role == 'MENTOR':
+            profile = getattr(user, 'profile', None)
+            if not profile or not profile.is_approved:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Administrator should approve to create course.")
+        elif not (user.is_staff or user.role == 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only mentors or administrators can create courses.")
         serializer.save(mentor=user)
