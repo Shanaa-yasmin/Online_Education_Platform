@@ -27,6 +27,8 @@ export default function VerifyEmailPage() {
       try {
         await api.post('/api/auth/verify-email/', { uidb64, token });
         setStatus('success');
+        // Notify AuthContext to refresh the user profile so is_email_verified updates in state immediately
+        window.dispatchEvent(new Event('auth_change'));
       } catch (err) {
         setStatus('error');
         setErrorMsg(err.response?.data?.detail || 'Verification failed. The link may be expired.');
