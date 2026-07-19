@@ -63,7 +63,8 @@ class CertificateEntitlementTests(APITestCase):
         # 2. Check visibility in certificate listing viewset
         list_res = self.client.get('/api/certificates/')
         self.assertEqual(list_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(list_res.data), 1)
+        results = list_res.data.get('results', list_res.data)
+        self.assertEqual(len(results), 1)
         
         # 3. Check public verify endpoint
         verify_res = self.client.get(f'/api/certificates/verify/CERT-TEST-12345/')
@@ -87,7 +88,8 @@ class CertificateEntitlementTests(APITestCase):
         # 2. Assert hidden on listing viewset
         list_res = self.client.get('/api/certificates/')
         self.assertEqual(list_res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(list_res.data), 0)
+        results = list_res.data.get('results', list_res.data)
+        self.assertEqual(len(results), 0)
         
         # 3. Assert verify returns 404 Not Found (revoked)
         verify_res = self.client.get(f'/api/certificates/verify/CERT-TEST-12345/')
