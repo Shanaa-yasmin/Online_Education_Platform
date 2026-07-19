@@ -16,6 +16,9 @@ class CourseAPITests(APITestCase):
             password='testpassword123',
             role=User.Role.MENTOR
         )
+        if hasattr(self.mentor1, 'profile'):
+            self.mentor1.profile.is_approved = True
+            self.mentor1.profile.save()
         self.mentor2 = User.objects.create_user(
             username='mentor2',
             email='mentor2@test.com',
@@ -110,6 +113,20 @@ class CourseAPITests(APITestCase):
         self.assertEqual(response.data['mentor']['username'], "mentor1")
         self.assertEqual(response.data['is_approved'], False) # Newly created course must be unapproved
 
+    def test_unapproved_mentor_cannot_create_course(self):
+        self.client.force_authenticate(user=self.mentor2)
+        url = reverse('course-list')
+        data = {
+            "title": "Unapproved React Course",
+            "description": "Learn react web dev",
+            "price": "49.99",
+            "level": "BEGINNER",
+            "language": "English"
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("Administrator should approve to create course", response.data['detail'])
+
     def test_course_listings_visibility(self):
         # 1. Student should only see Approved and Published courses
         self.client.force_authenticate(user=self.student)
@@ -117,21 +134,24 @@ class CourseAPITests(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Should only see 1 course (the approved & published one)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['title'], self.course_published_approved.title)
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['title'], self.course_published_approved.title)
 
         # 2. Mentor who owns the draft course should see both their draft and published courses
         self.client.force_authenticate(user=self.mentor1)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Mentor1 owns one draft and one published course, plus can view all other published courses (total 2)
-        self.assertEqual(len(response.data), 2)
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 2)
 
         # 3. Mentor2 who doesn't own the draft course should only see the published course
         self.client.force_authenticate(user=self.mentor2)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        results = response.data.get('results', response.data)
+        self.assertEqual(len(results), 1)
 
     def test_quiz_question_correct_option_visibility(self):
         # 1. Student should not see the is_correct field or explanation in quiz question detail queries
