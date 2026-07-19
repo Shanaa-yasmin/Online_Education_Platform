@@ -17,20 +17,57 @@ logger = logging.getLogger(__name__)
 def _send_email_async(subject, body, recipient_list, is_priority=False):
     """
     Runs the actual send_mail call on a background thread so a slow SMTP
-    call never adds latency to the request that triggered the notification
-    (e.g. a payment completing, a lesson being saved).
+    call never adds latency to the request that triggered the notification.
+    Includes robust SSL fallback handling for Python SSL certificate environments.
     """
     try:
         from django.conf import settings
         logger.info(f"[EMAIL DEBUG] Using DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
         logger.info(f"[EMAIL QUEUE] Attempting to send email to {recipient_list} (Subject: {subject})")
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
-            recipient_list=recipient_list,
-            fail_silently=False
-        )
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
+                recipient_list=recipient_list,
+                fail_silently=False
+            )
+        except Exception as smtp_err:
+            logger.warning(f"[EMAIL WARN] Standard send_mail failed: {smtp_err}. Retrying with SSL context fallback...")
+            if getattr(settings, 'EMAIL_HOST', None):
+                import ssl, smtplib
+                from email.message import EmailMessage
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                
+                for recipient in recipient_list:
+                    msg = EmailMessage()
+                    msg['Subject'] = subject
+                    msg['From'] = settings.DEFAULT_FROM_EMAIL
+                    msg['To'] = recipient
+                    msg.set_content(body)
+                    
+                    use_ssl = getattr(settings, 'EMAIL_USE_SSL', False)
+                    port = getattr(settings, 'EMAIL_PORT', 465)
+                    host = settings.EMAIL_HOST
+                    
+                    if use_ssl or port == 465:
+                        with smtplib.SMTP_SSL(host, port, context=ctx, timeout=15) as server:
+                            if settings.EMAIL_HOST_USER:
+                                server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                            server.send_message(msg)
+                    else:
+                        with smtplib.SMTP(host, port, timeout=15) as server:
+                            if getattr(settings, 'EMAIL_USE_TLS', False):
+                                server.starttls(context=ctx)
+                            if settings.EMAIL_HOST_USER:
+                                server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+                            server.send_message(msg)
+            else:
+                raise smtp_err
+
         logger.info(f"[EMAIL SUCCESS] Email successfully sent to {recipient_list}")
     except Exception as e:
         logger.error(f"[EMAIL FAILED] Error sending email to {recipient_list}: {e}")
