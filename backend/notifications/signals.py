@@ -16,15 +16,44 @@ logger = logging.getLogger(__name__)
 
 def _send_email_async(subject, body, recipient_list, is_priority=False):
     """
-    Runs the actual send_mail call on a background thread so a slow SMTP
+    Runs the actual email dispatch on a background thread so a slow SMTP/API
     call never adds latency to the request that triggered the notification.
-    Includes robust SSL fallback handling for Python SSL certificate environments.
+    Supports Brevo HTTPS REST API (Port 443) as well as SSL SMTP (Port 465) fallback.
     """
     try:
         from django.conf import settings
         logger.info(f"[EMAIL DEBUG] Using DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
         logger.info(f"[EMAIL QUEUE] Attempting to send email to {recipient_list} (Subject: {subject})")
         
+        # 1. Check for Brevo API Key (xkeysib-...) to use HTTPS REST API over Port 443
+        brevo_key = getattr(settings, 'BREVO_API_KEY', '') or getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+        if brevo_key and brevo_key.startswith('xkeysib-'):
+            import urllib.request, json
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "api-key": brevo_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            from_name = "EduPath"
+            from_email = settings.DEFAULT_FROM_EMAIL
+            if '<' in from_email and '>' in from_email:
+                parts = from_email.split('<')
+                from_name = parts[0].strip()
+                from_email = parts[1].replace('>', '').strip()
+            
+            payload = {
+                "sender": {"name": from_name, "email": from_email},
+                "to": [{"email": r} for r in recipient_list],
+                "subject": subject,
+                "textContent": body
+            }
+            req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=15) as res:
+                logger.info(f"[EMAIL SUCCESS] Brevo REST API email sent with status {res.status} to {recipient_list}")
+            return
+
+        # 2. Standard SMTP path with Port 465 SSL fallback
         try:
             send_mail(
                 subject=subject,
