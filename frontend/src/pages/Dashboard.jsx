@@ -180,27 +180,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Email verification notice banner */}
-          {user && !user?.is_email_verified && (
-            <div className="alert alert-info animate-fadeIn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <i className="ti ti-mail-forward" style={{ fontSize: '20px', color: 'var(--brand)' }} />
-                <div>
-                  <strong>Verify your email address.</strong> We sent a verification link to <u>{user.email}</u>.
-                  {emailNotice && <div style={{ fontSize: '12.5px', marginTop: '4px', fontWeight: '500' }}>{emailNotice}</div>}
-                </div>
-              </div>
-              <button 
-                type="button" 
-                className="btn btn-sm btn-secondary" 
-                onClick={handleResendVerification}
-                disabled={resendingEmail}
-                style={{ flexShrink: 0 }}
-              >
-                {resendingEmail ? 'Sending...' : 'Resend Verification Email'}
-              </button>
-            </div>
-          )}
+
 
           {/* Mentor pending notice */}
           {isMentor && !user?.profile?.is_approved && (

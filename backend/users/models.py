@@ -39,7 +39,7 @@ class User(AbstractUser):
         default=Role.STUDENT
     )
     email = models.EmailField(unique=True)
-    is_email_verified = models.BooleanField(default=False)
+    is_email_verified = models.BooleanField(default=True)
     profile_complete = models.BooleanField(default=False)
 
     # Make email unique and required, username remains the login key for now, 

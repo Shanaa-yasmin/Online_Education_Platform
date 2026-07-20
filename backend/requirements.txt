@@ -68,4 +68,3 @@ elasticsearch-dsl==8.18.0
 whitenoise==6.6.0
 django-cloudinary-storage==0.3.0
 cloudinary==1.45.0
-gunicorn==23.0.0

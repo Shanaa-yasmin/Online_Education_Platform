@@ -53,33 +53,8 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            
-            # Generate cryptographically signed verification token (3 days validity)
-            from django.core import signing
-            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = signing.dumps({"user_id": user.pk})
-            
-            # Build verification URL
-            origin = request.headers.get('origin', 'http://localhost:5173')
-            verify_url = f"{origin}/verify-email?uidb64={uidb64}&token={token}"
-            
-            # Send email asynchronously
-            from django.core.mail import send_mail
-            import threading
-            
-            def send_verification_email():
-                try:
-                    send_mail(
-                        subject="Verify your EduPath email",
-                        message=f"Hi {user.username},\n\nPlease verify your email address by clicking the link below:\n{verify_url}\n\nThanks,\nEduPath Team",
-                        from_email=None,
-                        recipient_list=[user.email],
-                        fail_silently=False,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send verification email to {user.email}: {e}")
-
-            threading.Thread(target=send_verification_email).start()
+            user.is_email_verified = True
+            user.save(update_fields=['is_email_verified'])
 
             user_data = UserSerializer(user, context={'request': request}).data
             
