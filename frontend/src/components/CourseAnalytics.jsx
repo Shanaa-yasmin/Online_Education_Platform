@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api.js';
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, PieChart, Pie, Cell, Legend 
 } from 'recharts';
 
@@ -118,19 +118,13 @@ export default function CourseAnalytics({ courses }) {
               <h3 style={{ fontSize: 15, fontWeight: 'bold', marginBottom: 15 }}>Enrollments Trend (Last 30 Days)</h3>
               <div style={{ width: '100%', height: 260 }}>
                 <ResponsiveContainer>
-                  <AreaChart data={data.charts.enrollment_trend}>
-                    <defs>
-                      <linearGradient id="colorEnroll" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#309d8e" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#309d8e" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
+                  <LineChart data={data.charts.enrollment_trend}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Area type="monotone" dataKey="enrollments" stroke="#309d8e" fillOpacity={1} fill="url(#colorEnroll)" />
-                  </AreaChart>
+                    <Line type="monotone" dataKey="enrollments" stroke="#309d8e" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>

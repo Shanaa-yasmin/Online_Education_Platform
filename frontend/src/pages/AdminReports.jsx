@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
 import Sidebar from '../components/Sidebar.jsx';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import './AdminReports.css';
@@ -251,19 +251,13 @@ export default function AdminReports() {
                 <h3 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 15 }}>Monthly Enrollment Trend</h3>
                 <div style={{ width: '100%', height: 300 }}>
                   <ResponsiveContainer>
-                    <AreaChart data={data.monthly_enrollments || []}>
-                      <defs>
-                        <linearGradient id="colorMonth" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#309d8e" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#309d8e" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
+                    <LineChart data={data.monthly_enrollments || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
-                      <Area type="monotone" dataKey="enrollments" stroke="#309d8e" fillOpacity={1} fill="url(#colorMonth)" />
-                    </AreaChart>
+                      <Line type="monotone" dataKey="enrollments" stroke="#309d8e" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
