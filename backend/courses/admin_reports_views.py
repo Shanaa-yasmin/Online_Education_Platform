@@ -59,8 +59,6 @@ def get_admin_reports_data(request):
     mentor_id = request.query_params.get('mentor_id')
     student_id = request.query_params.get('student_id')
     category = request.query_params.get('category')
-    min_revenue = request.query_params.get('min_revenue')
-    max_revenue = request.query_params.get('max_revenue')
     completion_status = request.query_params.get('completion_status')
 
     # Base querysets
@@ -86,10 +84,6 @@ def get_admin_reports_data(request):
     if category:
         enrollments = enrollments.filter(course__category__iexact=category)
         payments = payments.filter(enrollment__course__category__iexact=category)
-    if min_revenue:
-        payments = payments.filter(amount__gte=min_revenue)
-    if max_revenue:
-        payments = payments.filter(amount__lte=max_revenue)
     if completion_status == 'completed':
         enrollments = enrollments.filter(progress_percent__gte=100.0)
     elif completion_status == 'in_progress':

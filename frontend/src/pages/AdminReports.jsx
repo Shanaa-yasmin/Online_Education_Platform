@@ -32,8 +32,6 @@ export default function AdminReports() {
     mentor_id: '',
     student_id: '',
     category: '',
-    min_revenue: '',
-    max_revenue: '',
     completion_status: '',
   });
 
@@ -89,7 +87,7 @@ export default function AdminReports() {
   const handleClearFilters = () => {
     setFilters({
       start_date: '', end_date: '', course_id: '', mentor_id: '',
-      student_id: '', category: '', min_revenue: '', max_revenue: '', completion_status: '',
+      student_id: '', category: '', completion_status: '',
     });
     setTimeout(() => fetchReports(), 50);
   };
@@ -186,14 +184,6 @@ export default function AdminReports() {
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
-              </div>
-              <div className="form-group">
-                <label>Min Revenue</label>
-                <input type="number" name="min_revenue" value={filters.min_revenue} onChange={handleFilterChange} placeholder="0" min="0" step="0.01" />
-              </div>
-              <div className="form-group">
-                <label>Max Revenue</label>
-                <input type="number" name="max_revenue" value={filters.max_revenue} onChange={handleFilterChange} placeholder="10000" min="0" step="0.01" />
               </div>
               <div className="form-group">
                 <label>Completion Status</label>
