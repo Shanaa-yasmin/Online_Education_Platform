@@ -707,7 +707,18 @@ export default function LearningPlayer() {
                 {/* VIDEO */}
                 {activeLesson.content_type === 'VIDEO' && (
                   <div className="video-player-wrapper">
-                    {activeLesson.video_url ? (
+                    {activeLesson.file_attachment ? (
+                      <div className="yt-embed-container">
+                        <video
+                          src={activeLesson.file_attachment}
+                          controls
+                          controlsList="nodownload"
+                          playsInline
+                          className="yt-iframe"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+                        />
+                      </div>
+                    ) : activeLesson.video_url ? (
                       <div className="yt-embed-container">
                         <iframe
                           src={getYouTubeEmbedUrl(activeLesson.video_url, activeLesson.start_seconds || 0)}
@@ -719,7 +730,7 @@ export default function LearningPlayer() {
                         />
                       </div>
                     ) : (
-                      <div className="alert alert-warning">No video link provided for this lesson.</div>
+                      <div className="alert alert-warning">No video link or file attachment provided for this lesson.</div>
                     )}
                     {activeLesson.body_text && (
                       <div className="lesson-summary-box">

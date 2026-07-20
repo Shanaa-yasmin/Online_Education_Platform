@@ -370,6 +370,7 @@ export default function CourseBuilder() {
       setLessonData({
         title: lessonObj.title,
         content_type: lessonObj.content_type,
+        video_source: lessonObj.file_attachment ? 'upload' : 'url',
         video_url: lessonObj.video_url || '',
         body_text: lessonObj.body_text || '',
         file: null,
@@ -381,6 +382,7 @@ export default function CourseBuilder() {
       setLessonData({
         title: '',
         content_type: 'VIDEO',
+        video_source: 'url',
         video_url: '',
         body_text: '',
         file: null,
@@ -403,7 +405,11 @@ export default function CourseBuilder() {
       formPayload.append('content_type', lessonData.content_type);
 
       if (lessonData.content_type === 'VIDEO') {
-        formPayload.append('video_url', lessonData.video_url);
+        if (lessonData.video_source === 'upload' && lessonData.file) {
+          formPayload.append('file_attachment', lessonData.file);
+        } else if (lessonData.video_url) {
+          formPayload.append('video_url', lessonData.video_url);
+        }
       } else if (lessonData.content_type === 'DOCUMENT') {
         formPayload.append('body_text', lessonData.body_text);
       } else if (lessonData.content_type === 'PDF' && lessonData.file) {
@@ -901,18 +907,64 @@ export default function CourseBuilder() {
               </div>
 
               {lessonData.content_type === 'VIDEO' && (
-                <div className="form-group">
-                  <label htmlFor="les-video">Video Streaming URL</label>
-                  <input
-                    type="url"
-                    id="les-video"
-                    value={lessonData.video_url}
-                    onChange={(e) => setLessonData(prev => ({ ...prev, video_url: e.target.value }))}
-                    placeholder="https://example.com/streaming-link"
-                    autoComplete="off"
-                    required
-                  />
-                </div>
+                <>
+                  <div className="form-group">
+                    <label>Video Input Method</label>
+                    <div style={{ display: 'flex', gap: '20px', marginTop: '6px', marginBottom: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13.5px', fontWeight: '500' }}>
+                        <input
+                          type="radio"
+                          name="video_source"
+                          value="url"
+                          checked={lessonData.video_source === 'url'}
+                          onChange={() => setLessonData(prev => ({ ...prev, video_source: 'url' }))}
+                        />
+                        Paste Video URL (YouTube / Cloudinary)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13.5px', fontWeight: '500' }}>
+                        <input
+                          type="radio"
+                          name="video_source"
+                          value="upload"
+                          checked={lessonData.video_source === 'upload'}
+                          onChange={() => setLessonData(prev => ({ ...prev, video_source: 'upload' }))}
+                        />
+                        Upload Video File (.mp4, .webm)
+                      </label>
+                    </div>
+                  </div>
+
+                  {lessonData.video_source === 'url' ? (
+                    <div className="form-group">
+                      <label htmlFor="les-video">Video Streaming URL</label>
+                      <input
+                        type="url"
+                        id="les-video"
+                        value={lessonData.video_url}
+                        onChange={(e) => setLessonData(prev => ({ ...prev, video_url: e.target.value }))}
+                        placeholder="https://youtube.com/watch?v=..."
+                        autoComplete="off"
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div className="form-group">
+                      <label htmlFor="les-video-file">Upload Video File (.mp4, .webm, .mov)</label>
+                      <input
+                        type="file"
+                        id="les-video-file"
+                        accept="video/*"
+                        onChange={(e) => setLessonData(prev => ({ ...prev, file: e.target.files[0] }))}
+                        required={!editTarget || !editTarget.file_attachment}
+                      />
+                      {editTarget && editTarget.file_attachment && (
+                        <small className="meta-sub" style={{ display: 'block', marginTop: '4px', color: 'var(--txt-3)' }}>
+                          Video file already uploaded. Leave blank to keep existing video.
+                        </small>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {lessonData.content_type === 'DOCUMENT' && (
