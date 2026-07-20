@@ -65,3 +65,8 @@ frontend/*.local
 .cache/
 .parcel-cache/
 
+# Implementation Plans & Tasks
+implementation_plan*
+task.md
+
+
