@@ -1,11 +1,14 @@
 # 🎓 EduPath — Advanced Online Education & E-Learning Platform
 
+[![Live Website](https://img.shields.io/badge/🌐_Live_Website-edupathlearn.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://edupathlearn.vercel.app/)
 [![Django](https://img.shields.io/badge/Django-6.0-092E20?style=for-the-badge&logo=django)](https://djangoproject.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?style=for-the-badge&logo=postgresql)](https://supabase.com)
 [![Redis](https://img.shields.io/badge/Redis-Caching-DC382D?style=for-the-badge&logo=redis)](https://redis.io)
 [![Elasticsearch](https://img.shields.io/badge/Elasticsearch-Search-005571?style=for-the-badge&logo=elasticsearch)](https://elastic.co)
 [![Stripe](https://img.shields.io/badge/Stripe-Payments-635BFF?style=for-the-badge&logo=stripe)](https://stripe.com)
+
+🚀 **Live Deployed Website**: [https://edupathlearn.vercel.app/](https://edupathlearn.vercel.app/)
 
 EduPath is a full-stack, enterprise-grade e-learning platform built for students, course creators, and platform administrators. Featuring full-text Elasticsearch search, real-time WebSocket notifications, dual payment gateways (Stripe & PayPal), interactive quizzes, PDF certificate generation, and an analytical reporting dashboard.
 
